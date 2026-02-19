@@ -1,0 +1,71 @@
+import type { Topic } from "../../types/topic";
+
+export const week24: Topic[] = [
+  {
+    id: "w24-t01-capstone",
+    weekNumber: 24, phase: 4, domain: "Operator Strategy",
+    title: "Final Capstone: Complete AI Integration Proposal",
+    lesson: [
+      { type: "text", content: "This is the culmination of everything you've learned. You will design a complete AI integration proposal from scratch — the kind of deliverable that separates a top 1% AI operator from everyone else.\n\nA complete proposal integrates:\n1. Problem translation (business problem → AI task)\n2. Architecture selection (simplest viable approach)\n3. Prompt design (structured, constrained, robust)\n4. Evaluation plan (rubrics, test suites, monitoring)\n5. Security design (threat model, guardrails, hardening)\n6. Cost and ROI analysis\n7. Implementation roadmap\n8. Success metrics" },
+      { type: "callout", content: "This is not a theoretical exercise. Design this as if you're presenting to a real client who will pay you to build it. Every section must be specific, grounded, and actionable." },
+      { type: "text", content: "Quality bar:\n- Every prompt must be production-ready (not pseudo-code)\n- Every cost estimate must have traceable math\n- Every risk must have a specific mitigation\n- Every metric must be measurable with a defined baseline\n- The proposal must be implementable by a team of 3 engineers in the stated timeline" },
+    ],
+    examples: [
+      { title: "Proposal Outline", input: "Company: Mid-size e-commerce (500K orders/month)\nProblem: Customer service overwhelmed (4-hour avg response time)\n\n1. Problem Translation: Automate Tier 1 support (FAQs, order status, simple returns)\n2. Architecture: RAG + prompt chain (knowledge base + intent classification + response generation)\n3. Prompt Design: System/user separation, structured output, injection resistance\n4. Evaluation: 5-dimension rubric, 50-test suite, weekly regression\n5. Security: PII scrubbing, injection defense, output validation, audit logging\n6. Cost: $4.2K/month run cost vs $180K/year saved (2 FTE equivalent)\n7. Roadmap: V1 in 8 weeks (FAQ only), V2 in 16 weeks (+ order status), V3 in 24 weeks (+ returns)\n8. Metrics: Resolution rate >70%, CSAT >4.0, response time <30s, cost per resolution <$0.50", output: "Complete proposal skeleton — each section would be expanded with full detail.", explanation: "This outline covers all 8 sections. The capstone requires expanding each to production detail." },
+    ],
+    drills: [
+      { id: "w24-t01-d1", type: "translate", prompt: "A hospital system wants to 'use AI to reduce patient wait times in the ER.' Translate this into 3 specific AI tasks, assess feasibility of each, and recommend which to build first. Apply the translation framework from Week 19.", requiredElements: ["3 specific tasks", "feasibility assessment", "priority recommendation", "framework application"], evaluationCriteria: ["Tasks are specific and buildable", "Feasibility considers healthcare constraints", "Priority is justified", "Framework is correctly applied"] },
+      { id: "w24-t01-d2", type: "design", prompt: "Design the evaluation plan for the hospital AI system you recommended. Include: rubric, test suite (10+ tests), monitoring plan, and success metrics. Apply everything from Phase 2.", requiredElements: ["rubric", "test suite", "monitoring", "success metrics"], evaluationCriteria: ["Rubric has 4+ dimensions", "Tests cover all categories", "Monitoring is continuous", "Metrics are measurable"] },
+      { id: "w24-t01-d3", type: "build", prompt: "Design the security and privacy framework for the hospital AI system. Include: threat model, data privacy architecture, guardrails, and incident response plan. Apply everything from Weeks 21-22.", requiredElements: ["threat model", "privacy architecture", "guardrails", "incident response"], evaluationCriteria: ["Threats are healthcare-specific", "HIPAA considerations addressed", "Guardrails are in code not just prompts", "Incident response is pre-planned"] },
+      { id: "w24-t01-d4", type: "analyze", prompt: "Build the ROI model and business case for the hospital AI system. Include 3 scenarios (conservative/moderate/optimistic), sensitivity analysis, and the executive summary that would convince a hospital CEO.", requiredElements: ["3 scenarios", "sensitivity analysis", "executive summary", "traceable numbers"], evaluationCriteria: ["Math is correct", "Scenarios are meaningfully different", "Sensitivity identifies key variables", "Executive summary stands alone"] },
+    ],
+    challenge: {
+      id: "w24-t01-ch", type: "capstone",
+      scenario: "Design a complete AI integration proposal for a national insurance company that wants to modernize their claims processing. The company processes 50,000 claims per month across auto, home, health, and commercial lines.\n\nCurrent state:\n- Average processing time: 12 days\n- Error rate: 7%\n- Customer satisfaction: 3.2/5\n- Processing cost: $85 per claim\n- Staff: 200 claims processors\n\nThe CEO wants: processing time under 3 days, error rate under 2%, CSAT above 4.0, and 40% cost reduction — within 18 months.\n\nYour proposal must be comprehensive enough that a technical team could begin implementation from it.",
+      constraints: [
+        "Must include all 8 proposal sections with production-level detail",
+        "Must design at least 3 AI components (classification, extraction, assessment)",
+        "Must include complete prompt designs (not pseudo-code)",
+        "Must include evaluation framework with rubrics and test suites",
+        "Must include security threat model and privacy architecture",
+        "Must include detailed ROI with 3 scenarios and sensitivity analysis",
+        "Must include phased implementation roadmap (V1/V2/V3)",
+        "Must include success metrics with baselines and targets",
+        "Must address all 4 insurance lines with line-specific considerations",
+        "Must include human-in-the-loop design for complex and high-value claims",
+      ],
+      requiredSections: [
+        "Executive Summary",
+        "Problem Translation & Scope Definition",
+        "Architecture Design (with component diagram)",
+        "Prompt Designs (production-ready for each component)",
+        "Evaluation Framework (rubrics, test suites, monitoring)",
+        "Security & Privacy (threat model, guardrails, compliance)",
+        "Cost & ROI Analysis (3 scenarios, sensitivity, payback)",
+        "Implementation Roadmap (V1/V2/V3 with milestones)",
+        "Success Metrics & Measurement Plan",
+        "Risk Assessment & Mitigation",
+      ],
+      hints: [
+        "Start with the problem translation — what specific tasks can AI handle?",
+        "Design V1 as the simplest valuable slice (maybe just auto claims classification)",
+        "The evaluation framework should be designed before the prompts — know how you'll measure before you build",
+        "Security is not optional in insurance — regulatory compliance is mandatory",
+        "The ROI must account for transition costs and the accuracy ramp-up period",
+      ],
+    },
+    rubric: [
+      { id: "w24-t01-r1", dimension: "Problem Translation", description: "Business problem correctly decomposed into specific AI tasks", weight: 0.1 },
+      { id: "w24-t01-r2", dimension: "Architecture Design", description: "Simplest viable architecture with clear component design", weight: 0.1 },
+      { id: "w24-t01-r3", dimension: "Prompt Engineering", description: "Production-ready prompts with constraints, edge cases, injection defense", weight: 0.15 },
+      { id: "w24-t01-r4", dimension: "Evaluation Framework", description: "Complete rubrics, test suites, and monitoring plan", weight: 0.15 },
+      { id: "w24-t01-r5", dimension: "Security & Privacy", description: "Threat model, guardrails, compliance, incident response", weight: 0.1 },
+      { id: "w24-t01-r6", dimension: "Cost & ROI", description: "Detailed, traceable financial analysis with scenarios", weight: 0.1 },
+      { id: "w24-t01-r7", dimension: "Implementation Plan", description: "Realistic phased roadmap with milestones", weight: 0.1 },
+      { id: "w24-t01-r8", dimension: "Success Metrics", description: "Measurable, baselined, actionable metrics", weight: 0.1 },
+      { id: "w24-t01-r9", dimension: "Completeness & Coherence", description: "All sections present, consistent, and implementable", weight: 0.1 },
+    ],
+    reviewSummary: "The capstone integrates all 24 weeks: problem translation, architecture, prompt design, evaluation, security, cost/ROI, implementation, and success metrics. A top 1% AI operator can produce this deliverable for any business problem.",
+    artifactType: "capstone_proposal", passThreshold: 80, xpValue: 500,
+  },
+];
