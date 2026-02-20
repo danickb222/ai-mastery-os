@@ -16,9 +16,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[#0a0a12] text-gray-100">
+    <div className="min-h-screen bg-[#0a0a12] text-gray-100 flex flex-col">
       <nav className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a12]/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+        <div className="mx-auto w-full max-w-6xl px-4 py-8">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
               AI Mastery OS
@@ -45,7 +45,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </nav>
-      <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
+      <main className="flex-1">
+  <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    {children}
+  </div>
+</main>
+
     </div>
   );
 }

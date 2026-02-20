@@ -98,7 +98,7 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Domain Competency</CardTitle>
           </CardHeader>
-          <div className="space-y-3">
+          <div className="p-6 pt-0 space-y-3">
             {ALL_DOMAINS.map((domain) => {
               const dm = domainMastery.find((d) => d.domain === domain);
               const pct = dm && dm.topicsTotal > 0 ? Math.round((dm.topicsPassed / dm.topicsTotal) * 100) : 0;
