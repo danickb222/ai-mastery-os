@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "AI Mastery OS",
   description: "Beginner to top 1% applied AI operator training",
   manifest: "/manifest.webmanifest",
-  themeColor: "#000000",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b0b12", // Match your app background color
 };
 
 export default function RootLayout({
