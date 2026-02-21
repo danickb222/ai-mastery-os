@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "AI Mastery OS",
-  description: "Beginner to top 1% applied AI operator training",
+  description: "Drill-based training system for applied AI operators. Build your Operator Score.",
   manifest: "/manifest.webmanifest",
 };
 

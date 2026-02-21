@@ -1,7 +1,5 @@
 "use client";
 import { useState } from "react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Toast } from "@/components/ui/Toast";
 import {
   exportMasteryData,
@@ -9,6 +7,7 @@ import {
   resetMasteryData,
   migrateFromV1,
 } from "@/core/storage/mastery";
+import { STORAGE_KEYS } from "@/core/storage";
 
 export default function SettingsPage() {
   const [toast, setToast] = useState<string | null>(null);
@@ -23,7 +22,7 @@ export default function SettingsPage() {
     a.download = `ai-mastery-os-export-${new Date().toISOString().split("T")[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setToast("JSON exported!");
+    setToast("JSON exported.");
   };
 
   const handleExportMarkdown = () => {
@@ -35,7 +34,7 @@ export default function SettingsPage() {
     a.download = `ai-mastery-os-portfolio-${new Date().toISOString().split("T")[0]}.md`;
     a.click();
     URL.revokeObjectURL(url);
-    setToast("Markdown exported!");
+    setToast("Markdown exported.");
   };
 
   const handleReset = () => {
@@ -43,78 +42,115 @@ export default function SettingsPage() {
       setConfirmReset(true);
       return;
     }
+    // Clear legacy mastery data
     resetMasteryData();
     migrateFromV1();
+    // Clear new storage keys
+    if (typeof window !== "undefined") {
+      Object.values(STORAGE_KEYS).forEach((key) => {
+        try { localStorage.removeItem(key); } catch { /* */ }
+      });
+      try { localStorage.removeItem("amo_previous_operator_score"); } catch { /* */ }
+      try { localStorage.removeItem("amo_flagged_drills"); } catch { /* */ }
+      try { localStorage.removeItem("ai_mastery_arena_attempts"); } catch { /* */ }
+      try { localStorage.removeItem("ai_mastery_lab_projects"); } catch { /* */ }
+    }
     setConfirmReset(false);
-    setToast("All data has been reset. Refresh the page.");
+    setToast("All data cleared. Refresh to start fresh.");
   };
 
   const handleMigrate = () => {
     migrateFromV1();
-    setToast("Migration complete. Old v1 data cleared.");
+    setToast("Legacy data cleared.");
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Settings</h1>
-        <p className="mt-1 text-gray-400">Manage your data and configuration</p>
+        <p className="mt-1 text-gray-400">Data management and system configuration.</p>
       </div>
 
-      <Card>
-        <CardHeader><CardTitle>About</CardTitle></CardHeader>
+      {/* About */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">About</div>
         <p className="text-sm text-gray-400">
-          AI Mastery OS is a competency certification engine for applied AI operators.
-          Progress is based on demonstrated capability through performance-based challenges.
-          Every certification produces a portfolio-grade artifact.
+          AI Mastery OS is a drill-based training system for applied AI operators.
+          Your Operator Score is computed from domain drills, arena challenges, and lab experiments.
+          All data is stored locally in your browser.
         </p>
         <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
-          <span>Pass threshold: 80% default</span>
-          <span>•</span>
-          <span>No MCQs</span>
-          <span>•</span>
-          <span>Labs &gt; Theory</span>
+          <span>5 domains</span>
+          <span>·</span>
+          <span>Drill-based scoring</span>
+          <span>·</span>
+          <span>No account required</span>
         </div>
-      </Card>
+      </div>
 
-      <Card>
-        <CardHeader><CardTitle>Export Data</CardTitle></CardHeader>
+      {/* Export */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Export Data</div>
         <p className="text-sm text-gray-400 mb-3">
-          Download all progress, certifications, and artifacts.
+          Download all progress, scores, and artifacts.
         </p>
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={handleExportJson}>Export JSON</Button>
-          <Button variant="secondary" onClick={handleExportMarkdown}>Export Markdown</Button>
+          <button
+            onClick={handleExportJson}
+            className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm font-medium text-gray-300 transition-colors"
+          >
+            Export JSON
+          </button>
+          <button
+            onClick={handleExportMarkdown}
+            className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm font-medium text-gray-300 transition-colors"
+          >
+            Export Markdown
+          </button>
         </div>
-      </Card>
+      </div>
 
-      <Card>
-        <CardHeader><CardTitle>Migration</CardTitle></CardHeader>
+      {/* Migration */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Migration</div>
         <p className="text-sm text-gray-400 mb-3">
-          If you had data from the v1 system, clear it here.
+          Clear legacy v1 data if you used a previous version.
         </p>
-        <Button variant="ghost" size="sm" onClick={handleMigrate}>
+        <button
+          onClick={handleMigrate}
+          className="text-xs text-gray-500 hover:text-white transition-colors"
+        >
           Clear v1 Data
-        </Button>
-      </Card>
+        </button>
+      </div>
 
-      <Card className="border-red-500/20">
-        <CardHeader><CardTitle className="text-red-400">Danger Zone</CardTitle></CardHeader>
+      {/* Danger Zone */}
+      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5">
+        <div className="text-[10px] font-semibold text-red-400 uppercase tracking-widest mb-2">Danger Zone</div>
         <p className="text-sm text-gray-400 mb-3">
-          This will permanently delete all certifications, artifacts, and progress.
-          This action cannot be undone.
+          Permanently delete all scores, drill history, operator profile, and artifacts. Cannot be undone.
         </p>
         <div className="flex items-center gap-2">
-          <Button variant="danger" onClick={handleReset}>
-            {confirmReset ? "Click again to confirm reset" : "Reset All Data"}
-          </Button>
+          <button
+            onClick={handleReset}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              confirmReset
+                ? "bg-red-600 hover:bg-red-500 text-white"
+                : "border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+            }`}
+          >
+            {confirmReset ? "Click again to confirm" : "Reset All Data"}
+          </button>
           {confirmReset && (
-            <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
+            <button
+              onClick={() => setConfirmReset(false)}
+              className="text-xs text-gray-500 hover:text-white transition-colors"
+            >
               Cancel
-            </Button>
+            </button>
           )}
         </div>
-      </Card>
+      </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
