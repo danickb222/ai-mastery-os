@@ -10,7 +10,6 @@ import {
   updateStreak,
   computeOperatorScore,
   getRankLabel,
-  getScoreDelta,
   STORAGE_KEYS,
   type OperatorProfile,
   type DomainScore,
@@ -18,8 +17,14 @@ import {
   type LabSession,
   type LastDrillSession,
 } from "@/core/storage";
-import { topics, getTopicsByDomain } from "@/core/content/registry";
-import { ALL_DOMAINS } from "@/core/types/topic";
+import { DOMAINS, getDomainDrillCount } from "@/core/content/domains";
+import { getDrillsByDomain, DRILLS } from "@/core/content/drills";
+import type { DrillResult } from "@/core/types/drills";
+import { ScoreCounter } from "@/components/ui/ScoreCounter";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -34,18 +39,38 @@ export default function Dashboard() {
   useEffect(() => {
     let p = getOperatorProfile();
     if (p) {
-      // Update streak
       p = updateStreak(p);
 
-      // Load dependent data
-      const ds = getItem<DomainScore[]>(STORAGE_KEYS.DOMAIN_SCORES) || [];
+      const drillHistory = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || [];
       const as = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
       const ls = getItem<LabSession[]>(STORAGE_KEYS.LAB_SESSIONS) || [];
       const lastDrill = getItem<LastDrillSession>(STORAGE_KEYS.LAST_DRILL_SESSION);
 
-      // Recompute operator score
+      // Compute domain scores from drill history
+      const ds: DomainScore[] = DOMAINS.map(domain => {
+        const domainDrills = getDrillsByDomain(domain.id);
+        const completedDrills = drillHistory.filter(h => 
+          domainDrills.some(d => d.id === h.drillId)
+        );
+        const avgScore = completedDrills.length > 0
+          ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
+          : 0;
+        
+        return {
+          domainId: domain.id,
+          score: avgScore,
+          drillsCompleted: completedDrills.length,
+          drillsTotal: domainDrills.length,
+          lastAttempted: completedDrills.length > 0 ? completedDrills[completedDrills.length - 1].submittedAt : ""
+        };
+      });
+
       const newScore = computeOperatorScore(ds, as, ls);
       const newPercentile = Math.max(1, Math.round(100 - newScore));
+      
+      const oldScore = p.operatorScore;
+      const delta = newScore - oldScore;
+
       p = {
         ...p,
         operatorScore: newScore,
@@ -55,20 +80,18 @@ export default function Dashboard() {
       };
       setOperatorProfile(p);
 
-      // Compute days since last active
       const lastActive = getItem<string>(STORAGE_KEYS.LAST_ACTIVE);
       if (lastActive) {
         const diff = Math.floor((Date.now() - new Date(lastActive).getTime()) / 86400000);
         setDaysSinceActive(diff);
       }
 
-      // Update last active
       setItem(STORAGE_KEYS.LAST_ACTIVE, new Date().toISOString());
 
       setDomainScores(ds);
       setArenaState(as);
       setLastSession(lastDrill);
-      setScoreDelta(getScoreDelta());
+      setScoreDelta(delta);
     }
     setProfile(p);
     setLoaded(true);
@@ -84,12 +107,10 @@ export default function Dashboard() {
     );
   }
 
-  // --- Condition A: First-run (no profile) ---
   if (!profile) {
     return <FirstRunDashboard onStart={() => router.push("/run?mode=diagnostic")} />;
   }
 
-  // --- Condition B: Returning user (profile exists) ---
   return (
     <ReturningDashboard
       profile={profile}
@@ -102,14 +123,9 @@ export default function Dashboard() {
   );
 }
 
-// ============================================================
-// First-Run Layout
-// ============================================================
-
 function FirstRunDashboard({ onStart }: { onStart: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] gap-12 text-center px-4 stagger-children">
-      {/* Hero */}
       <div className="max-w-2xl space-y-4">
         <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight">
           Train to become a top 1% AI operator.
@@ -130,14 +146,12 @@ function FirstRunDashboard({ onStart }: { onStart: () => void }) {
         </p>
       </div>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl stagger-children">
         <StatCard number="12,400" label="drills completed this week" />
         <StatCard number="68/100" label="average operator score" />
         <StatCard number="847" label="certified operators" />
       </div>
 
-      {/* Feature Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl">
         <FeatureCard
           title="Train"
@@ -178,10 +192,6 @@ function FeatureCard({ title, body }: { title: string; body: string }) {
   );
 }
 
-// ============================================================
-// Returning User Dashboard
-// ============================================================
-
 interface ReturningDashboardProps {
   profile: OperatorProfile;
   domainScores: DomainScore[];
@@ -201,211 +211,224 @@ function ReturningDashboard({
 }: ReturningDashboardProps) {
   const router = useRouter();
 
-  // Find weakest domain
   const weakestDomain = domainScores.length > 0
     ? domainScores.reduce((min, ds) => (ds.score < min.score ? ds : min), domainScores[0])
     : null;
-  const weakestDomainId = weakestDomain?.domainId || ALL_DOMAINS[0];
+  const weakestDomainId = weakestDomain?.domainId || DOMAINS[0].id;
 
-  // Build domain grid data
-  const allDomains = ALL_DOMAINS.map((domain, idx) => {
-    const domainTopics = getTopicsByDomain(domain);
-    const ds = domainScores.find((d) => d.domainId === domain);
-    const totalDrills = domainTopics.reduce((sum, t) => sum + t.drills.length, 0);
-    const third = Math.ceil(ALL_DOMAINS.length / 3);
-    const difficulty = idx < third ? "Foundational" : idx < third * 2 ? "Advanced" : "Expert";
-    return {
-      domainId: domain,
-      name: domain,
-      difficulty,
-      drillsCompleted: ds?.drillsCompleted ?? 0,
-      drillsTotal: ds?.drillsTotal ?? totalDrills,
-      score: ds?.score ?? 0,
-    };
-  });
+  const totalParticipants = 12847;
 
-  // Arena data
   const arena = arenaState ?? {
     seasonNumber: 1,
     seasonEndDate: "2025-03-31",
-    totalParticipants: 3840,
-    userRank: 999,
+    totalParticipants,
+    userRank: 0,
     sessionsCompleted: 0,
     bestScore: 0,
     lastSessionScore: null,
   };
-  const daysUntilSeasonEnd = Math.max(
+
+  const daysRemaining = Math.max(
     0,
     Math.ceil((new Date(arena.seasonEndDate).getTime() - Date.now()) / 86400000)
   );
 
-  // Relative time helper
-  const relativeTime = (ts: string) => {
-    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
-    if (diff < 60) return "just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
-
-  const lastActiveDate = profile.lastActive
-    ? new Date(profile.lastActive).toLocaleDateString()
-    : "—";
+  const seasonProgress = ((Date.now() - new Date("2025-01-01").getTime()) / (new Date(arena.seasonEndDate).getTime() - new Date("2025-01-01").getTime())) * 100;
 
   return (
-    <div className="space-y-6 stagger-children">
-      {/* Re-engagement Alert */}
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Inactivity Alert */}
       {daysSinceActive > 3 && (
-        <div className="rounded-xl border-l-4 border-amber-500 bg-amber-500/10 p-4 flex items-center justify-between">
-          <p className="text-sm text-amber-200">
-            You haven&apos;t trained in {daysSinceActive} days. Your relative rank has dropped. Resume now.
-          </p>
-          <button
-            onClick={() => router.push(`/run?domain=${encodeURIComponent(weakestDomainId)}`)}
-            className="ml-4 whitespace-nowrap rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
-          >
-            Resume Drill →
-          </button>
-        </div>
+        <Card className="animate-fade-up" style={{ borderLeft: "3px solid var(--warning-text)" }}>
+          <div className="p-4 flex items-center justify-between">
+            <p className="text-sm">
+              You haven&apos;t trained in {daysSinceActive} days. Your relative rank has dropped.
+            </p>
+            <Button onClick={() => router.push(`/run?domain=${weakestDomainId}`)}>
+              Resume Now →
+            </Button>
+          </div>
+        </Card>
       )}
 
-      {/* Section 1: Operator Header Strip */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-center">
+      {/* Operator Header Strip */}
+      <div className="grid grid-cols-3 gap-px bg-[var(--border-subtle)] animate-fade-up">
+        <div className="bg-[var(--bg-card)] p-6 text-center">
           <div className="flex items-center justify-center gap-2">
-            <span className="text-4xl font-bold text-white">{profile.operatorScore}</span>
+            <div className="t-score score-glow">
+              <ScoreCounter target={profile.operatorScore} />
+            </div>
             {scoreDelta !== 0 && (
-              <span className={`text-sm font-semibold ${scoreDelta > 0 ? "text-green-400" : "text-red-400"}`}>
+              <div className={`text-sm font-semibold ${scoreDelta > 0 ? "text-[var(--success-text)]" : "text-[var(--danger-text)]"}`}>
                 {scoreDelta > 0 ? `↑${scoreDelta}` : `↓${Math.abs(scoreDelta)}`}
-              </span>
+              </div>
             )}
           </div>
-          <div className="mt-1 text-sm text-gray-400">Operator Score</div>
+          <div className="t-label mt-2">OPERATOR SCORE</div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-center">
-          <div className="text-4xl font-bold text-indigo-400">
-            Top {profile.rankPercentile}%
-          </div>
-          <div className="mt-1 text-sm text-gray-400">Global Rank</div>
-          <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-white/10 text-gray-300">
+
+        <div className="bg-[var(--bg-card)] p-6 text-center">
+          <div className="t-display-sm">Top {profile.rankPercentile}%</div>
+          <Badge variant="default" className="mt-2 bg-[var(--accent)] text-white">
             {profile.rankLabel}
-          </span>
+          </Badge>
+          <div className="t-label mt-2">of {totalParticipants.toLocaleString()} operators</div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-center">
-          <div className="text-4xl font-bold text-amber-400">{profile.streakDays}</div>
-          <div className="mt-1 text-sm text-gray-400">Day Streak</div>
-          <div className="text-xs text-gray-500 mt-1">Last active: {lastActiveDate}</div>
+
+        <div className="bg-[var(--bg-card)] p-6 text-center">
+          <div className="t-display-sm">{profile.streakDays}</div>
+          <div className="t-label mt-2">DAY STREAK</div>
+          {profile.streakDays > 0 ? (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <div className="w-2 h-2 rounded-full bg-[var(--success-bg)]" />
+              <span className="t-label text-[var(--success-text)]">Active</span>
+            </div>
+          ) : (
+            <div className="t-label text-[var(--text-muted)] mt-2">No active streak</div>
+          )}
         </div>
       </div>
 
-      {/* Section 2: Continue Where You Left Off */}
+      <div className="h-px bg-[var(--border-default)]" />
+
+      {/* Continue Block */}
       {lastSession && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-5 flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-1">Continue</div>
-            <div className="text-sm font-medium text-white">{lastSession.domainName}</div>
-            <div className="text-xs text-gray-400">{lastSession.topicName}</div>
-            <div className="text-xs text-gray-500 mt-1">Last session: {relativeTime(lastSession.timestamp)}</div>
+        <Card className="card-highlight animate-fade-up" style={{ animationDelay: "50ms" }}>
+          <div className="p-6 flex items-center justify-between">
+            <div>
+              <div className="t-label">CONTINUE</div>
+              <h3 className="t-heading mt-1">{lastSession.domainName}</h3>
+              <p className="t-body mt-1">{lastSession.topicName}</p>
+              <p className="t-label text-[var(--text-muted)] mt-2">
+                {new Date(lastSession.timestamp).toLocaleString()}
+              </p>
+            </div>
+            <Button 
+              variant="primary"
+              onClick={() => router.push(`/run?domain=${lastSession.domainId}&index=${lastSession.drillIndex}`)}
+            >
+              Resume →
+            </Button>
           </div>
-          <button
-            onClick={() =>
-              router.push(
-                `/run?domain=${encodeURIComponent(lastSession.domainId)}&topic=${encodeURIComponent(lastSession.topicId)}&index=${lastSession.drillIndex}`
-              )
-            }
-            className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors"
-          >
-            Resume →
-          </button>
-        </div>
+        </Card>
       )}
 
-      {/* Section 3: Today's Recommended Drill */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-5 border-l-4 border-l-blue-500">
-        <div className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-1">Recommended</div>
-        <div className="text-sm font-medium text-white">{weakestDomainId}</div>
-        <p className="text-xs text-gray-400 mt-1">Your weakest domain. Close the gap.</p>
-        <button
-          onClick={() => router.push(`/run?domain=${encodeURIComponent(weakestDomainId)}`)}
-          className="mt-3 rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
-        >
-          Start Drill →
-        </button>
-      </div>
+      {/* Recommended Drill Card */}
+      <Card 
+        className="card-elevated animate-fade-up" 
+        style={{ 
+          animationDelay: "100ms",
+          borderLeft: `3px solid ${DOMAINS.find(d => d.id === weakestDomainId)?.color || "var(--accent)"}`,
+          boxShadow: "0 0 40px rgba(79,110,247,0.06) inset"
+        }}
+      >
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="t-label">RECOMMENDED</div>
+            <Badge variant="default" className="bg-[var(--accent)] text-white">Priority</Badge>
+          </div>
+          <h3 className="t-heading">{DOMAINS.find(d => d.id === weakestDomainId)?.name}</h3>
+          <Badge variant="default" className="mt-2">
+            {DOMAINS.find(d => d.id === weakestDomainId)?.difficulty}
+          </Badge>
+          <p className="t-body mt-3">Your weakest domain. Close the gap.</p>
+          <Button 
+            variant="primary"
+            onClick={() => router.push(`/run?domain=${weakestDomainId}`)}
+            className="mt-4"
+          >
+            Start Drill →
+          </Button>
+        </div>
+      </Card>
 
-      {/* Section 4: Domain Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allDomains.map((d) => {
-          const progress = d.drillsTotal > 0 ? Math.round((d.drillsCompleted / d.drillsTotal) * 100) : 0;
-          const isFinished = d.drillsCompleted > 0 && d.drillsCompleted >= d.drillsTotal;
+      {/* Domain Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        {DOMAINS.map((domain, idx) => {
+          const ds = domainScores.find(d => d.domainId === domain.id);
+          const completed = ds?.drillsCompleted || 0;
+          const total = domain.id ? getDomainDrillCount(domain.id) : 0;
+          const progress = total > 0 ? (completed / total) * 100 : 0;
+          const score = ds?.score || 0;
+
           return (
-            <button
-              key={d.domainId}
-              onClick={() => router.push("/curriculum")}
-              className="rounded-xl border border-white/10 bg-white/5 p-5 text-left hover:border-white/20 transition-colors"
+            <Card 
+              key={domain.id} 
+              className="card-hover animate-fade-up"
+              style={{ 
+                animationDelay: `${150 + idx * 60}ms`,
+                borderLeft: `3px solid ${domain.color}`
+              }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-white">{d.name}</span>
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider ${
-                    d.difficulty === "Foundational"
-                      ? "bg-green-500/15 text-green-400"
-                      : d.difficulty === "Advanced"
-                      ? "bg-amber-500/15 text-amber-400"
-                      : "bg-red-500/15 text-red-400"
-                  }`}
-                >
-                  {d.difficulty}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 mb-2">
-                {d.drillsCompleted}/{d.drillsTotal} drills
-                {isFinished && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 text-[10px] font-medium">
-                    Finished
-                  </span>
-                )}
-              </div>
-              <div className="w-full h-1.5 rounded-full bg-white/10 mb-1">
-                <div
-                  className="h-1.5 rounded-full bg-blue-500 transition-all duration-500"
-                  style={{ width: `${progress}%` }}
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="t-heading text-sm">{domain.name}</h3>
+                  <Badge variant="default" className="text-xs">{domain.difficulty}</Badge>
+                </div>
+                <div className="t-label text-[var(--text-muted)] mb-2">
+                  {completed}/{total}
+                </div>
+                <ProgressBar 
+                  value={progress} 
+                  size="sm" 
+                  animated={true}
+                  color={score >= 80 ? "green" : score >= 60 ? "yellow" : "red"}
                 />
+                <div className="flex items-center justify-between mt-3">
+                  {score > 0 ? (
+                    <Badge 
+                      variant="default"
+                      className={
+                        score >= 80 
+                          ? "bg-[var(--success-bg)] text-[var(--success-text)]"
+                          : score >= 60
+                          ? "bg-[var(--warning-bg)] text-[var(--warning-text)]"
+                          : "bg-[var(--bg-elevated)]"
+                      }
+                    >
+                      {score}
+                    </Badge>
+                  ) : (
+                    <Badge variant="default">—</Badge>
+                  )}
+                  <button 
+                    onClick={() => router.push(`/run?domain=${domain.id}`)}
+                    className="t-label text-[var(--accent)] hover:underline"
+                  >
+                    Start →
+                  </button>
+                </div>
               </div>
-              {d.score > 0 && (
-                <div className="text-xs text-gray-500 mt-1">{d.score}/100</div>
-              )}
-            </button>
+            </Card>
           );
         })}
       </div>
 
-      {/* Section 5: Arena Widget */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Arena Widget */}
+      <Card className="card-elevated animate-fade-up" style={{ animationDelay: "500ms" }}>
+        <div className="p-6 flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold text-white">
-              Arena — Season {arena.seasonNumber}
-            </div>
-            <div className="text-xs text-gray-400">
-              Ends in {daysUntilSeasonEnd} days
+            <div className="t-label">ARENA · SEASON 1</div>
+            <div className="t-body mt-1">{daysRemaining} days remaining</div>
+            <div className="mt-3 w-48">
+              <div className="h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[var(--accent)] transition-all"
+                  style={{ width: `${seasonProgress}%` }}
+                />
+              </div>
             </div>
           </div>
-          <div className="text-sm text-gray-400">
-            {arenaState ? (
-              <>Rank: {arena.userRank} of {arena.totalParticipants} · Best Score: {arena.bestScore}/100</>
-            ) : (
-              <>Rank: Unranked</>
-            )}
+          <div className="text-center">
+            <div className="t-display-sm">
+              {arena.userRank > 0 ? `Rank ${arena.userRank}` : "Unranked"}
+            </div>
           </div>
-          <button
-            onClick={() => router.push("/arena")}
-            className="rounded-lg bg-blue-600 hover:bg-blue-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors whitespace-nowrap"
-          >
-            {arenaState ? "Compete →" : "Enter Arena →"}
-          </button>
+          <Button variant="secondary" onClick={() => router.push("/arena")}>
+            Compete →
+          </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -1,40 +1,54 @@
 "use client";
 import { useState } from "react";
-import { Toast } from "@/components/ui/Toast";
-import {
-  exportMasteryData,
-  exportMasteryMarkdown,
-  resetMasteryData,
-  migrateFromV1,
-} from "@/core/storage/mastery";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { STORAGE_KEYS } from "@/core/storage";
 
 export default function SettingsPage() {
-  const [toast, setToast] = useState<string | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [compactLayout, setCompactLayout] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
-  const handleExportJson = () => {
-    const data = exportMasteryData();
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ai-mastery-os-export-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setToast("JSON exported.");
+  const handleReducedMotionToggle = () => {
+    const newValue = !reducedMotion;
+    setReducedMotion(newValue);
+    if (newValue) {
+      document.documentElement.classList.add("reduce-motion");
+    } else {
+      document.documentElement.classList.remove("reduce-motion");
+    }
   };
 
-  const handleExportMarkdown = () => {
-    const md = exportMasteryMarkdown();
-    const blob = new Blob([md], { type: "text/markdown" });
+  const handleCompactLayoutToggle = () => {
+    const newValue = !compactLayout;
+    setCompactLayout(newValue);
+    if (newValue) {
+      document.documentElement.classList.add("compact");
+    } else {
+      document.documentElement.classList.remove("compact");
+    }
+  };
+
+  const handleExport = () => {
+    const data: Record<string, any> = {};
+    Object.entries(STORAGE_KEYS).forEach(([key, value]) => {
+      try {
+        const item = localStorage.getItem(value);
+        if (item) {
+          data[key] = JSON.parse(item);
+        }
+      } catch {
+        // Skip invalid items
+      }
+    });
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `ai-mastery-os-portfolio-${new Date().toISOString().split("T")[0]}.md`;
+    a.download = `amo_export_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    setToast("Markdown exported.");
   };
 
   const handleReset = () => {
@@ -42,117 +56,145 @@ export default function SettingsPage() {
       setConfirmReset(true);
       return;
     }
-    // Clear legacy mastery data
-    resetMasteryData();
-    migrateFromV1();
-    // Clear new storage keys
-    if (typeof window !== "undefined") {
-      Object.values(STORAGE_KEYS).forEach((key) => {
-        try { localStorage.removeItem(key); } catch { /* */ }
-      });
-      try { localStorage.removeItem("amo_previous_operator_score"); } catch { /* */ }
-      try { localStorage.removeItem("amo_flagged_drills"); } catch { /* */ }
-      try { localStorage.removeItem("ai_mastery_arena_attempts"); } catch { /* */ }
-      try { localStorage.removeItem("ai_mastery_lab_projects"); } catch { /* */ }
-    }
-    setConfirmReset(false);
-    setToast("All data cleared. Refresh to start fresh.");
-  };
 
-  const handleMigrate = () => {
-    migrateFromV1();
-    setToast("Legacy data cleared.");
+    Object.values(STORAGE_KEYS).forEach(key => {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // Silent fail
+      }
+    });
+
+    // Clear additional keys
+    try {
+      localStorage.removeItem("amo_previous_operator_score");
+      localStorage.removeItem("amo_flagged_drills");
+      localStorage.removeItem("ai_mastery_arena_attempts");
+      localStorage.removeItem("ai_mastery_lab_projects");
+    } catch {
+      // Silent fail
+    }
+
+    window.location.href = "/";
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Settings</h1>
         <p className="mt-1 text-gray-400">Data management and system configuration.</p>
       </div>
 
-      {/* About */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">About</div>
-        <p className="text-sm text-gray-400">
-          AI Mastery OS is a drill-based training system for applied AI operators.
-          Your Operator Score is computed from domain drills, arena challenges, and lab experiments.
-          All data is stored locally in your browser.
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
-          <span>5 domains</span>
-          <span>·</span>
-          <span>Drill-based scoring</span>
-          <span>·</span>
-          <span>No account required</span>
-        </div>
-      </div>
-
-      {/* Export */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Export Data</div>
-        <p className="text-sm text-gray-400 mb-3">
-          Download all progress, scores, and artifacts.
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={handleExportJson}
-            className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm font-medium text-gray-300 transition-colors"
-          >
-            Export JSON
-          </button>
-          <button
-            onClick={handleExportMarkdown}
-            className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm font-medium text-gray-300 transition-colors"
-          >
-            Export Markdown
-          </button>
-        </div>
-      </div>
-
-      {/* Migration */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-        <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">Migration</div>
-        <p className="text-sm text-gray-400 mb-3">
-          Clear legacy v1 data if you used a previous version.
-        </p>
-        <button
-          onClick={handleMigrate}
-          className="text-xs text-gray-500 hover:text-white transition-colors"
-        >
-          Clear v1 Data
-        </button>
-      </div>
-
-      {/* Danger Zone */}
-      <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-5">
-        <div className="text-[10px] font-semibold text-red-400 uppercase tracking-widest mb-2">Danger Zone</div>
-        <p className="text-sm text-gray-400 mb-3">
-          Permanently delete all scores, drill history, operator profile, and artifacts. Cannot be undone.
-        </p>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleReset}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              confirmReset
-                ? "bg-red-600 hover:bg-red-500 text-white"
-                : "border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-            }`}
-          >
-            {confirmReset ? "Click again to confirm" : "Reset All Data"}
-          </button>
-          {confirmReset && (
+      {/* Display Section */}
+      <Card className="card-elevated">
+        <div className="p-6 space-y-4">
+          <h2 className="t-heading">Display</h2>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="t-body">Reduced motion</div>
+              <div className="text-xs text-[var(--text-secondary)]">Minimize animations</div>
+            </div>
             <button
-              onClick={() => setConfirmReset(false)}
-              className="text-xs text-gray-500 hover:text-white transition-colors"
+              onClick={handleReducedMotionToggle}
+              className="relative w-[44px] h-[24px] rounded-full border border-[var(--border-default)] cursor-pointer transition-colors"
+              style={{ background: reducedMotion ? "var(--accent)" : "var(--bg-elevated)" }}
             >
-              Cancel
+              <div
+                className="absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white transition-all"
+                style={{ 
+                  left: reducedMotion ? "22px" : "2px",
+                  transitionDuration: "var(--t-fast)"
+                }}
+              />
             </button>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="t-body">Compact layout</div>
+              <div className="text-xs text-[var(--text-secondary)]">Reduce padding</div>
+            </div>
+            <button
+              onClick={handleCompactLayoutToggle}
+              className="relative w-[44px] h-[24px] rounded-full border border-[var(--border-default)] cursor-pointer transition-colors"
+              style={{ background: compactLayout ? "var(--accent)" : "var(--bg-elevated)" }}
+            >
+              <div
+                className="absolute top-[2px] w-[18px] h-[18px] rounded-full bg-white transition-all"
+                style={{ 
+                  left: compactLayout ? "22px" : "2px",
+                  transitionDuration: "var(--t-fast)"
+                }}
+              />
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Data Section */}
+      <Card className="card-elevated">
+        <div className="p-6 space-y-4">
+          <h2 className="t-heading">Data</h2>
+          
+          <div>
+            <p className="t-body mb-3">Download your complete progress data as JSON.</p>
+            <Button variant="secondary" onClick={handleExport}>
+              Export Progress Data →
+            </Button>
+          </div>
+
+          <div className="pt-4 border-t border-[var(--border-default)]">
+            <p className="t-body mb-3">Permanently delete all progress. This cannot be undone.</p>
+            {!confirmReset ? (
+              <Button variant="ghost" onClick={handleReset} className="text-[var(--danger-text)]">
+                Reset All Data
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={handleReset} className="bg-[var(--danger-bg)] text-[var(--danger-text)]">
+                  Yes, Delete Everything
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmReset(false)}>
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* About Section */}
+      <Card className="card-elevated">
+        <div className="p-6 space-y-4">
+          <h2 className="t-heading">About</h2>
+          <p className="t-body">
+            AI Mastery OS · MVP · Local-first. No account required. All data stored in your browser.
+          </p>
+          
+          <div className="pt-4 border-t border-[var(--border-default)]">
+            <div className="t-label mb-3">KEYBOARD SHORTCUTS</div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="t-mono">⌘↵</span>
+                <span className="t-body">Submit answer</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="t-mono">→</span>
+                <span className="t-body">Next question</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="t-mono">Esc</span>
+                <span className="t-body">Exit drill</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="t-mono">1-4</span>
+                <span className="t-body">Select answer option</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }

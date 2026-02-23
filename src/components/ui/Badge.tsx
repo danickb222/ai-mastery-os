@@ -5,6 +5,7 @@ interface BadgeProps {
   children: ReactNode;
   variant?: "default" | "success" | "warning" | "info";
   className?: string;
+  onClick?: () => void;
 }
 
 const variants = {
@@ -14,9 +15,12 @@ const variants = {
   info: "bg-indigo-500/20 text-indigo-400",
 };
 
-export function Badge({ children, variant = "default", className = "" }: BadgeProps) {
+export function Badge({ children, variant = "default", className = "", onClick }: BadgeProps) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variants[variant]} ${className}`}>
+    <span 
+      onClick={onClick}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variants[variant]} ${className} ${onClick ? "cursor-pointer" : ""}`}
+    >
       {children}
     </span>
   );

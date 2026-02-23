@@ -1,564 +1,315 @@
 "use client";
-import { useEffect, useState, useCallback, useRef } from "react";
-import { arenaChallenges, type ArenaChallenge } from "@/core/content/arenaChallenges";
-import { safeRead, safeWrite } from "@/core/storage/local";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ArenaCountdown } from "@/components/ArenaCountdown";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { ProgressBar } from "@/components/ui/ProgressBar";
+import { ScoreCounter } from "@/components/ui/ScoreCounter";
 import {
   getItem,
   setItem,
-  getOperatorProfile,
-  setOperatorProfile,
-  computeOperatorScore,
-  getRankLabel,
-  updateStreak,
-  checkAchievements,
   STORAGE_KEYS,
   type ArenaState,
-  type DomainScore,
-  type LabSession,
-  type Achievement,
 } from "@/core/storage";
-import { AchievementToast } from "@/components/AchievementToast";
 
-// --- Types ---
+type ChallengeMode = "quick" | "standard" | "endurance";
 
-interface ArenaAttempt {
-  id: string;
-  challengeId: string;
-  challengeTitle: string;
-  startedAt: string;
-  submittedAt: string;
-  durationSeconds: number;
-  score: number;
-  feedback: string[];
-  response: string;
+const SEASON_START = new Date("2025-01-01");
+const SEASON_END = new Date("2025-03-31");
+const TOTAL_PARTICIPANTS = 12847;
+
+function generateLeaderboard() {
+  const firstParts = ['j.', 'k.', 'm.', 'a.', 'p.', 'd.', 's.', 'r.', 'l.', 'c.'];
+  const lastParts = ['hartmann', 'okafor', 'mehta', 'chen', 'wilson', 'rodriguez', 'kim', 'patel', 'müller', 'santos'];
+  const scores = [96, 94, 93, 91, 90, 88, 87, 85, 84, 82];
+  const domains = ['Prompt Engineering', 'System Prompts', 'Reasoning Chains', 'Output Control', 'AI Workflows', 'Context Management', 'Role Prompting', 'Data Extraction'];
+  const trends = ['↑', '↓', '↑', '↓', '↑', '↓', '↑', '↓', '↑', '↓'];
+
+  return scores.map((score, idx) => ({
+    rank: idx + 1,
+    handle: `${firstParts[idx]}${lastParts[idx]}`,
+    score,
+    domain: domains[idx % domains.length],
+    trend: trends[idx]
+  }));
 }
-
-type ArenaPhase = "lobby" | "active" | "result";
-
-const STORAGE_KEY = "ai_mastery_arena_attempts";
-
-// --- Scoring ---
-
-function scoreResponse(response: string): { score: number; feedback: string[] } {
-  const feedback: string[] = [];
-  let score = 0;
-  const text = response.trim();
-
-  if (text.length >= 800) {
-    score += 25;
-    feedback.push("Comprehensive response length — good depth.");
-  } else if (text.length >= 400) {
-    score += 18;
-    feedback.push("Decent length, but could be more thorough.");
-  } else if (text.length >= 200) {
-    score += 10;
-    feedback.push("Response is short — add more detail and examples.");
-  } else {
-    score += 2;
-    feedback.push("Response is too brief to demonstrate competency.");
-  }
-
-  const hasHeadings = /^#{1,3}\s|^\d+[.)]\s|^[-*]\s/m.test(text);
-  const hasNumberedSteps = /\d+[.)]\s/.test(text);
-  if (hasHeadings && hasNumberedSteps) {
-    score += 25;
-    feedback.push("Well-structured with headings and numbered steps.");
-  } else if (hasHeadings || hasNumberedSteps) {
-    score += 15;
-    feedback.push("Some structure present — consider adding both headings and numbered steps.");
-  } else {
-    score += 3;
-    feedback.push("Lacks structural markers — use headings, bullets, or numbered steps.");
-  }
-
-  const constraintWords = ["must", "avoid", "criteria", "require", "constraint", "limit", "boundary", "rule"];
-  const constraintHits = constraintWords.filter((w) => text.toLowerCase().includes(w)).length;
-  if (constraintHits >= 3) {
-    score += 25;
-    feedback.push("Strong use of constraint and requirements language.");
-  } else if (constraintHits >= 1) {
-    score += 12;
-    feedback.push("Some constraint language — be more explicit about requirements and boundaries.");
-  } else {
-    score += 2;
-    feedback.push("Missing constraint language — specify what must and must not happen.");
-  }
-
-  const verifyWords = ["test", "check", "validate", "verify", "assert", "monitor", "measure", "evaluate", "metric"];
-  const verifyHits = verifyWords.filter((w) => text.toLowerCase().includes(w)).length;
-  if (verifyHits >= 3) {
-    score += 25;
-    feedback.push("Excellent verification and testing awareness.");
-  } else if (verifyHits >= 1) {
-    score += 12;
-    feedback.push("Some verification language — add concrete test cases or validation steps.");
-  } else {
-    score += 2;
-    feedback.push("No verification or testing mentioned — always include how to validate your design.");
-  }
-
-  return { score: Math.min(score, 100), feedback };
-}
-
-// --- Helpers ---
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
-}
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-// --- Component ---
 
 export default function ArenaPage() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [phase, setPhase] = useState<ArenaPhase>("lobby");
-  const [selectedId, setSelectedId] = useState(arenaChallenges[0].id);
-  const [response, setResponse] = useState("");
-  const [remaining, setRemaining] = useState(600);
-  const [result, setResult] = useState<{ score: number; feedback: string[] } | null>(null);
-  const [attempts, setAttempts] = useState<ArenaAttempt[]>([]);
+  const [selectedMode, setSelectedMode] = useState<ChallengeMode>("standard");
+  const [isRanked, setIsRanked] = useState(true);
+  const [showCountdown, setShowCountdown] = useState(false);
   const [arenaState, setArenaState] = useState<ArenaState | null>(null);
-  const [expandedAttemptId, setExpandedAttemptId] = useState<string | null>(null);
-  const [newAchievements, setNewAchievements] = useState<Achievement[]>([]);
-
-  const startTimeRef = useRef<string>("");
-  const timerStartRef = useRef<number>(0);
-  const timeLimitRef = useRef<number>(600);
 
   useEffect(() => {
+    const state = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
+    if (!state) {
+      const initialState: ArenaState = {
+        seasonNumber: 1,
+        seasonEndDate: SEASON_END.toISOString(),
+        totalParticipants: TOTAL_PARTICIPANTS,
+        userRank: 0,
+        sessionsCompleted: 0,
+        bestScore: 0,
+        lastSessionScore: null
+      };
+      setItem(STORAGE_KEYS.ARENA_STATE, initialState);
+      setArenaState(initialState);
+    } else {
+      setArenaState(state);
+    }
     setMounted(true);
-    setAttempts(safeRead<ArenaAttempt[]>(STORAGE_KEY, []));
-    const as = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
-    setArenaState(as);
   }, []);
 
-  // Timer
-  useEffect(() => {
-    if (phase !== "active") return;
-    const interval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000);
-      const left = Math.max(timeLimitRef.current - elapsed, 0);
-      setRemaining(left);
-      if (left <= 0) clearInterval(interval);
-    }, 250);
-    return () => clearInterval(interval);
-  }, [phase]);
+  const daysRemaining = Math.ceil((SEASON_END.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  const seasonProgress = ((Date.now() - SEASON_START.getTime()) / (SEASON_END.getTime() - SEASON_START.getTime())) * 100;
 
-  const selectedChallenge: ArenaChallenge =
-    arenaChallenges.find((c) => c.id === selectedId) ?? arenaChallenges[0];
+  const leaderboard = generateLeaderboard();
+  const userInTop10 = arenaState && arenaState.bestScore > 0 && arenaState.bestScore >= 82;
 
-  const handleStart = useCallback(() => {
-    startTimeRef.current = new Date().toISOString();
-    timerStartRef.current = Date.now();
-    timeLimitRef.current = selectedChallenge.timeLimitSeconds;
-    setRemaining(selectedChallenge.timeLimitSeconds);
-    setResponse("");
-    setResult(null);
-    setPhase("active");
-  }, [selectedChallenge]);
+  const handleEnterChallenge = () => {
+    setShowCountdown(true);
+  };
 
-  const handleSubmit = useCallback(() => {
-    const now = new Date().toISOString();
-    const elapsed = Math.floor((Date.now() - timerStartRef.current) / 1000);
-    const { score, feedback } = scoreResponse(response);
+  const handleCountdownComplete = () => {
+    const drillCount = selectedMode === "quick" ? 8 : selectedMode === "standard" ? 20 : 50;
+    router.push(`/run?mode=arena&type=${selectedMode}&ranked=${isRanked}&count=${drillCount}`);
+  };
 
-    const attempt: ArenaAttempt = {
-      id: generateId(),
-      challengeId: selectedChallenge.id,
-      challengeTitle: selectedChallenge.title,
-      startedAt: startTimeRef.current,
-      submittedAt: now,
-      durationSeconds: elapsed,
-      score,
-      feedback,
-      response,
-    };
-
-    const updated = [attempt, ...attempts].slice(0, 50);
-    setAttempts(updated);
-    safeWrite(STORAGE_KEY, updated);
-
-    // Update ArenaState in new storage
-    const prevArena = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
-    const newArena: ArenaState = {
-      seasonNumber: prevArena?.seasonNumber ?? 1,
-      seasonEndDate: prevArena?.seasonEndDate ?? "2025-09-30",
-      totalParticipants: prevArena?.totalParticipants ?? 3840,
-      userRank: prevArena?.userRank ?? 999,
-      sessionsCompleted: (prevArena?.sessionsCompleted ?? 0) + 1,
-      bestScore: Math.max(prevArena?.bestScore ?? 0, score),
-      lastSessionScore: score,
-    };
-    // Simulate rank improvement based on best score
-    if (newArena.bestScore >= 80) {
-      newArena.userRank = Math.min(newArena.userRank, Math.round(newArena.totalParticipants * 0.05));
-    } else if (newArena.bestScore >= 60) {
-      newArena.userRank = Math.min(newArena.userRank, Math.round(newArena.totalParticipants * 0.25));
-    } else if (newArena.bestScore >= 40) {
-      newArena.userRank = Math.min(newArena.userRank, Math.round(newArena.totalParticipants * 0.5));
-    }
-    setItem(STORAGE_KEYS.ARENA_STATE, newArena);
-    setArenaState(newArena);
-
-    // Recompute operator score + streak
-    let profile = getOperatorProfile();
-    if (profile) {
-      const ds = getItem<DomainScore[]>(STORAGE_KEYS.DOMAIN_SCORES) || [];
-      const ls = getItem<LabSession[]>(STORAGE_KEYS.LAB_SESSIONS) || [];
-      const newOpScore = computeOperatorScore(ds, newArena, ls);
-      const newPercentile = Math.max(1, Math.round(100 - newOpScore));
-      profile = updateStreak({
-        ...profile,
-        operatorScore: newOpScore,
-        rankPercentile: newPercentile,
-        rankLabel: getRankLabel(newPercentile),
-        lastActive: new Date().toISOString(),
-      });
-      setOperatorProfile(profile);
-    }
-
-    // Check achievements
-    const unlocked = checkAchievements();
-    if (unlocked.length > 0) setNewAchievements(unlocked);
-
-    setResult({ score, feedback });
-    setPhase("result");
-  }, [response, selectedChallenge, attempts]);
-
-  const handleReset = useCallback(() => {
-    setPhase("lobby");
-    setResponse("");
-    setResult(null);
-  }, []);
-
-  // Auto-submit when timer expires
-  const timerExpired = phase === "active" && remaining <= 0;
-  useEffect(() => {
-    if (timerExpired && response.trim().length > 0) {
-      handleSubmit();
-    }
-  }, [timerExpired, response, handleSubmit]);
-
-  const recentAttempts = mounted ? attempts.slice(0, 5) : [];
-  const bestScore = arenaState?.bestScore ?? 0;
-  const sessionsCompleted = arenaState?.sessionsCompleted ?? 0;
-  const seasonNumber = arenaState?.seasonNumber ?? 1;
-  const userRank = arenaState?.userRank ?? null;
-  const totalParticipants = arenaState?.totalParticipants ?? 3840;
+  const modeConfig = {
+    quick: { drills: 8, time: 10, desc: "High volume. Low time." },
+    standard: { drills: 20, time: 25, desc: "Full session. Ranked." },
+    endurance: { drills: 50, time: 60, desc: "Top operators only." }
+  };
 
   if (!mounted) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-32 rounded bg-white/10" />
-        <div className="h-32 rounded-xl bg-white/10" />
-        <div className="h-48 rounded-xl bg-white/10" />
-      </div>
-    );
+    return <div className="animate-pulse">Loading...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
+      {showCountdown && <ArenaCountdown onComplete={handleCountdownComplete} />}
+
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-white">Arena</h1>
-        <p className="mt-1 text-gray-400">
-          Timed challenges. Ranked against all operators. Score goes on record.
-        </p>
+      <div className="animate-fade-up">
+        <div className="t-label">THE ARENA</div>
+        <h1 className="t-display-sm">Compete.</h1>
+        <p className="t-body">Ranked. Timed. Unforgiving.</p>
       </div>
 
-      {/* Season + Stats Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-          <div className="text-2xl font-bold text-white">{bestScore}</div>
-          <div className="text-xs text-gray-400 mt-1">Best Score</div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-          <div className="text-2xl font-bold text-indigo-400">
-            {userRank ? `#${userRank}` : "—"}
-          </div>
-          <div className="text-xs text-gray-400 mt-1">
-            of {totalParticipants.toLocaleString()}
-          </div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-          <div className="text-2xl font-bold text-amber-400">{sessionsCompleted}</div>
-          <div className="text-xs text-gray-400 mt-1">Sessions</div>
-        </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center">
-          <div className="text-2xl font-bold text-gray-400">S{seasonNumber}</div>
-          <div className="text-xs text-gray-400 mt-1">Current Season</div>
-        </div>
-      </div>
-
-      {/* LOBBY PHASE */}
-      {phase === "lobby" && (
-        <div className="space-y-6">
-          {/* Challenge Selection */}
-          <div>
-            <div className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-3">
-              Select Challenge
+      {/* Season Header Card */}
+      <Card className="card-elevated animate-fade-up" style={{ animationDelay: "50ms" }}>
+        <div 
+          className="p-6"
+          style={{
+            background: "linear-gradient(135deg, rgba(79,110,247,0.08) 0%, transparent 60%)"
+          }}
+        >
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <div className="t-display-sm">SEASON 1</div>
+              <div className="t-body">{daysRemaining} days remaining</div>
             </div>
-            <div className="space-y-2">
-              {arenaChallenges.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedId(c.id)}
-                  className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${
-                    selectedId === c.id
-                      ? "border-blue-500/50 bg-blue-500/10"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
+            <div className="text-right">
+              <div className="t-display-sm">{TOTAL_PARTICIPANTS.toLocaleString()}</div>
+              <div className="t-label">operators competing</div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[var(--accent)] transition-all duration-500"
+                style={{ width: `${seasonProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* User Rank Card */}
+      <Card 
+        className="animate-fade-up" 
+        style={{ 
+          animationDelay: "100ms",
+          borderLeft: "3px solid var(--accent)"
+        }}
+      >
+        <div className="p-6">
+          <div className="grid grid-cols-3 divide-x divide-[var(--border-subtle)]">
+            <div className="text-center">
+              <div className="t-score">
+                {arenaState && arenaState.userRank > 0 ? (
+                  <ScoreCounter target={arenaState.userRank} />
+                ) : (
+                  "—"
+                )}
+              </div>
+              <div className="t-label">RANK</div>
+            </div>
+            <div className="text-center">
+              <div className="t-display-sm">{arenaState?.bestScore || 0}/100</div>
+              <div className="t-label">BEST SCORE</div>
+            </div>
+            <div className="text-center">
+              <div className="t-display-sm">{arenaState?.sessionsCompleted || 0}</div>
+              <div className="t-label">SESSIONS</div>
+            </div>
+          </div>
+          <div className="mt-4 text-center">
+            {arenaState && arenaState.userRank > 0 ? (
+              <Badge variant="default" className="bg-[var(--accent)] text-white">
+                RANKED
+              </Badge>
+            ) : (
+              <>
+                <Badge variant="default" className="bg-[var(--warning-bg)] text-[var(--warning-text)]">
+                  UNRANKED
+                </Badge>
+                <p className="t-body mt-2">Complete a session to enter the leaderboard.</p>
+              </>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      {/* Leaderboard */}
+      <Card className="card-elevated animate-fade-up" style={{ animationDelay: "150ms" }}>
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="t-label">SEASON LEADERBOARD</div>
+            <Badge variant="default">Top 10</Badge>
+          </div>
+
+          <div className="space-y-1">
+            {leaderboard.map((entry, idx) => (
+              <div
+                key={entry.rank}
+                className="flex items-center gap-4 h-[44px] px-4 rounded transition-colors"
+                style={{
+                  background: idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-elevated)"
+                }}
+              >
+                <div className="t-mono text-sm w-8">{entry.rank}</div>
+                <div className="t-mono text-sm flex-1 text-[var(--text-secondary)]">{entry.handle}</div>
+                <div 
+                  className={`t-mono text-sm ${
+                    entry.score >= 90 ? "text-[var(--success-text)]" : "text-[var(--text-primary)]"
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-white">{c.title}</span>
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider ${
-                          c.difficulty === "Easy"
-                            ? "bg-green-500/15 text-green-400"
-                            : c.difficulty === "Medium"
-                            ? "bg-amber-500/15 text-amber-400"
-                            : "bg-red-500/15 text-red-400"
-                        }`}
-                      >
-                        {c.difficulty}
-                      </span>
-                      <span className="text-xs text-gray-500 font-mono">
-                        {formatTime(c.timeLimitSeconds)}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={handleStart}
-                className="rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors"
-              >
-                Start Challenge →
-              </button>
-            </div>
-          </div>
-
-          {/* Recent Attempts */}
-          {recentAttempts.length > 0 && (
-            <div>
-              <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
-                Recent Sessions
-              </div>
-              <div className="space-y-2">
-                {recentAttempts.map((a) => (
-                  <div key={a.id}>
-                    <button
-                      onClick={() =>
-                        setExpandedAttemptId(expandedAttemptId === a.id ? null : a.id)
-                      }
-                      className="w-full text-left rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 hover:border-white/20 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-white">{a.challengeTitle}</span>
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`text-sm font-mono ${
-                              a.score >= 70
-                                ? "text-green-400"
-                                : a.score >= 40
-                                ? "text-amber-400"
-                                : "text-red-400"
-                            }`}
-                          >
-                            {a.score}/100
-                          </span>
-                          <span className="text-[10px] text-gray-600">
-                            {new Date(a.submittedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </button>
-                    {expandedAttemptId === a.id && (
-                      <div className="mt-1 rounded-xl border border-white/5 bg-white/[0.02] p-3 space-y-2">
-                        <div className="text-xs text-gray-500">
-                          Duration: {formatTime(a.durationSeconds)}
-                        </div>
-                        <ul className="space-y-1">
-                          {a.feedback.map((f, i) => (
-                            <li key={i} className="text-sm text-gray-400 flex items-start gap-2">
-                              <span className="text-blue-400 mt-0.5 text-xs">-</span>
-                              {f}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ACTIVE PHASE */}
-      {phase === "active" && (
-        <div className="space-y-4">
-          {/* Timer bar */}
-          <div
-            className={`rounded-xl border p-4 flex items-center justify-between ${
-              remaining <= 60 ? "border-red-500/30 bg-red-500/5" : "border-white/10 bg-white/5"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider ${
-                  selectedChallenge.difficulty === "Easy"
-                    ? "bg-green-500/15 text-green-400"
-                    : selectedChallenge.difficulty === "Medium"
-                    ? "bg-amber-500/15 text-amber-400"
-                    : "bg-red-500/15 text-red-400"
-                }`}
-              >
-                {selectedChallenge.difficulty}
-              </span>
-              <h2 className="text-sm font-semibold text-white">
-                {selectedChallenge.title}
-              </h2>
-            </div>
-            <div
-              className={`text-2xl font-mono font-bold ${
-                remaining <= 60 ? "text-red-400" : "text-white"
-              }`}
-            >
-              {formatTime(remaining)}
-            </div>
-          </div>
-
-          {/* Prompt */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-            <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-2">
-              Challenge Prompt
-            </div>
-            <div className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed">
-              {selectedChallenge.prompt}
-            </div>
-          </div>
-
-          {/* Response */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-            <textarea
-              value={response}
-              onChange={(e) => setResponse(e.target.value)}
-              placeholder="Write your response. Use structure, constraints, and validation..."
-              className="w-full rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-gray-200 placeholder-gray-600 focus:border-blue-500 focus:outline-none min-h-[280px] resize-y font-mono"
-              disabled={remaining <= 0}
-            />
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-gray-500">
-                {response.length} chars
-              </span>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleReset}
-                  className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                  {entry.score}
+                </div>
+                <Badge variant="default" className="text-xs">{entry.domain}</Badge>
+                <div 
+                  className={`text-sm ${
+                    entry.trend === "↑" ? "text-[var(--success-text)]" : "text-[var(--danger-text)]"
+                  }`}
                 >
-                  Abandon
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={response.trim().length === 0}
-                  className="rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed px-6 py-2 text-sm font-semibold text-white transition-colors"
-                >
-                  Submit
-                </button>
+                  {entry.trend}
+                </div>
               </div>
-            </div>
+            ))}
+
+            {arenaState && arenaState.userRank > 10 && arenaState.bestScore > 0 && (
+              <>
+                <div className="text-center py-2 text-[var(--text-secondary)]">···</div>
+                <div
+                  className="flex items-center gap-4 h-[44px] px-4 rounded"
+                  style={{
+                    background: "rgba(79,110,247,0.08)",
+                    borderLeft: "2px solid var(--accent)"
+                  }}
+                >
+                  <div className="t-mono text-sm w-8">{arenaState.userRank}</div>
+                  <div className="t-mono text-sm flex-1">
+                    <Badge variant="default" className="bg-[var(--accent)] text-white mr-2">YOU</Badge>
+                    you
+                  </div>
+                  <div className="t-mono text-sm text-[var(--text-primary)]">{arenaState.bestScore}</div>
+                  <Badge variant="default" className="text-xs">—</Badge>
+                  <div className="text-sm">—</div>
+                </div>
+              </>
+            )}
           </div>
         </div>
-      )}
+      </Card>
 
-      {/* Achievement Toast */}
-      {newAchievements.length > 0 && (
-        <AchievementToast achievements={newAchievements} onDone={() => setNewAchievements([])} />
-      )}
+      {/* Challenge Type Selector */}
+      <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
+        <div className="t-label mb-4">SELECT CHALLENGE TYPE</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {(["quick", "standard", "endurance"] as ChallengeMode[]).map(mode => (
+            <Card
+              key={mode}
+              className={`cursor-pointer transition-all ${
+                selectedMode === mode ? "card-highlight" : "card-hover"
+              }`}
+              onClick={() => setSelectedMode(mode)}
+            >
+              <div className="p-6">
+                <h3 className="t-heading capitalize">{mode} Fire</h3>
+                <p className="t-body mt-2">{modeConfig[mode].desc}</p>
+                <p className="t-label mt-3">
+                  {modeConfig[mode].drills} drills · {modeConfig[mode].time} min
+                </p>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
 
-      {/* RESULT PHASE */}
-      {phase === "result" && result && (
-        <div className="space-y-4">
-          <div
-            className={`rounded-xl border p-6 text-center ${
-              result.score >= 70
-                ? "border-green-500/30 bg-green-500/5"
-                : result.score >= 40
-                ? "border-amber-500/30 bg-amber-500/5"
-                : "border-red-500/30 bg-red-500/5"
-            }`}
+      {/* Ranked/Practice Toggle */}
+      <div className="animate-fade-up" style={{ animationDelay: "250ms" }}>
+        <div className="flex items-center gap-4">
+          <div className="t-label">MODE</div>
+          <div 
+            className="inline-flex p-[3px] rounded-[20px] border border-[var(--border-default)]"
+            style={{ background: "var(--bg-elevated)" }}
           >
-            <div
-              className={`text-6xl font-bold mb-2 ${
-                result.score >= 70
-                  ? "text-green-400"
-                  : result.score >= 40
-                  ? "text-amber-400"
-                  : "text-red-400"
-              }`}
-            >
-              {result.score}/100
-            </div>
-            <div
-              className={`text-sm font-semibold ${
-                result.score >= 70
-                  ? "text-green-400"
-                  : result.score >= 40
-                  ? "text-amber-400"
-                  : "text-red-400"
-              }`}
-            >
-              {result.score >= 70
-                ? "STRONG"
-                : result.score >= 40
-                ? "DEVELOPING"
-                : "NEEDS WORK"}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              This score affects your Operator Score and Arena rank.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-            <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-3">
-              Feedback
-            </div>
-            <ul className="space-y-2">
-              {result.feedback.map((f, i) => (
-                <li key={i} className="text-sm text-gray-300 flex items-start gap-2">
-                  <span className="text-blue-400 mt-0.5 text-xs">-</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="flex gap-3">
             <button
-              onClick={handleReset}
-              className="rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors"
+              onClick={() => setIsRanked(true)}
+              className={`px-4 py-1.5 rounded-[17px] text-sm transition-all ${
+                isRanked ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
+              }`}
             >
-              Back to Challenges
+              Ranked
             </button>
             <button
-              onClick={handleStart}
-              className="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-6 py-2.5 text-sm font-medium text-gray-300 transition-colors"
+              onClick={() => setIsRanked(false)}
+              className={`px-4 py-1.5 rounded-[17px] text-sm transition-all ${
+                !isRanked ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
+              }`}
             >
-              Retry Same Challenge
+              Practice
             </button>
           </div>
         </div>
-      )}
+
+        {!isRanked && (
+          <Card className="mt-4" style={{ borderLeft: "3px solid var(--warning-text)" }}>
+            <div className="p-4">
+              <p className="text-sm">
+                Practice mode active. Results are not ranked and do not affect your Operator Score.
+              </p>
+            </div>
+          </Card>
+        )}
+      </div>
+
+      {/* CTA Button */}
+      <div className="animate-fade-up" style={{ animationDelay: "300ms" }}>
+        <Button
+          variant="primary"
+          onClick={handleEnterChallenge}
+          className="w-full btn-lg"
+          disabled={showCountdown}
+        >
+          Enter {selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)} Challenge →
+        </Button>
+      </div>
     </div>
   );
 }

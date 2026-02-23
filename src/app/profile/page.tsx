@@ -4,27 +4,57 @@ import { useEffect, useState } from "react";
 import {
   getOperatorProfile,
   getItem,
-  getAchievements,
   STORAGE_KEYS,
   type OperatorProfile,
   type DomainScore,
-  type Achievement,
+  type ArenaState,
 } from "@/core/storage";
-import { ALL_DOMAINS } from "@/core/types/topic";
+import { DOMAINS } from "@/core/content/domains";
+import { getDrillsByDomain } from "@/core/content/drills";
+import type { DrillResult } from "@/core/types/drills";
+import { ScoreCounter } from "@/components/ui/ScoreCounter";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export default function ProfilePage() {
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<OperatorProfile | null>(null);
   const [domainScores, setDomainScores] = useState<DomainScore[]>([]);
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [arenaState, setArenaState] = useState<ArenaState | null>(null);
+  const [drillHistory, setDrillHistory] = useState<DrillResult[]>([]);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const p = getOperatorProfile();
     setProfile(p);
-    const ds = getItem<DomainScore[]>(STORAGE_KEYS.DOMAIN_SCORES) || [];
+    
+    const history = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || [];
+    setDrillHistory(history);
+
+    const ds: DomainScore[] = DOMAINS.map(domain => {
+      const domainDrills = getDrillsByDomain(domain.id);
+      const completedDrills = history.filter(h => 
+        domainDrills.some(d => d.id === h.drillId)
+      );
+      const avgScore = completedDrills.length > 0
+        ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
+        : 0;
+      
+      return {
+        domainId: domain.id,
+        score: avgScore,
+        drillsCompleted: completedDrills.length,
+        drillsTotal: domainDrills.length,
+        lastAttempted: completedDrills.length > 0 ? completedDrills[completedDrills.length - 1].submittedAt : ""
+      };
+    });
     setDomainScores(ds);
-    setAchievements(getAchievements());
+
+    const as = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
+    setArenaState(as);
+
     setLoaded(true);
   }, []);
 
@@ -32,7 +62,6 @@ export default function ProfilePage() {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-8 w-48 rounded bg-white/10" />
-        <div className="h-32 rounded-xl bg-white/10" />
         <div className="h-32 rounded-xl bg-white/10" />
       </div>
     );
@@ -54,7 +83,7 @@ export default function ProfilePage() {
   }
 
   const handleCopy = async () => {
-    const text = `My AI Mastery OS Operator Score: ${profile.operatorScore}/100 | Rank: ${profile.rankLabel} | Top ${profile.rankPercentile}% globally`;
+    const text = `AI Mastery OS · Operator Score: ${profile.operatorScore}/100 · ${profile.rankLabel} · Top ${profile.rankPercentile}% globally · ${profile.streakDays} day streak`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -70,146 +99,196 @@ export default function ProfilePage() {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } catch {
-        window.prompt("Copy this text:", text);
+        // Silent fail
       }
     }
   };
 
-  const lastActiveDate = profile.lastActive
-    ? new Date(profile.lastActive).toLocaleDateString()
-    : "—";
+  const activeDomains = domainScores.filter(ds => ds.drillsCompleted > 0).length;
+  const totalDrills = drillHistory.length;
+  const bestArenaScore = arenaState?.bestScore || 0;
 
-  // Map domainId back to domain name
-  const getDomainName = (domainId: string) => {
-    return ALL_DOMAINS.find((d) => d === domainId) || domainId;
-  };
+  const domainsWithScores = domainScores.filter(ds => ds.drillsCompleted > 0);
+  const allDomainsComplete = DOMAINS.every(domain => {
+    const ds = domainScores.find(d => d.domainId === domain.id);
+    return ds && ds.drillsCompleted >= ds.drillsTotal;
+  });
+  const certificationEligible = allDomainsComplete && profile.operatorScore >= 75;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
-      <h1 className="text-3xl font-bold text-white">Operator Profile</h1>
-
-      {/* Score Card */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center">
-        <div className="text-6xl font-bold text-white mb-2">
-          {profile.operatorScore}
-        </div>
-        <div className="text-sm text-gray-400 mb-1">Operator Score</div>
-        <div className="text-lg font-semibold text-blue-400 mb-1">
-          {profile.rankLabel}
-        </div>
-        <div className="text-sm text-gray-500">
-          Top {profile.rankPercentile}% globally
-        </div>
-      </div>
-
-      {/* Streak Card */}
-      <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center">
-        <div className="text-4xl font-bold text-amber-400 mb-1">
-          {profile.streakDays}
-        </div>
-        <div className="text-sm text-gray-400">Day Streak</div>
-        <div className="text-xs text-gray-500 mt-1">
-          Last active: {lastActiveDate}
-        </div>
-      </div>
-
-      {/* Domain Scores */}
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Domain Scores</h2>
-        {domainScores.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-gray-500">
-            No domain scores recorded yet. Complete drills to build your domain profile.
+        <div className="t-label">OPERATOR PROFILE</div>
+      </div>
+
+      {/* Score Hero */}
+      <div className="text-center py-12">
+        <div className="t-score score-glow">
+          <ScoreCounter target={profile.operatorScore} />
+        </div>
+        <Badge variant="default" className="mt-4 bg-[var(--accent)] text-white">
+          {profile.rankLabel}
+        </Badge>
+        <p className="t-body text-[var(--text-muted)] mt-3">
+          Top {profile.rankPercentile}% globally
+        </p>
+      </div>
+
+      {/* Three Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="card-hover">
+          <div className="p-6 text-center">
+            <div className="t-display-sm">{profile.streakDays}</div>
+            <div className="t-label mt-2">Day Streak</div>
+            {profile.streakDays > 0 && (
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <div className="w-2 h-2 rounded-full bg-[var(--success-bg)]" />
+                <span className="text-xs text-[var(--success-text)]">Active</span>
+              </div>
+            )}
           </div>
+        </Card>
+
+        <Card className="card-hover">
+          <div className="p-6 text-center">
+            <div className="t-display-sm">{activeDomains}</div>
+            <div className="t-label mt-2">Domains Trained</div>
+          </div>
+        </Card>
+
+        <Card className="card-hover">
+          <div className="p-6 text-center">
+            <div className="t-display-sm">{totalDrills}</div>
+            <div className="t-label mt-2">Drills Completed</div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Domain Breakdown */}
+      <div>
+        <div className="t-label mb-4">DOMAIN PERFORMANCE</div>
+        {domainsWithScores.length === 0 ? (
+          <Card>
+            <div className="p-10 text-center border border-dashed border-[var(--border-default)] rounded-lg">
+              <p className="t-body">Complete drills to build your performance profile.</p>
+            </div>
+          </Card>
         ) : (
           <div className="space-y-3">
-            {domainScores.map((ds) => (
-              <div
-                key={ds.domainId}
-                className="rounded-xl border border-white/10 bg-white/5 p-4"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-white">
-                    {getDomainName(ds.domainId)}
-                  </span>
-                  <span className="text-sm font-mono text-gray-400">
-                    {ds.score}/100
-                  </span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-white/10">
-                  <div
-                    className="h-1.5 rounded-full bg-blue-500 transition-all duration-500"
-                    style={{ width: `${Math.min(100, ds.score)}%` }}
-                  />
-                </div>
-                <div className="mt-1 text-xs text-gray-500">
-                  {ds.drillsCompleted}/{ds.drillsTotal} drills
-                </div>
-              </div>
-            ))}
+            {domainsWithScores.map((ds, idx) => {
+              const domain = DOMAINS.find(d => d.id === ds.domainId);
+              if (!domain) return null;
+
+              return (
+                <Card 
+                  key={ds.domainId} 
+                  className="card-hover animate-fade-up"
+                  style={{ 
+                    animationDelay: `${idx * 50}ms`,
+                    borderLeft: `3px solid ${domain.color}`
+                  }}
+                >
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="t-heading">{domain.name}</h3>
+                      <div className="t-mono text-sm">{ds.score}/100</div>
+                    </div>
+                    <ProgressBar 
+                      value={(ds.drillsCompleted / ds.drillsTotal) * 100} 
+                      size="sm"
+                      color={ds.score >= 80 ? "green" : ds.score >= 60 ? "yellow" : "red"}
+                    />
+                    <div className="t-label text-[var(--text-muted)] mt-2">
+                      {ds.drillsCompleted}/{ds.drillsTotal} drills
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Achievements */}
+      {/* Operator Card (Shareable) */}
       <div>
-        <h2 className="text-xl font-semibold text-white mb-4">
-          Achievements
-          {achievements.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-gray-500">({achievements.length})</span>
-          )}
-        </h2>
-        {achievements.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-sm text-gray-500">
-            No achievements unlocked yet. Complete drills, arena challenges, or lab experiments.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {achievements.map((a) => (
-              <div
-                key={a.id}
-                className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 hover-lift"
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-400 flex-shrink-0">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                  <span className="text-sm font-semibold text-white">{a.title}</span>
-                </div>
-                <p className="text-xs text-gray-400">{a.description}</p>
-                <p className="text-[10px] text-gray-600 mt-1">
-                  {new Date(a.unlockedAt).toLocaleDateString()}
-                </p>
+        <div className="t-label mb-4">OPERATOR CREDENTIAL</div>
+        <div className="max-w-[400px] mx-auto">
+          <Card className="card-elevated">
+            <div className="p-7 space-y-6">
+              <div className="flex items-start justify-between">
+                <div className="t-label">AI MASTERY OS</div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* Certification */}
-      <div>
-        <h2 className="text-xl font-semibold text-white mb-4">Certification</h2>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-          <p className="text-sm text-gray-400 mb-4">
-            Certification window opens quarterly. Complete all core domains to become eligible.
-          </p>
-          <button
-            disabled
-            className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-gray-500 cursor-not-allowed"
+              <div className="text-center">
+                <div className="t-score">{profile.operatorScore}</div>
+                <Badge variant="default" className="mt-2 bg-[var(--accent)] text-white">
+                  {profile.rankLabel}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <div className="t-display-sm text-sm">{profile.streakDays}</div>
+                  <div className="t-label text-xs">Streak</div>
+                </div>
+                <div>
+                  <div className="t-display-sm text-sm">{activeDomains}</div>
+                  <div className="t-label text-xs">Domains</div>
+                </div>
+                <div>
+                  <div className="t-display-sm text-sm">{totalDrills}</div>
+                  <div className="t-label text-xs">Drills</div>
+                </div>
+                <div>
+                  <div className="t-display-sm text-sm">{bestArenaScore}</div>
+                  <div className="t-label text-xs">Arena</div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border-default)] text-right">
+                <div className="t-label text-xs">Verified Operator</div>
+              </div>
+            </div>
+          </Card>
+
+          <Button 
+            variant="secondary" 
+            onClick={handleCopy}
+            className="w-full mt-4"
           >
-            Not Yet Eligible
-          </button>
+            {copied ? "✓ Copied" : "Copy to Clipboard"}
+          </Button>
         </div>
       </div>
 
-      {/* Share */}
-      <div>
-        <button
-          onClick={handleCopy}
-          className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-4 py-2 text-sm font-medium text-gray-300 transition-colors"
-        >
-          {copied ? "Copied!" : "Copy Score to Clipboard"}
-        </button>
-      </div>
+      {/* Certification Section */}
+      <Card className="border-dashed">
+        <div className="p-6">
+          <div className="t-label mb-3">CERTIFICATION</div>
+          <p className="t-body mb-4">
+            Certification exams open quarterly to operators who complete all core domains and achieve an Operator Score above 75.
+          </p>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex-1">
+              <div className="t-label text-xs mb-2">
+                {domainsWithScores.length}/{DOMAINS.length} domains complete
+              </div>
+              <ProgressBar 
+                value={(domainsWithScores.length / DOMAINS.length) * 100}
+                size="sm"
+                color="blue"
+              />
+            </div>
+          </div>
+          <Button 
+            variant="secondary" 
+            disabled={!certificationEligible}
+          >
+            {certificationEligible ? "Apply for Certification" : "Not Yet Eligible"}
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

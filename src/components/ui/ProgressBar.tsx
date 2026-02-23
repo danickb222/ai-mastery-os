@@ -8,6 +8,7 @@ interface ProgressBarProps {
   color?: string;
   size?: "sm" | "md";
   className?: string;
+  animated?: boolean;
 }
 
 export function ProgressBar({
@@ -18,6 +19,7 @@ export function ProgressBar({
   color = "bg-indigo-500",
   size = "md",
   className = "",
+  animated = false,
 }: ProgressBarProps) {
   const percent = Math.min(100, Math.round((value / max) * 100));
   const h = size === "sm" ? "h-1.5" : "h-2.5";
