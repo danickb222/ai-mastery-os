@@ -2,27 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getTopicsByDomain } from "@/core/content/registry";
-import { ALL_DOMAINS } from "@/core/types/topic";
+import { DOMAINS, getDomainDrillCount } from "@/core/content/domains";
+import { getDrillsByDomain } from "@/core/content/drills";
+import type { DrillResult } from "@/core/types/drills";
 import {
   getItem,
   STORAGE_KEYS,
-  type DomainScore,
 } from "@/core/storage";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export default function CurriculumPage() {
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [domainScores, setDomainScores] = useState<DomainScore[]>([]);
-  const [contentReady, setContentReady] = useState(false);
+  const [drillHistory, setDrillHistory] = useState<DrillResult[]>([]);
 
   useEffect(() => {
-    const ds = getItem<DomainScore[]>(STORAGE_KEYS.DOMAIN_SCORES) || [];
-    setDomainScores(ds);
+    const history = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || [];
+    setDrillHistory(history);
     setLoaded(true);
-    // Content availability check
-    const timer = setTimeout(() => setContentReady(true), 100);
-    return () => clearTimeout(timer);
   }, []);
 
   if (!loaded) {
@@ -39,151 +38,113 @@ export default function CurriculumPage() {
     );
   }
 
-  // Build domain data
-  const allDomains = ALL_DOMAINS.map((domain, idx) => {
-    const domainTopics = getTopicsByDomain(domain);
-    const ds = domainScores.find((d) => d.domainId === domain);
-    const totalDrills = domainTopics.reduce((sum, t) => sum + t.drills.length, 0);
-    const third = Math.ceil(ALL_DOMAINS.length / 3);
-    const difficulty = idx < third ? "Foundational" : idx < third * 2 ? "Advanced" : "Expert";
-    const estimatedMinutes = totalDrills * 2;
+  const domainData = DOMAINS.map((domain) => {
+    const drills = getDrillsByDomain(domain.id);
+    const completedDrills = drillHistory.filter(h => {
+      const drill = drills.find(d => d.id === h.drillId);
+      return drill !== undefined;
+    });
+    
+    const avgScore = completedDrills.length > 0
+      ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
+      : 0;
+
     return {
-      domainId: domain,
-      name: domain,
-      difficulty,
-      drillCount: totalDrills,
-      estimatedMinutes,
-      drillsCompleted: ds?.drillsCompleted ?? 0,
-      drillsTotal: ds?.drillsTotal ?? totalDrills,
-      score: ds?.score ?? 0,
-      hasScore: !!ds,
+      ...domain,
+      totalDrills: drills.length,
+      completedDrills: completedDrills.length,
+      avgScore,
     };
   });
 
-  // Recommended path: domains with no score (prioritize) or lowest scores, pick 3-4
-  const recommended = [...allDomains]
-    .sort((a, b) => {
-      if (!a.hasScore && b.hasScore) return -1;
-      if (a.hasScore && !b.hasScore) return 1;
-      return a.score - b.score;
-    })
-    .slice(0, 4);
-
-  if (!contentReady && allDomains.length === 0) {
-    return (
-      <div className="space-y-8 animate-pulse">
-        <div className="h-8 w-32 rounded bg-white/10" />
-        <div className="h-4 w-64 rounded bg-white/10" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-40 rounded-xl bg-white/10" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      {/* Page Header */}
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-white">Train</h1>
-        <p className="mt-1 text-gray-400">
-          Select a domain. Run drills. Build your Operator Score.
+        <h1 className="text-3xl font-bold mb-2">Curriculum</h1>
+        <p className="text-[var(--color-text-secondary)]">
+          Master AI prompt engineering through construction-based drills across 8 domains.
         </p>
       </div>
 
-      {/* Recommended Path Rail */}
-      <div>
-        <div className="text-[10px] font-semibold text-blue-400 uppercase tracking-widest mb-3">
-          Recommended Path
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {recommended.map((d) => (
-            <button
-              key={d.domainId}
-              onClick={() => router.push(`/run?domain=${encodeURIComponent(d.domainId)}`)}
-              className="flex-shrink-0 w-56 rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:border-blue-500/30 transition-colors"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-white truncate">{d.name}</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {domainData.map((domain) => (
+          <Card key={domain.id} onClick={() => router.push(`/run?domain=${domain.id}`)}>
+            <div className="p-6 space-y-4 cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold mb-1">{domain.name}</h3>
+                  <Badge variant="default">{domain.difficulty}</Badge>
+                </div>
+                <div 
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
+                  style={{ backgroundColor: `${domain.color}20`, color: domain.color }}
+                >
+                  {domain.completedDrills > 0 ? domain.avgScore : '—'}
+                </div>
               </div>
-              <span
-                className={`inline-block text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider mb-2 ${
-                  d.difficulty === "Foundational"
-                    ? "bg-green-500/15 text-green-400"
-                    : d.difficulty === "Advanced"
-                    ? "bg-amber-500/15 text-amber-400"
-                    : "bg-red-500/15 text-red-400"
-                }`}
-              >
-                {d.difficulty}
-              </span>
-              <div className="mt-2">
-                <span className="inline-flex items-center gap-1 rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors">
-                  Start →
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
 
-      {/* Full Domain Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allDomains.map((d) => {
-          const progress = d.drillsTotal > 0 ? Math.round((d.drillsCompleted / d.drillsTotal) * 100) : 0;
-          const isFinished = d.drillsCompleted > 0 && d.drillsCompleted >= d.drillsTotal;
-          return (
-            <div
-              key={d.domainId}
-              className="rounded-xl border border-white/10 bg-white/5 p-5 flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-white">{d.name}</span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded font-medium uppercase tracking-wider ${
-                      d.difficulty === "Foundational"
-                        ? "bg-green-500/15 text-green-400"
-                        : d.difficulty === "Advanced"
-                        ? "bg-amber-500/15 text-amber-400"
-                        : "bg-red-500/15 text-red-400"
-                    }`}
-                  >
-                    {d.difficulty}
+              <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">
+                {domain.description}
+              </p>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--color-text-secondary)]">
+                    {domain.completedDrills} / {domain.totalDrills} drills
+                  </span>
+                  <span className="text-[var(--color-text-secondary)]">
+                    ~{domain.estimatedMinutes}m
                   </span>
                 </div>
-                <div className="text-xs text-gray-500 mb-3">
-                  {d.drillCount} drills · ~{d.estimatedMinutes} min
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-white/10 mb-2">
-                  <div
-                    className="h-1.5 rounded-full bg-blue-500 transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>{d.drillsCompleted}/{d.drillsTotal} drills</span>
-                  {d.score > 0 && <span className="font-mono">{d.score}/100</span>}
-                  {isFinished && (
-                    <span className="px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 text-[10px] font-medium">
-                      Finished
-                    </span>
-                  )}
-                </div>
+                <ProgressBar
+                  value={domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}
+                  size="sm"
+                  color={domain.avgScore >= 80 ? 'green' : domain.avgScore >= 65 ? 'yellow' : 'red'}
+                />
               </div>
-              <div className="mt-4">
-                <button
-                  onClick={() => router.push(`/run?domain=${encodeURIComponent(d.domainId)}`)}
-                  className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2 text-sm font-semibold text-white transition-colors"
-                >
-                  {isFinished ? "Review Drills →" : "Start Drilling →"}
-                </button>
+
+              <div className="flex flex-wrap gap-1">
+                {domain.skills.slice(0, 3).map((skill) => (
+                  <span
+                    key={skill}
+                    className="text-[10px] px-2 py-0.5 rounded bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                  >
+                    {skill.replace(/_/g, ' ')}
+                  </span>
+                ))}
               </div>
             </div>
-          );
-        })}
+          </Card>
+        ))}
+      </div>
+
+      <div className="mt-8 p-6 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)]">
+        <h2 className="text-xl font-semibold mb-2">About the Curriculum</h2>
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+          This curriculum replaces traditional MCQ drills with five construction-based drill types:
+        </p>
+        <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+          <li className="flex items-start gap-2">
+            <span className="text-[var(--color-primary)]">•</span>
+            <span><strong>Prompt Construction:</strong> Build prompts from scratch to meet specific requirements</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-[var(--color-primary)]">•</span>
+            <span><strong>Prompt Debug:</strong> Identify and fix flaws in broken prompts</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-[var(--color-primary)]">•</span>
+            <span><strong>Output Analysis:</strong> Detect errors and hallucinations in AI outputs</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-[var(--color-primary)]">•</span>
+            <span><strong>Live Challenge:</strong> Design solutions for real-world scenarios</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-[var(--color-primary)]">•</span>
+            <span><strong>Scenario Simulation:</strong> Build complete systems and workflows</span>
+          </li>
+        </ul>
       </div>
     </div>
   );
