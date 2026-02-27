@@ -2,16 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DOMAINS, getDomainDrillCount } from "@/core/content/domains";
+import { DOMAINS } from "@/core/content/domains";
 import { getDrillsByDomain } from "@/core/content/drills";
 import type { DrillResult } from "@/core/types/drills";
 import {
   getItem,
   STORAGE_KEYS,
 } from "@/core/storage";
-import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { ProgressBar } from "@/components/ui/ProgressBar";
 
 export default function CurriculumPage() {
   const router = useRouter();
@@ -58,93 +55,92 @@ export default function CurriculumPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Curriculum</h1>
-        <p className="text-[var(--color-text-secondary)]">
-          Master AI prompt engineering through construction-based drills across 8 domains.
+    <div style={{ paddingTop: 48 }}>
+      {/* Page header */}
+      <div style={{ marginBottom: 48 }}>
+        {/* Eyebrow pill */}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(79,110,247,0.1)", border: "1px solid rgba(79,110,247,0.25)", borderRadius: 100, padding: "6px 16px", marginBottom: 16 }}>
+          <div style={{ width: 6, height: 6, background: "#4f6ef7", borderRadius: "50%" }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(238,238,240,0.7)", letterSpacing: "0.05em", fontFamily: "var(--font-body)" }}>
+            CURRICULUM
+          </span>
+        </div>
+
+        {/* Headline */}
+        <h1 style={{
+          fontFamily: "var(--font-display)",
+          fontSize: "clamp(2rem, 4vw, 3rem)",
+          fontWeight: 700,
+          letterSpacing: "-0.03em",
+          lineHeight: 1.1,
+          margin: 0,
+          background: "linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.75) 50%, rgba(139,92,246,0.9) 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}>
+          Train.
+        </h1>
+
+        {/* Subtitle */}
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "1rem", color: "rgba(238,238,240,0.4)", marginTop: 8 }}>
+          12 domains. Master the complete operator skill set.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Domain grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 16, marginTop: 40 }}>
         {domainData.map((domain) => (
-          <Card key={domain.id} onClick={() => router.push(`/run?domain=${domain.id}`)}>
-            <div className="p-6 space-y-4 cursor-pointer hover:bg-[var(--color-surface)] transition-colors">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-1">{domain.name}</h3>
-                  <Badge variant="default">{domain.difficulty}</Badge>
-                </div>
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
-                  style={{ backgroundColor: `${domain.color}20`, color: domain.color }}
-                >
-                  {domain.completedDrills > 0 ? domain.avgScore : '—'}
-                </div>
+          <div
+            key={domain.id}
+            className="domain-card"
+            style={{ borderLeft: `2px solid ${domain.color}60` }}
+            onClick={() => router.push(`/run?domain=${domain.id}`)}
+          >
+            {/* Top-right glow orb */}
+            <div style={{ position: "absolute", top: -40, right: -40, width: 150, height: 150, borderRadius: "50%", background: `radial-gradient(ellipse, ${domain.color}20 0%, transparent 70%)`, pointerEvents: "none" }} />
+
+            {/* Top row: name + difficulty badge */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: "1.0625rem", fontWeight: 600, color: "#eeeef0", lineHeight: 1.2 }}>
+                {domain.name}
               </div>
-
-              <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">
-                {domain.description}
-              </p>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[var(--color-text-secondary)]">
-                    {domain.completedDrills} / {domain.totalDrills} drills
-                  </span>
-                  <span className="text-[var(--color-text-secondary)]">
-                    ~{domain.estimatedMinutes}m
-                  </span>
-                </div>
-                <ProgressBar
-                  value={domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}
-                  size="sm"
-                  color={domain.avgScore >= 80 ? 'green' : domain.avgScore >= 65 ? 'yellow' : 'red'}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-1">
-                {domain.skills.slice(0, 3).map((skill) => (
-                  <span
-                    key={skill}
-                    className="text-[10px] px-2 py-0.5 rounded bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
-                  >
-                    {skill.replace(/_/g, ' ')}
-                  </span>
-                ))}
+              <div style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 100, padding: "3px 10px", fontSize: 11, fontWeight: 500, fontFamily: "var(--font-body)", color: "rgba(238,238,240,0.5)", letterSpacing: "0.04em", whiteSpace: "nowrap", flexShrink: 0, marginLeft: 8 }}>
+                {domain.difficulty}
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
 
-      <div className="mt-8 p-6 bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)]">
-        <h2 className="text-xl font-semibold mb-2">About the Curriculum</h2>
-        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-          This curriculum replaces traditional MCQ drills with five construction-based drill types:
-        </p>
-        <ul className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--color-primary)]">•</span>
-            <span><strong>Prompt Construction:</strong> Build prompts from scratch to meet specific requirements</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--color-primary)]">•</span>
-            <span><strong>Prompt Debug:</strong> Identify and fix flaws in broken prompts</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--color-primary)]">•</span>
-            <span><strong>Output Analysis:</strong> Detect errors and hallucinations in AI outputs</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--color-primary)]">•</span>
-            <span><strong>Live Challenge:</strong> Design solutions for real-world scenarios</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--color-primary)]">•</span>
-            <span><strong>Scenario Simulation:</strong> Build complete systems and workflows</span>
-          </li>
-        </ul>
+            {/* Description */}
+            <p className="description-clamp" style={{ fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "rgba(238,238,240,0.4)", lineHeight: 1.6, marginBottom: 20, marginTop: 0 }}>
+              {domain.description}
+            </p>
+
+            {/* Stats row */}
+            <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "rgba(238,238,240,0.3)" }}>
+                {domain.completedDrills}/{domain.totalDrills} drills
+              </span>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: "rgba(238,238,240,0.3)" }}>
+                ~{domain.estimatedMinutes}m
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 1, overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 1, width: `${domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}%`, background: `linear-gradient(90deg, ${domain.color} 0%, ${domain.color}80 100%)` }} />
+            </div>
+
+            {/* Bottom row */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", color: domain.avgScore > 0 ? domain.color : "rgba(238,238,240,0.3)" }}>
+                {domain.avgScore > 0 ? `${domain.avgScore}/100` : "—"}
+              </span>
+              <span className="domain-start-link" style={{ fontFamily: "var(--font-body)", fontSize: "0.8125rem", fontWeight: 500, color: "rgba(79,110,247,0.8)", letterSpacing: "0.02em" }}>
+                Start →
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

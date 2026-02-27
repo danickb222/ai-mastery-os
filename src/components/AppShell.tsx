@@ -96,8 +96,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 right: 0,
                 zIndex: 50,
                 height: 56,
-                backgroundColor: "#0e0e10",
-                borderBottom: "1px solid #1a1a20",
+                backgroundColor: "rgba(7,7,8,0.8)",
+                backdropFilter: "blur(20px)",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "0 32px",
@@ -109,8 +110,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 style={{
                   fontFamily: "var(--font-code)",
                   fontSize: 11,
-                  letterSpacing: "0.12em",
-                  color: "var(--text-muted)",
+                  letterSpacing: "0.15em",
+                  color: "rgba(255,255,255,0.2)",
                   userSelect: "none",
                 }}
               >
@@ -135,9 +136,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                         fontSize: 13,
                         fontFamily: "var(--font-body)",
                         fontWeight: active ? 500 : 400,
-                        color: active ? "var(--text-primary)" : "var(--text-muted)",
-                        background: active ? "var(--bg-elevated)" : "transparent",
-                        border: active ? "1px solid var(--border-default)" : "1px solid transparent",
+                        color: active ? "#eeeef0" : "var(--text-muted)",
+                        background: active ? "rgba(79,110,247,0.15)" : "transparent",
+                        border: active ? "1px solid rgba(79,110,247,0.3)" : "1px solid transparent",
+                        boxShadow: active ? "0 0 12px rgba(79,110,247,0.2) inset" : "none",
                         textDecoration: "none",
                         transition: "color var(--t-fast), background var(--t-fast)",
                         whiteSpace: "nowrap",
@@ -165,6 +167,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <GearIcon />
               </Link>
+              {/* Gradient accent line */}
+              <div style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 1,
+                background: "linear-gradient(90deg, transparent 0%, rgba(79,110,247,0.5) 30%, rgba(139,92,246,0.5) 70%, transparent 100%)",
+                pointerEvents: "none",
+              }} />
             </nav>
 
             {/* Mobile nav — bottom bar */}
@@ -264,7 +276,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           .mobile-nav { display: none !important; }
           main.has-nav { padding-bottom: 0 !important; }
         }
-        .md-nav a:hover { color: var(--text-secondary) !important; }
+        .md-nav a:hover { color: var(--text-primary) !important; background: rgba(255,255,255,0.04); }
         nav a:hover { color: var(--text-secondary) !important; }
       `}</style>
     </div>

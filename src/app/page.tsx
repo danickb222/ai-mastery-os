@@ -125,69 +125,135 @@ export default function Dashboard() {
 
 function FirstRunDashboard({ onStart }: { onStart: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] gap-12 text-center px-4 stagger-children">
-      <div className="max-w-2xl space-y-4">
-        <h1 className="text-4xl sm:text-5xl font-bold text-white leading-tight">
-          Train to become a top 1% AI operator.
-        </h1>
-        <p className="text-lg text-gray-400">
-          Drill-based. Performance-scored. Not a course.
-        </p>
-        <div className="pt-4">
-          <button
-            onClick={onStart}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-500 px-8 py-3.5 text-base font-semibold text-white transition-colors"
-          >
-            Start Your Diagnostic →
-          </button>
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "80px 24px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Orb 1 */}
+      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: 800, height: 800, background: "radial-gradient(ellipse, rgba(79,110,247,0.12) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0, borderRadius: "50%" }} />
+      {/* Orb 2 */}
+      <div style={{ position: "absolute", top: "30%", left: -100, width: 400, height: 400, background: "radial-gradient(ellipse, rgba(139,92,246,0.08) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0, borderRadius: "50%" }} />
+      {/* Orb 3 */}
+      <div style={{ position: "absolute", top: "40%", right: -100, width: 400, height: 400, background: "radial-gradient(ellipse, rgba(16,185,129,0.06) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0, borderRadius: "50%" }} />
+
+      {/* All content */}
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+
+        {/* Eyebrow pill */}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(79,110,247,0.1)", border: "1px solid rgba(79,110,247,0.25)", borderRadius: 100, padding: "6px 16px", marginBottom: 24 }}>
+          <div style={{ width: 6, height: 6, background: "#4f6ef7", borderRadius: "50%", animation: "pulse-dot 2s infinite" }} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(238,238,240,0.7)", letterSpacing: "0.05em", fontFamily: "var(--font-body)" }}>
+            Now in Early Access
+          </span>
         </div>
-        <p className="text-sm text-gray-500">
-          No account required. Takes 5 minutes.
+
+        {/* Headline */}
+        <h1 style={{
+          fontFamily: "var(--font-display)",
+          fontSize: "clamp(3rem, 8vw, 5.5rem)",
+          fontWeight: 700,
+          lineHeight: 1.0,
+          letterSpacing: "-0.04em",
+          textAlign: "center",
+          maxWidth: 800,
+          margin: 0,
+          background: "linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.75) 50%, rgba(139,92,246,0.9) 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}>
+          The training platform for operators who take AI seriously.
+        </h1>
+
+        {/* Subtitle */}
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "1.125rem", color: "rgba(238,238,240,0.45)", textAlign: "center", maxWidth: 520, lineHeight: 1.7, marginTop: 20, marginBottom: 40 }}>
+          12 domains. 3 competency tiers. Performance-scored drills. No passive content — only active construction.
+        </p>
+
+        {/* CTA button */}
+        <button onClick={onStart} className="hero-cta">
+          Start Your Diagnostic →
+        </button>
+
+        {/* Below CTA hint */}
+        <p style={{ fontSize: 12, color: "rgba(238,238,240,0.3)", letterSpacing: "0.05em", marginTop: 12, fontFamily: "var(--font-body)" }}>
+          5 drills · No account required · ~8 minutes
+        </p>
+
+        {/* Stats row */}
+        <div style={{ display: "flex", flexDirection: "row", gap: 16, marginTop: 80, maxWidth: 680, width: "100%" }}>
+          <StatCard number="12,847" label="drills completed this week" />
+          <StatCard number="71/100" label="average operator score" />
+          <StatCard number="2,341" label="operators training" />
+        </div>
+
+        {/* Feature cards */}
+        <div style={{ display: "flex", flexDirection: "row", gap: 16, marginTop: 16, maxWidth: 680, width: "100%" }}>
+          <FeatureCard
+            title="Construction-based drills"
+            body="Not multiple choice. You build, debug, analyze, and design real professional outputs."
+            accentColor="rgba(79,110,247,0.6)"
+          />
+          <FeatureCard
+            title="AI-evaluated scoring"
+            body="Every submission scored by AI against a professional rubric. Not pattern matching."
+            accentColor="rgba(139,92,246,0.6)"
+          />
+          <FeatureCard
+            title="12 professional domains"
+            body="From prompt engineering to multi-agent systems. The complete operator curriculum."
+            accentColor="rgba(16,185,129,0.6)"
+          />
+        </div>
+
+        {/* Bottom tagline */}
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "rgba(238,238,240,0.2)", letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 64 }}>
+          This is not a course. There is no certificate for watching.
         </p>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl stagger-children">
-        <StatCard number="12,400" label="drills completed this week" />
-        <StatCard number="68/100" label="average operator score" />
-        <StatCard number="847" label="certified operators" />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-3xl">
-        <FeatureCard
-          title="Train"
-          body="Structured domains. Timed drills. No passive content."
-        />
-        <FeatureCard
-          title="Arena"
-          body="Ranked challenges. Seasonal leaderboard. Your score on record."
-        />
-        <FeatureCard
-          title="Lab"
-          body="Prompt experimentation. AI-scored. Output history saved."
-        />
-      </div>
-
-      <p className="text-sm text-gray-500 max-w-md">
-        This is not a course. There is no certificate for watching.
-      </p>
     </div>
   );
 }
 
 function StatCard({ number, label }: { number: string; label: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-center">
-      <div className="text-3xl font-bold text-white">{number}</div>
-      <div className="mt-1 text-sm text-gray-400">{label}</div>
+    <div className="stat-card-hero">
+      <div style={{
+        fontFamily: "var(--font-display)",
+        fontSize: "2rem",
+        fontWeight: 700,
+        letterSpacing: "-0.03em",
+        background: "linear-gradient(135deg, #ffffff 0%, rgba(200,200,255,0.8) 100%)",
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        backgroundClip: "text",
+      }}>
+        {number}
+      </div>
+      <div style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", fontWeight: 400, color: "rgba(238,238,240,0.35)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 6 }}>
+        {label}
+      </div>
     </div>
   );
 }
 
-function FeatureCard({ title, body }: { title: string; body: string }) {
+function FeatureCard({ title, body, accentColor }: { title: string; body: string; accentColor: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-5 text-left">
-      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-      <p className="text-sm text-gray-400">{body}</p>
+    <div className="feature-card-hero" style={{ borderTop: `2px solid ${accentColor}` }}>
+      <h3 style={{ fontFamily: "var(--font-display)", fontSize: "0.9375rem", fontWeight: 600, color: "#eeeef0", marginBottom: 6, marginTop: 0 }}>
+        {title}
+      </h3>
+      <p style={{ fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "rgba(238,238,240,0.4)", lineHeight: 1.6, margin: 0 }}>
+        {body}
+      </p>
     </div>
   );
 }
