@@ -1057,7 +1057,7 @@ export const DRILLS: AnyDrill[] = [
     ],
     explanation: 'Multi-constraint prompts fail when constraints aren\'t enforced explicitly and when there\'s no validation step. The model will violate constraints it doesn\'t see as critical. The fix is listing all constraints explicitly, defining priority order for conflicts, and including a validation step where the model checks its own output before submitting. The key insight is that validation must be part of the prompt, not a separate step. By forcing the model to validate before outputting, you catch constraint violations before they reach production.',
     skills: ['constraint_enforcement', 'validation_logic', 'priority_ordering', 'quality_preservation']
-  }
+  },
   // ─── AI Evaluation & Quality Control ───────────────────────────────────────
   {
     id: 'ae_001',

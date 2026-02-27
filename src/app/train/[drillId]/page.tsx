@@ -27,7 +27,7 @@ export default function TrainDrillPage() {
   }
 
   async function handleEvaluate() {
-    if (!submission.trim()) return;
+    if (!submission.trim() || !drill) return;
 
     setLoading(true);
     setError(null);
