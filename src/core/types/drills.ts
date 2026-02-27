@@ -15,7 +15,12 @@ export type DrillDomain =
   | 'ai_workflows'
   | 'context_management'
   | 'role_prompting'
-  | 'data_extraction';
+  | 'data_extraction'
+  | 'ai_evaluation'
+  | 'workflow_automation'
+  | 'tool_ecosystem'
+  | 'multi_agent_systems'
+  | 'professional_ethics';
 
 export interface BaseDrill {
   id: string;

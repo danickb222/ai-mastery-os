@@ -1,39 +1,52 @@
-"use client";
-import { useState, useEffect } from "react";
+import type { Metadata } from "next";
+import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
+
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-syne",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-dm",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "AI Mastery OS",
+  description:
+    "Drill-based training system for applied AI operators. Build your Operator Score.",
+};
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [navVisible, setNavVisible] = useState(true);
-
-  useEffect(() => {
-    const handleDrillStart = () => setNavVisible(false);
-    const handleDrillEnd = () => setNavVisible(true);
-
-    window.addEventListener("drill-session-start", handleDrillStart);
-    window.addEventListener("drill-session-end", handleDrillEnd);
-
-    return () => {
-      window.removeEventListener("drill-session-start", handleDrillStart);
-      window.removeEventListener("drill-session-end", handleDrillEnd);
-    };
-  }, []);
-
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+    >
       <head>
-        <title>AI Mastery OS</title>
-        <meta name="description" content="Drill-based training system for applied AI operators. Build your Operator Score." />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#0b0b12" />
+        <meta name="theme-color" content="#070708" />
       </head>
-      <body>
-        {navVisible && <AppShell>{children}</AppShell>}
-        {!navVisible && children}
+      <body style={{ backgroundColor: "#070708" }}>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

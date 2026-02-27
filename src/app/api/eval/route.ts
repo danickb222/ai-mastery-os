@@ -1,144 +1,126 @@
-import { NextRequest, NextResponse } from "next/server";
+'use client';
 
-/**
- * Optional LLM-powered evaluation endpoint.
- * Falls back to a structured mock response if no OPENAI_API_KEY is set.
- *
- * POST /api/eval
- * Body: { topicId, challengeType, rubricDimensions: string[], response: string }
- */
+import { useState } from 'react';
+import { getDrillById } from '@/lib/drills/seed';
+import type { EvaluationResult } from '@/lib/contracts/evaluation';
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const {
-      topicId,
-      challengeType,
-      rubricDimensions,
-      response: userResponse,
-    } = body as {
-      topicId: string;
-      challengeType: string;
-      rubricDimensions: string[];
-      response: string;
-    };
+interface PageProps {
+  params: { drillId: string };
+}
 
-    if (!userResponse || !rubricDimensions?.length) {
+export default function TrainPage({ params }: PageProps) {
+  const drillId = params.drillId;
+  const drill = getDrillById(drillId);
+
+  // Call your existing /api/eval route
+  const evaluateDrill = async (payload: {
+    drillId: string;
+    submission: string;
+  }) => {
+    const res = await fetch('/api/eval', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    return res.json();
+  };
+
+  const [submission, setSubmission] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!drill) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-red-600">Drill not found: {drillId}</div>
+      </div>
+    );
+  }
+
+    const drill = getDrillById(drillId);
+    if (!drill) {
       return NextResponse.json(
-        { error: "Missing required fields: response, rubricDimensions" },
-        { status: 400 }
+        { success: false, error: `Drill not found: ${drillId}` },
+        { status: 404 }
       );
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const injectionSignals = detectPromptInjection(submission);
+    const { system, user } = buildEvaluatorPrompt({
+      drill,
+      submission,
+      injectionSignals,
+    });
 
-    if (apiKey) {
-      // Real LLM evaluation
-      const systemPrompt = `You are a rigorous certification evaluator for an AI operator competency program.
+    let lastError = '';
 
-You are evaluating a "${challengeType}" certification submission for topic "${topicId}".
-
-You MUST score the submission on each of these rubric dimensions: ${rubricDimensions.join(", ")}.
-
-For each dimension, provide:
-- A score from 0 to 100
-- Specific, actionable feedback (2-3 sentences)
-
-Also provide:
-- An overall score (weighted average)
-- Whether the submission passes (score >= 80)
-- A list of weaknesses (dimensions scoring below 60)
-- A confidence level: "high" if you can fully evaluate, "medium" if partially, "low" if submission is too vague
-
-Respond with ONLY valid JSON matching this schema:
-{
-  "score": <number>,
-  "passed": <boolean>,
-  "breakdown": [
-    { "dimension": "<string>", "score": <number>, "feedback": "<string>" }
-  ],
-  "confidence": "high" | "medium" | "low",
-  "weaknesses": ["<string>", ...]
-}
-
-Do not include any text outside the JSON. Be strict but fair. No MCQs. Evaluate demonstrated capability only.`;
-
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: `Evaluate this certification submission:\n\n${userResponse}`,
-            },
-          ],
-          temperature: 0.3,
-          max_tokens: 2000,
-        }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error("OpenAI API error:", errText);
-        return NextResponse.json(mockEvaluation(rubricDimensions));
-      }
-
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        return NextResponse.json(mockEvaluation(rubricDimensions));
-      }
-
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const cleaned = content
-          .replace(/```json\s*/g, "")
-          .replace(/```/g, "")
-          .trim();
-        const parsed = JSON.parse(cleaned);
-        return NextResponse.json(parsed);
-      } catch {
-        console.error("Failed to parse LLM evaluation response");
-        return NextResponse.json(mockEvaluation(rubricDimensions));
+        const { content } = await callOpenAI({
+          systemPrompt: system,
+          userPrompt: user,
+          model: 'gpt-4o-2024-08-06',
+          temperature: 0.2,
+          maxTokens: 4000,
+          responseFormat: 'json_object',
+        });
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(content);
+        } catch (parseError) {
+          lastError = `Invalid JSON response`;
+          continue;
+        }
+
+        const validationResult = EvaluationResultSchema.safeParse(parsed);
+        if (!validationResult.success) {
+          lastError = `Schema validation failed`;
+          continue;
+        }
+
+        const evaluation = validationResult.data;
+
+        for (const rubricScore of evaluation.rubricScores) {
+          assertEvidenceQuotesAreSubstrings(
+            submission,
+            rubricScore.evidenceQuotes
+          );
+        }
+
+        const computedScore = computeOverallScoreFromRubric(
+          drill,
+          evaluation.rubricScores
+        );
+
+        evaluation.overallScore = computedScore;
+
+        return NextResponse.json({
+          success: true,
+          data: evaluation,
+        });
+      } catch (error) {
+        lastError =
+          error instanceof Error ? error.message : 'Unknown evaluation error';
       }
     }
 
-    // No API key — return deterministic mock
-    return NextResponse.json(mockEvaluation(rubricDimensions));
-  } catch (error) {
-    console.error("Eval API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        success: false,
+        error: `Evaluation failed after retries. ${lastError}`,
+      },
       { status: 500 }
     );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Malformed request',
+      },
+      { status: 400 }
+    );
   }
-}
-
-function mockEvaluation(rubricDimensions: string[]) {
-  const breakdown = rubricDimensions.map((dimension) => ({
-    dimension,
-    score: 65 + Math.floor(Math.random() * 20),
-    feedback: `Mock evaluation: Your response shows foundational understanding of ${dimension.toLowerCase()}. To improve, provide more specific examples and address edge cases explicitly.`,
-  }));
-
-  const avgScore = Math.round(
-    breakdown.reduce((sum, b) => sum + b.score, 0) / breakdown.length
-  );
-
-  return {
-    score: avgScore,
-    passed: avgScore >= 80,
-    breakdown,
-    confidence: "low" as const,
-    weaknesses: breakdown
-      .filter((b) => b.score < 60)
-      .map((b) => b.dimension),
-    _mock: true,
-  };
 }

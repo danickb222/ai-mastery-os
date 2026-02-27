@@ -1,41 +1,82 @@
 "use client";
+import { useEffect, useState } from "react";
 
 interface ProgressBarProps {
   value: number;
-  max?: number;
-  label?: string;
-  showPercent?: boolean;
-  color?: string;
-  size?: "sm" | "md";
-  className?: string;
   animated?: boolean;
+  delay?: number;
+  className?: string;
+  color?: "blue" | "green" | "yellow" | "red";
+  size?: "sm" | "md";
+  showPercent?: boolean;
+  label?: string;
 }
+
+const colorMap: Record<string, string> = {
+  blue: "var(--accent)",
+  green: "var(--success)",
+  yellow: "var(--warning)",
+  red: "var(--danger)",
+};
 
 export function ProgressBar({
   value,
-  max = 100,
-  label,
-  showPercent = true,
-  color = "bg-indigo-500",
-  size = "md",
+  animated = true,
+  delay = 0,
   className = "",
-  animated = false,
+  color = "blue",
+  size = "sm",
+  showPercent = false,
+  label,
 }: ProgressBarProps) {
-  const percent = Math.min(100, Math.round((value / max) * 100));
-  const h = size === "sm" ? "h-1.5" : "h-2.5";
+  const [width, setWidth] = useState(0);
+  const clamped = Math.min(100, Math.max(0, value));
+  const height = size === "sm" ? 3 : 6;
+
+  useEffect(() => {
+    if (!animated) {
+      setWidth(clamped);
+      return;
+    }
+    const t = setTimeout(() => {
+      setWidth(clamped);
+    }, delay);
+    return () => clearTimeout(t);
+  }, [clamped, animated, delay]);
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={className} style={{ width: "100%" }}>
       {(label || showPercent) && (
-        <div className="mb-1 flex items-center justify-between text-xs">
-          {label && <span className="text-gray-400">{label}</span>}
-          {showPercent && <span className="text-gray-500">{percent}%</span>}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 4,
+          }}
+        >
+          {label && (
+            <span className="t-label" style={{ color: "var(--text-muted)" }}>
+              {label}
+            </span>
+          )}
+          {showPercent && (
+            <span className="t-label" style={{ color: "var(--text-muted)" }}>
+              {clamped}%
+            </span>
+          )}
         </div>
       )}
-      <div className={`w-full ${h} rounded-full bg-white/10`}>
+      <div
+        className="progress-track"
+        style={{ height }}
+      >
         <div
-          className={`${h} rounded-full ${color} transition-all duration-500`}
-          style={{ width: `${percent}%` }}
+          className="progress-fill"
+          style={{
+            width: `${width}%`,
+            background: colorMap[color] ?? colorMap.blue,
+            height: "100%",
+          }}
         />
       </div>
     </div>

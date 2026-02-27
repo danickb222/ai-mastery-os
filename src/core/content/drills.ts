@@ -1058,6 +1058,558 @@ export const DRILLS: AnyDrill[] = [
     explanation: 'Multi-constraint prompts fail when constraints aren\'t enforced explicitly and when there\'s no validation step. The model will violate constraints it doesn\'t see as critical. The fix is listing all constraints explicitly, defining priority order for conflicts, and including a validation step where the model checks its own output before submitting. The key insight is that validation must be part of the prompt, not a separate step. By forcing the model to validate before outputting, you catch constraint violations before they reach production.',
     skills: ['constraint_enforcement', 'validation_logic', 'priority_ordering', 'quality_preservation']
   }
+  // ─── AI Evaluation & Quality Control ───────────────────────────────────────
+  {
+    id: 'ae_001',
+    type: 'prompt_construction',
+    domain: 'ai_evaluation',
+    difficulty: 'foundational',
+    title: 'Build a Hallucination Detection Checklist',
+    timeLimit: 480,
+    points: 100,
+    context: 'You work as a junior analyst at a consulting firm. Your manager uses AI to generate research for client presentations. Last month a client presentation included a fabricated market size statistic that a client caught during the meeting. Your manager has asked you to design a prompt that forces the AI to flag its own uncertain claims before you use any output professionally.',
+    targetOutput: 'A prompt that produces AI output with every factual claim categorized as: HIGH CONFIDENCE (verifiable from well-established sources), MEDIUM CONFIDENCE (plausible but should be verified), LOW CONFIDENCE (uncertain — do not use without verification), FABRICATION RISK (specific numbers, dates, attributions that are statistically likely to be hallucinated). Each claim is labeled inline. A summary section lists all LOW CONFIDENCE and FABRICATION RISK items for verification priority.',
+    brokenPrompt: 'Research the global AI market and give me the key facts and figures.',
+    referencePrompt: 'Research the global AI market and present your findings with explicit confidence labeling. For every factual claim you make, label it immediately after the claim using these exact categories: [HIGH CONFIDENCE] for well-established facts from major sources, [MEDIUM CONFIDENCE] for plausible claims you are less certain about, [LOW CONFIDENCE] for claims where you have significant uncertainty, [FABRICATION RISK] for any specific dollar figures, precise percentages, exact dates, or attributed quotes — these are statistically likely to be inaccurate and must be verified before professional use. After your main response, include a VERIFICATION PRIORITY section listing every LOW CONFIDENCE and FABRICATION RISK item with a suggested primary source to check against. Do not omit this section even if you believe all claims are accurate.',
+    successCriteria: [
+      { id: 'sc1', label: 'Confidence Categories Defined', description: 'All four confidence categories are explicitly defined and used', maxPoints: 25 },
+      { id: 'sc2', label: 'Inline Labeling Required', description: 'Labels appear immediately after each claim, not in a separate section', maxPoints: 25 },
+      { id: 'sc3', label: 'Fabrication Risk Category Present', description: 'FABRICATION RISK category specifically targets numbers, dates, and attributions', maxPoints: 25 },
+      { id: 'sc4', label: 'Verification Priority Section Required', description: 'Prompt requires a summary of items needing verification with source suggestions', maxPoints: 25 }
+    ],
+    explanation: 'AI models present hallucinated information with exactly the same confidence as accurate information — there is no visual or stylistic difference between a fabricated statistic and a real one. The only defense is designing prompts that force the model to surface its own uncertainty before you use the output. Inline confidence labeling, when required explicitly, catches the categories most likely to be fabricated: specific dollar amounts, precise percentages, and attribution of quotes or decisions to specific individuals.',
+    skills: ['hallucination_detection', 'confidence_calibration', 'professional_verification']
+  },
+  {
+    id: 'ae_002',
+    type: 'prompt_debug',
+    domain: 'ai_evaluation',
+    difficulty: 'advanced',
+    title: 'The Overconfident Analyst',
+    timeLimit: 420,
+    points: 150,
+    taskContext: 'A strategy team uses this prompt to generate competitive analyses for quarterly board presentations. Three consecutive outputs have contained confident factual errors that senior leadership caught during review — damaging the team\'s credibility.',
+    brokenPrompt: 'You are a senior strategy analyst. Research [COMPANY] and provide a comprehensive competitive analysis including: market position, key financials for the past 3 years, major strategic initiatives, competitive threats, and outlook. Write with authority and confidence. This will be presented to the board.',
+    flaws: [
+      { id: 'f1', type: 'missing_context', description: 'Instructs model to write with authority and confidence — directly suppresses appropriate uncertainty expression', location: 'Write with authority and confidence' },
+      { id: 'f2', type: 'ambiguity', description: 'No instruction to distinguish between verified facts and estimates — model treats all claims as equally certain', location: 'provide a comprehensive competitive analysis' },
+      { id: 'f3', type: 'missing_context', description: 'No verification or flagging requirement for specific financial figures — the highest-risk category for hallucination', location: 'key financials for the past 3 years' },
+      { id: 'f4', type: 'scope_issue', description: 'Board presentation context without accuracy safeguards creates maximum professional risk', location: 'This will be presented to the board' }
+    ],
+    referencePrompt: 'You are a senior strategy analyst preparing a competitive analysis for board review. Research [COMPANY] and structure your output as follows: VERIFIED MARKET POSITION (clearly established facts about market share and positioning — note your confidence level), FINANCIAL SUMMARY (note explicitly which figures are from published reports versus estimates — flag any specific figure you cannot confirm from a public source as UNVERIFIED), STRATEGIC INITIATIVES (from public announcements and filings — cite the source type for each), COMPETITIVE THREATS (analytical assessment — label as your analysis, not established fact), OUTLOOK (clearly labeled as forward-looking assessment with stated assumptions). For any specific number, date, or attribution you include: add (SOURCE: [type]) immediately after it. If you cannot identify a credible source type for a specific figure, replace it with an estimate range and label it ESTIMATE. Do not write with uniform confidence — accuracy of expression is more important than confidence of tone for board-level materials.',
+    successCriteria: [
+      { id: 'sc1', label: 'Confidence Suppression Flaw Identified', description: 'Student identifies that writing with authority suppresses uncertainty', maxPoints: 25 },
+      { id: 'sc2', label: 'Financial Verification Gap Identified', description: 'Student identifies that financial figures need explicit source requirements', maxPoints: 25 },
+      { id: 'sc3', label: 'Fixed Prompt Adds Source Requirements', description: 'Reference solution requires source attribution for specific figures', maxPoints: 25 },
+      { id: 'sc4', label: 'Tone Instruction Corrected', description: 'Fixed prompt replaces authority instruction with accuracy instruction', maxPoints: 25 }
+    ],
+    explanation: 'Instructing an AI to write with confidence is one of the most dangerous prompt patterns in professional use. It does not make the model more accurate — it makes the model suppress the hedging language that would otherwise signal uncertainty. The result is that fabricated figures appear with the same authoritative tone as verified ones. For high-stakes professional outputs, accuracy of expression is always more valuable than confidence of tone.',
+    skills: ['hallucination_detection', 'instruction_compliance', 'professional_verification']
+  },
+  {
+    id: 'ae_003',
+    type: 'output_analysis',
+    domain: 'ai_evaluation',
+    difficulty: 'advanced',
+    title: 'The Market Sizing Logic Trap',
+    timeLimit: 480,
+    points: 150,
+    originalPrompt: 'Estimate the total addressable market for AI-powered HR software in the Fortune 500. Show your reasoning step by step.',
+    aiOutput: 'TAM Estimation for AI-Powered HR Software in Fortune 500\n\nStep 1: Company count — 500 companies (by definition)\nStep 2: Average employee count per Fortune 500 company — approximately 60,000 employees\nStep 3: Current HR software spend per employee — approximately $800/year (industry average)\nStep 4: AI premium — AI-powered HR commands a 40% premium over traditional HR software\nStep 5: Adoption rate — 70% of Fortune 500 will adopt AI HR within 3 years\n\nCalculation: 500 × 0.70 × 60,000 × $800 × 1.40 = $23.5 billion TAM\n\nThis is a conservative estimate given the rapid pace of AI adoption in enterprise software.',
+    hiddenFlaws: [
+      { id: 'h1', type: 'logical_error', description: 'Applies the same per-employee spend rate across all Fortune 500 companies regardless of industry — a retailer with 60K employees has fundamentally different HR software needs than a 60K-person bank', evidence: '"Average employee count per Fortune 500 company — approximately 60,000 employees"' },
+      { id: 'h2', type: 'hallucination', description: 'The "40% AI premium" figure is presented as established fact with no source — this is a fabricated assumption dressed as data', evidence: '"AI-powered HR commands a 40% premium over traditional HR software"' },
+      { id: 'h3', type: 'logical_error', description: 'The "conservative estimate" conclusion contradicts the assumptions — a 70% adoption rate in 3 years for a new technology category is extremely aggressive, not conservative', evidence: '"This is a conservative estimate"' }
+    ],
+    correctionTask: 'Write a follow-up prompt that forces the model to (1) segment the Fortune 500 by industry with different spend assumptions for each, (2) source every multiplier with a stated basis, (3) produce a range with low/mid/high scenarios, (4) define what would make this a conservative versus aggressive estimate.',
+    successCriteria: [
+      { id: 'sc1', label: 'Logic Flaws Identified', description: 'Found the uniform assumption error and the mischaracterized conclusion', maxPoints: 35 },
+      { id: 'sc2', label: 'Fabricated Assumption Caught', description: 'Identified that the 40% premium is presented without source', maxPoints: 30 },
+      { id: 'sc3', label: 'Correction Requires Segmentation and Ranges', description: 'Follow-up prompt requires industry segments and scenario ranges', maxPoints: 35 }
+    ],
+    explanation: 'Market sizing models are especially vulnerable to cascading logical errors: each flawed assumption multiplies the ones before it. The signs to look for are uniform averages applied across heterogeneous groups, specific percentages with no stated source, and characterizations like "conservative" that do not match the assumptions used. A real conservative estimate uses low-end values for each assumption and acknowledges uncertainty; a fabricated conservative estimate just asserts the label.',
+    skills: ['logical_audit', 'assumption_validation', 'market_sizing_critique', 'hallucination_detection']
+  },
+  {
+    id: 'ae_004',
+    type: 'live_challenge',
+    domain: 'ai_evaluation',
+    difficulty: 'advanced',
+    title: 'Build an Output Validation Checklist',
+    timeLimit: 540,
+    points: 160,
+    scenario: 'You are the AI Operations lead at a content agency that uses AI to produce 200 pieces of content per month for B2B clients. Last quarter, three client-facing pieces contained factual errors that caused client complaints. Your CEO has asked you to design a systematic output validation checklist that every content producer must run before sending AI-generated content to clients.',
+    requirements: [
+      'Define at least 6 distinct validation categories that cover different failure modes',
+      'For each category, provide a specific check action — not just "review for quality"',
+      'Include a pass/fail decision for each check — what constitutes passing vs failing',
+      'Define what happens when a check fails — revise, escalate, or discard',
+      'Include checks specific to B2B content (factual claims, statistics, company references)',
+      'The checklist must be completable in under 10 minutes per piece'
+    ],
+    constraints: [
+      'Checklist must be usable by a non-technical content producer',
+      'Each check must be binary (pass/fail) — no subjective scoring',
+      'The checklist must be specific enough that two different people running it reach the same result'
+    ],
+    exampleOutput: 'CATEGORY 1: Factual Claims Verification\nCheck: For every specific statistic, percentage, or dollar figure — open a browser tab and find a primary source for it. If no primary source found in 60 seconds, flag for removal or replacement.\nPASS: Every number has a verified source\nFAIL: Any unverified number remains\nFAIL ACTION: Replace with verified alternative or remove the claim\n\nCATEGORY 2: Company Reference Accuracy\nCheck: Every company name, product name, and executive name mentioned — verify spelling and current accuracy via official company website.\nPASS: All references match official sources\nFAIL: Any misspelling or outdated reference\nFAIL ACTION: Correct immediately — do not send with errors',
+    successCriteria: [
+      { id: 'sc1', label: 'Six Validation Categories Present', description: 'At least 6 distinct categories covering different failure modes', maxPoints: 25 },
+      { id: 'sc2', label: 'Specific Check Actions', description: 'Every check specifies an exact action, not just a general principle', maxPoints: 25 },
+      { id: 'sc3', label: 'Binary Pass/Fail Criteria', description: 'Each check has clear pass and fail conditions', maxPoints: 25 },
+      { id: 'sc4', label: 'Fail Actions Defined', description: 'Every failure has a defined remediation action', maxPoints: 25 }
+    ],
+    explanation: 'Quality control systems fail when they are subjective. "Review for quality" is not a checklist item — it is a statement of intent. A real checklist specifies exactly what action to take (open a browser tab and search for X), exactly what constitutes passing (source found), and exactly what to do when failing (remove or replace). The binary structure ensures consistency across team members and prevents the common failure mode of implicitly passing things that feel close enough.',
+    skills: ['quality_control_design', 'validation_framework', 'hallucination_detection', 'professional_verification']
+  },
+  {
+    id: 'ae_005',
+    type: 'scenario_simulation',
+    domain: 'ai_evaluation',
+    difficulty: 'expert',
+    title: 'Design a Research Pipeline Quality System',
+    timeLimit: 0,
+    points: 200,
+    scenario: 'You are the Head of Research Operations at a market research firm. The firm produces 40 research reports per month for enterprise clients. Reports now incorporate AI-generated sections alongside analyst-written content. In the past six months, two reports contained incorrect statistics that reached clients. Your CRO wants a complete quality control system that catches AI-generated errors before reports leave the building.',
+    role: 'Head of Research Operations',
+    objective: 'Design the complete quality control system for AI-assisted research reports. Include every stage from AI output generation to final delivery, with specific validation protocols, human review checkpoints, and escalation procedures.',
+    requiredElements: [
+      'AI output generation stage with built-in uncertainty flagging',
+      'First validation layer — automated checks that run without human involvement',
+      'Second validation layer — human review with specific protocols',
+      'Fact-checking stage with source verification requirements',
+      'Client-sensitivity review — checks specific to the client and their industry',
+      'Final sign-off protocol with accountability assignment',
+      'Post-delivery error tracking and system improvement loop'
+    ],
+    scoringRubric: [
+      { id: 'r1', label: 'System Completeness', description: 'All 7 required elements are present and fully described', maxPoints: 30 },
+      { id: 'r2', label: 'Validation Specificity', description: 'Each validation layer has specific, actionable checks — not vague review instructions', maxPoints: 30 },
+      { id: 'r3', label: 'Human/AI Boundary Clarity', description: 'Clear definition of what each layer does and does not do', maxPoints: 25 },
+      { id: 'r4', label: 'Improvement Loop', description: 'System includes mechanism for errors to improve future quality', maxPoints: 15 }
+    ],
+    explanation: 'Quality systems for AI-assisted professional work require layered validation because no single check catches everything. Automated checks catch structural and format errors quickly. Human review catches judgment errors automated checks miss. Source verification catches factual errors. Client-sensitivity review catches content that is accurate in general but wrong for a specific client context. The improvement loop is what separates a quality system from a checklist — errors that reach clients must feed back into the system to prevent recurrence.',
+    skills: ['quality_system_design', 'validation_architecture', 'hallucination_detection', 'human_ai_workflow']
+  },
+
+  // ─── Workflow Automation ─────────────────────────────────────────────────────
+  {
+    id: 'wa_001',
+    type: 'live_challenge',
+    domain: 'workflow_automation',
+    difficulty: 'foundational',
+    title: 'Map Your First Automation',
+    timeLimit: 600,
+    points: 120,
+    scenario: 'You are an operations coordinator at a 15-person marketing agency. Every Monday morning you manually check the company Gmail for client emails received over the weekend, summarize the key requests, and paste them into a Notion database with priority labels. This takes 90 minutes every Monday. Your manager has asked you to automate it using Make.com.',
+    requirements: [
+      'Define the trigger event precisely — what starts the automation',
+      'Define the AI processing step — what prompt runs and what it must produce',
+      'Define the output format that Notion requires — every field that must be populated',
+      'Define the error handling — what happens if an email has no clear request',
+      'Define the human review checkpoint — what the coordinator reviews and what they skip'
+    ],
+    constraints: [
+      'Your prompt for the AI step must be under 200 words',
+      'The output must be directly importable to Notion without manual editing',
+      'The automation must handle emails with no clear action items gracefully — not crash or create empty records'
+    ],
+    exampleOutput: 'TRIGGER: New email arrives in Gmail labeled "Client" OR from addresses in the Clients contact group. FILTER: Run only if email is unread and received between Friday 6pm and Monday 9am. AI STEP PROMPT: Analyze this client email and extract: (1) Client name, (2) Request type (one of: approval needed / feedback required / question / urgent issue / information only), (3) Summary of request in one sentence, (4) Priority (High if response needed within 4 hours / Medium if within 24 hours / Low if within 48 hours), (5) Suggested owner (account manager / creative / strategy / operations). If no clear request exists, set request type to "no action required" and priority to Low. Output as JSON only. OUTPUT TO NOTION: Fields populated — Client Name (text), Request Type (select), Summary (text), Priority (select), Suggested Owner (select), Email Date (date), Status (default: New). ERROR HANDLING: If email is in a language other than English, route to human review with note "Non-English email — manual review needed." HUMAN REVIEW: Coordinator reviews High priority items each morning. Low and Medium items process automatically.',
+    successCriteria: [
+      { id: 'sc1', label: 'Trigger Precisely Defined', description: 'Trigger specifies exact conditions including timing and sender criteria', maxPoints: 25 },
+      { id: 'sc2', label: 'AI Prompt Produces Structured Output', description: 'Prompt specifies JSON output with all required Notion fields', maxPoints: 25 },
+      { id: 'sc3', label: 'Error Handling Defined', description: 'Graceful handling for emails with no clear request', maxPoints: 25 },
+      { id: 'sc4', label: 'Human Review Checkpoint Specified', description: 'Defines exactly what the coordinator reviews versus what processes automatically', maxPoints: 25 }
+    ],
+    explanation: 'The most common reason automation projects fail is not technical — it is that the designer tries to build before mapping. A trigger-action map written in plain language before touching any tool reveals every decision that needs to be made: what starts the automation, what the AI must produce, what the output system requires, and what happens when inputs are unexpected. Automation that crashes on edge cases is worse than no automation — it creates invisible failures. Every automation design must define error handling before it goes live.',
+    skills: ['trigger_action_mapping', 'prompt_in_workflow', 'error_handling']
+  },
+  {
+    id: 'wa_002',
+    type: 'scenario_simulation',
+    domain: 'workflow_automation',
+    difficulty: 'advanced',
+    title: 'The Content Production Pipeline',
+    timeLimit: 0,
+    points: 200,
+    scenario: 'You are the content operations lead at a B2B SaaS company. The marketing team needs 16 blog posts per month covering product updates, industry trends, and thought leadership. Currently two writers spend 60 hours combined per month producing this volume. Leadership wants the same output with 75% less human time using AI-assisted workflows.',
+    role: 'Content Operations Lead',
+    objective: 'Design the complete AI-assisted content workflow that achieves 16 posts per month with 15 total human hours. Define every stage, every prompt type, every quality gate, and every human touchpoint. The output must be a complete workflow specification someone could implement tomorrow.',
+    requiredElements: [
+      'Topic selection and brief generation stage with specific prompt strategy',
+      'Research and evidence gathering stage — define what AI does versus what humans verify',
+      'Draft generation stage — specify the exact prompt structure used for drafts',
+      'Human review stage — define precisely what humans review and what they do not touch',
+      'SEO and headline optimization stage',
+      'Quality gate between draft and publication — define the pass/fail criteria',
+      'Failure handling — what happens when a draft does not meet quality standards',
+      'Time budget per post — how the 15 hours distributes across 16 posts'
+    ],
+    scoringRubric: [
+      { id: 'r1', label: 'Workflow Completeness', description: 'All 8 required elements are present and fully specified', maxPoints: 30 },
+      { id: 'r2', label: 'Human/AI Division Clarity', description: 'Every stage clearly states what AI does and what humans do — no ambiguity', maxPoints: 25 },
+      { id: 'r3', label: 'Quality Gate Specificity', description: 'Quality gate defines specific pass/fail criteria, not just "review for quality"', maxPoints: 25 },
+      { id: 'r4', label: 'Time Budget Realism', description: 'Time allocation across stages adds up to 15 hours and is plausible', maxPoints: 20 }
+    ],
+    explanation: 'Content operations at scale require prompt pipelines, not individual prompts. The operators who produce 10x more content than their peers are not writing better individual prompts — they are designing systems with defined stages, quality gates, and clear human/AI handoff points. The critical insight is specifying exactly what humans review rather than having humans review everything. That specificity is where the time reduction comes from. A workflow that says "human reviews each draft" saves nothing. A workflow that says "human reviews only posts flagged below 70 quality score, spending 20 minutes maximum per post" is a real operational design.',
+    skills: ['workflow_design', 'human_ai_handoff', 'quality_gates', 'pipeline_orchestration']
+  },
+  {
+    id: 'wa_003',
+    type: 'prompt_debug',
+    domain: 'workflow_automation',
+    difficulty: 'advanced',
+    title: 'The Inconsistent JSON Output',
+    timeLimit: 420,
+    points: 150,
+    taskContext: 'A sales team built a Make.com automation that scores inbound leads using an AI step. The prompt worked in testing but now produces JSON that varies in structure — sometimes using "leadScore" and sometimes "lead_score", sometimes nesting data differently. This breaks the downstream Salesforce integration on 30% of leads.',
+    brokenPrompt: 'Analyze this lead and give me a JSON score. Include the lead quality (high, medium, low), a score from 1-100, the primary reason for the score, and any red flags. Format it as JSON that I can use in my automation.',
+    flaws: [
+      { id: 'f1', type: 'format_issue', description: 'No explicit field names specified — model uses different naming conventions (camelCase vs snake_case) on different runs', location: 'Entire prompt' },
+      { id: 'f2', type: 'format_issue', description: 'No schema with exact data types — "score from 1-100" is unclear: is it a string "85" or number 85?', location: '"a score from 1-100"' },
+      { id: 'f3', type: 'ambiguity', description: '"Any red flags" produces variable arrays — sometimes empty array, sometimes omitted entirely, sometimes null', location: '"any red flags"' },
+      { id: 'f4', type: 'missing_context', description: 'No instruction to output ONLY JSON — model sometimes adds explanatory text before or after the JSON block', location: 'Entire prompt' }
+    ],
+    referencePrompt: 'Analyze this lead and output ONLY the following JSON object. No text before or after. No markdown code blocks. Only the raw JSON.\n\n{\n  "lead_quality": "high" | "medium" | "low",\n  "score": number between 1 and 100 (integer),\n  "primary_reason": string (one sentence, max 20 words),\n  "red_flags": array of strings (empty array [] if none — never null, never omit)\n}\n\nScoring criteria: Score 80-100 for high-budget explicit need with decision authority. Score 50-79 for moderate fit with unclear authority or timeline. Score 1-49 for low budget, poor fit, or missing contact information. Never deviate from this exact JSON structure.',
+    successCriteria: [
+      { id: 'sc1', label: 'All Format Flaws Identified', description: 'Found all four sources of JSON inconsistency', maxPoints: 40 },
+      { id: 'sc2', label: 'Explicit Schema With Field Names', description: 'Fixed prompt specifies exact field names and data types', maxPoints: 30 },
+      { id: 'sc3', label: 'JSON-Only Output Required', description: 'Fixed prompt prevents surrounding text from breaking JSON parsing', maxPoints: 30 }
+    ],
+    explanation: 'AI prompts embedded in automation workflows require stricter output control than conversational prompts because the output goes directly into a system that cannot tolerate variation. A schema that specifies field names, data types, and null handling eliminates the most common integration failures. The instruction to output only raw JSON — no markdown blocks, no surrounding text — is essential because many models default to wrapping JSON in a code block when not instructed otherwise.',
+    skills: ['json_schema_design', 'format_enforcement', 'automation_prompt_design', 'null_handling']
+  },
+  {
+    id: 'wa_004',
+    type: 'live_challenge',
+    domain: 'workflow_automation',
+    difficulty: 'advanced',
+    title: 'Lead Qualification Automation',
+    timeLimit: 600,
+    points: 160,
+    scenario: 'You are the Revenue Operations manager at a B2B SaaS company. The sales team receives 150 inbound leads per week through a website form. Currently a sales rep manually reviews each lead and decides whether to schedule a demo, send nurture content, or disqualify. This takes 5 hours per week. Your goal is to automate the qualification decision for at least 80% of leads, saving 4 hours weekly.',
+    requirements: [
+      'Define the ICP (Ideal Customer Profile) criteria used for qualification — at least 5 specific signals',
+      'Define three outcome tiers: Demo Ready, Nurture, and Disqualify — with specific criteria for each',
+      'Write the AI prompt that produces a structured qualification decision',
+      'Define the edge case: what happens when the lead form has incomplete information',
+      'Define the human review threshold — which 20% of leads always go to human review regardless of AI decision'
+    ],
+    constraints: [
+      'The qualification decision must be explainable to the lead — they may ask why they received a particular response',
+      'False negative rate (incorrectly disqualifying good leads) must be minimized — when in doubt, escalate to human',
+      'The automation must work across all company sizes and industries the company serves'
+    ],
+    exampleOutput: 'ICP CRITERIA: Company size 50-2000 employees, B2B business model, has a dedicated operations or finance team, annual revenue over $5M, and express interest in automation or efficiency. Demo Ready: Meets 4+ ICP criteria AND provided phone number AND expressed urgency or specific use case. Nurture: Meets 2-3 ICP criteria OR missing contact info. Disqualify: Company size under 10 employees, consumer business, or form filled with obviously fake information. HUMAN REVIEW THRESHOLD: Any lead from a named account on the target account list, any lead with annual revenue over $50M (enterprise), any lead with a personal note asking for specific help. EDGE CASE (incomplete form): If company name is missing, set to Nurture and flag for manual outreach to gather information — never disqualify on incomplete data.',
+    successCriteria: [
+      { id: 'sc1', label: 'ICP Criteria Defined', description: 'At least 5 specific qualification signals defined', maxPoints: 25 },
+      { id: 'sc2', label: 'Three Tiers With Criteria', description: 'Demo Ready, Nurture, and Disqualify defined with specific conditions', maxPoints: 25 },
+      { id: 'sc3', label: 'Incomplete Data Handling', description: 'Defines non-disqualifying behavior for incomplete leads', maxPoints: 25 },
+      { id: 'sc4', label: 'Human Review Threshold', description: 'Specifies which leads always bypass AI decision', maxPoints: 25 }
+    ],
+    explanation: 'Lead qualification automation fails when it over-disqualifies. The cost of missing a good lead is higher than the cost of sending a human to review an uncertain one. The design principle is conservative automation: automate the obvious cases in both directions (clearly good, clearly bad) and escalate everything else to humans. The human review threshold for high-value leads ensures that your biggest potential deals never get lost in automation.',
+    skills: ['qualification_logic', 'trigger_action_mapping', 'error_handling', 'pipeline_orchestration']
+  },
+  {
+    id: 'wa_005',
+    type: 'scenario_simulation',
+    domain: 'workflow_automation',
+    difficulty: 'expert',
+    title: 'Client Onboarding Automation System',
+    timeLimit: 0,
+    points: 200,
+    scenario: 'You are the Head of Client Success at a professional services firm. Onboarding a new client currently takes 3 weeks and requires 12 hours of your team\'s time per client. You onboard 8 clients per month. Leadership wants to scale to 20 clients per month without adding headcount, using AI automation to handle the repeatable parts of the process.',
+    role: 'Head of Client Success',
+    objective: 'Design the complete AI-automated client onboarding system that reduces team time from 12 hours to 4 hours per client while maintaining quality. Specify every automated step, every human touchpoint, every document generated, and every quality check.',
+    requiredElements: [
+      'Initial data collection stage — what information is gathered automatically vs manually',
+      'Account configuration stage — what gets auto-populated vs requires human judgment',
+      'Onboarding document generation — which documents AI drafts and what humans review',
+      'Kickoff meeting preparation — what AI prepares vs what account managers customize',
+      'First 30-day check-in automation — what gets monitored and what triggers human intervention',
+      'Escalation protocols — what conditions always escalate to senior account management',
+      'Time budget — how 4 hours distributes across 20 clients per month'
+    ],
+    scoringRubric: [
+      { id: 'r1', label: 'System Completeness', description: 'All 7 required elements present and fully described', maxPoints: 30 },
+      { id: 'r2', label: 'Human/AI Boundary Precision', description: 'Every step clearly defines what AI does vs what humans do', maxPoints: 25 },
+      { id: 'r3', label: 'Quality Safeguards', description: 'System includes checks preventing automated errors from reaching clients', maxPoints: 25 },
+      { id: 'r4', label: 'Time Budget Credibility', description: '4 hours per client distributed credibly across 7 elements', maxPoints: 20 }
+    ],
+    explanation: 'Client-facing automation requires a higher quality bar than internal automation because errors damage the client relationship directly. The design principle is that AI handles volume and consistency (sending documents, populating data, monitoring metrics) while humans handle judgment and relationship (customizing messaging, interpreting unusual situations, escalating proactively). The escalation protocol is not an afterthought — it is the system\'s safety net and must be defined as carefully as the automated steps.',
+    skills: ['pipeline_orchestration', 'human_ai_handoff', 'client_operations', 'workflow_design']
+  },
+
+  // ─── AI Tool Ecosystem ───────────────────────────────────────────────────────
+  {
+    id: 'te_001',
+    type: 'live_challenge',
+    domain: 'tool_ecosystem',
+    difficulty: 'foundational',
+    title: 'Build Your Tool Selection Matrix',
+    timeLimit: 540,
+    points: 110,
+    scenario: 'You are starting an internship at a strategy consulting firm next month. You will use AI tools daily for research, analysis, writing, and data work. Your manager has asked you to come prepared with a clear personal AI tool policy — which tools you use for which tasks and why. She wants to see that you have thought about this deliberately, not just defaulted to one tool for everything.',
+    requirements: [
+      'Cover at least 6 distinct professional task types relevant to consulting work',
+      'For each task, specify the primary tool and explain why it is the best choice for that task specifically',
+      'For each task, specify which tool you would NOT use and why',
+      'Include a data sensitivity row — defining which tasks should never use cloud AI tools',
+      'Include a cost consideration — which tasks warrant expensive frontier models versus cheaper alternatives'
+    ],
+    constraints: [
+      'Your matrix must be immediately usable as a reference document — not a general discussion',
+      'Every tool recommendation must be justified by a specific capability advantage, not brand preference',
+      'The matrix must reflect tools available as of 2025'
+    ],
+    exampleOutput: 'TASK: Deep research synthesis from multiple sources → PRIMARY: Perplexity Pro (real-time web access with citations, source verification built in) → NOT: ChatGPT without browsing (training cutoff makes recent data unreliable) → SENSITIVITY: Medium — avoid inputting confidential client data → COST TIER: Mid (Perplexity Pro $20/month justifiable for research-heavy roles). TASK: Long document analysis (50+ pages) → PRIMARY: Claude (largest context window, best at maintaining coherence across long documents) → NOT: GPT-4o mini (context limitations degrade quality on long documents) → SENSITIVITY: High — never input client documents to consumer AI tools, use enterprise API only → COST TIER: Premium justified by quality difference on long documents.',
+    successCriteria: [
+      { id: 'sc1', label: 'Six Task Types Covered', description: 'Matrix covers at least 6 distinct professional tasks', maxPoints: 20 },
+      { id: 'sc2', label: 'Capability-Based Justification', description: 'Every recommendation justified by specific capability, not brand preference', maxPoints: 30 },
+      { id: 'sc3', label: 'Sensitivity Row Present', description: 'Data sensitivity considerations defined for every task', maxPoints: 25 },
+      { id: 'sc4', label: 'Cost Tier Reasoning', description: 'Cost considerations specified with actual justification', maxPoints: 25 }
+    ],
+    explanation: 'Defaulting to one AI tool for every task is one of the most common and most costly mistakes operators make. Different models have genuinely different strengths: context window size, real-time information access, reasoning quality, code generation, multimodal capability, and cost per token vary significantly across tools. A professional who has mapped their tasks to the right tools consistently produces better outputs in less time than one who uses ChatGPT for everything. Building this matrix once and updating it quarterly is one of the highest-return AI investments a knowledge worker can make.',
+    skills: ['use_case_matching', 'capability_mapping', 'model_selection']
+  },
+  {
+    id: 'te_002',
+    type: 'prompt_construction',
+    domain: 'tool_ecosystem',
+    difficulty: 'advanced',
+    title: 'Build a Model Evaluation Framework',
+    timeLimit: 600,
+    points: 150,
+    context: 'Your company is evaluating whether to switch from GPT-4o to Claude Sonnet for its primary customer support AI. The decision will affect 50,000 customer interactions per month. Your engineering team wants a rigorous evaluation framework that compares the two models on the same tasks before committing to a switch.',
+    targetOutput: 'A complete evaluation framework including: the test task set (at least 5 task types), the evaluation prompt used to score outputs, the scoring rubric, the sample size required for statistical validity, and the decision criteria (what score difference constitutes a meaningful improvement).',
+    brokenPrompt: 'Compare GPT-4o and Claude Sonnet on our customer support tasks and tell me which is better.',
+    referencePrompt: 'Design a systematic model evaluation framework for comparing GPT-4o and Claude Sonnet on customer support tasks. Complete the following:\n\nTASK SET DEFINITION (5 task types minimum):\nFor each task type, define: task description, input format, expected output format, volume in test set (minimum 20 examples per task type).\n\nEVALUATION PROMPT:\nDesign a prompt you will use to score each output against a rubric. The prompt must instruct an evaluator model to score on: task completion, accuracy, tone appropriateness, conciseness (word count vs value delivered), and policy compliance. Each dimension scored 1-5 with specific anchors defined.\n\nSCORING RUBRIC:\nDefine exactly what 1, 3, and 5 means for each dimension. No subjective language — each anchor must be checkable by anyone.\n\nSTATISTICAL REQUIREMENTS:\nMinimum sample size per task type to achieve 80% statistical power for detecting a 0.5-point difference in mean score.\n\nDECISION CRITERIA:\nWhat weighted score differential constitutes a meaningful improvement that justifies switching? Define separately for each task type (not all task types are equally important).',
+    successCriteria: [
+      { id: 'sc1', label: 'Task Set Defined', description: 'At least 5 task types with input/output format and volume specified', maxPoints: 25 },
+      { id: 'sc2', label: 'Evaluation Rubric Created', description: 'Scoring rubric with anchored scales for each dimension', maxPoints: 30 },
+      { id: 'sc3', label: 'Statistical Rigor Addressed', description: 'Sample size and statistical validity requirements defined', maxPoints: 25 },
+      { id: 'sc4', label: 'Decision Criteria Specified', description: 'Defines what score difference justifies switching', maxPoints: 20 }
+    ],
+    explanation: 'Switching AI models based on casual testing is a common and costly mistake. A rigorous evaluation framework defines what you are measuring before you measure it, uses anchored scales that prevent evaluator drift, and specifies the sample size needed to distinguish real differences from noise. The decision criteria — defining what constitutes a meaningful improvement — must be set before seeing results to prevent cherry-picking the conclusion that was already assumed.',
+    skills: ['model_selection', 'evaluation_framework', 'tool_evaluation', 'capability_mapping']
+  },
+  {
+    id: 'te_003',
+    type: 'scenario_simulation',
+    domain: 'tool_ecosystem',
+    difficulty: 'expert',
+    title: 'Design the AI Stack for a Consulting Team',
+    timeLimit: 0,
+    points: 180,
+    scenario: 'You are the Managing Partner of a 10-person strategy consulting firm. The firm does M&A advisory, market entry strategy, and operational improvement engagements for mid-market companies. Budget for AI tooling is $2,000/month. You have two junior analysts, four senior consultants, and four partners with different technical comfort levels.',
+    role: 'Managing Partner',
+    objective: 'Design the complete AI tool stack for the firm — what tools to use, for which functions, at which seniority level, and how to govern usage. The stack must be implementable within the $2,000/month budget and must include data governance policies for handling client confidential information.',
+    requiredElements: [
+      'Tool selection for each major work function (research, analysis, writing, data, client communication)',
+      'Role-based access and usage policy — which tools for which staff levels',
+      'Data classification and tool assignment — which data types go in which tools',
+      'Cost breakdown that fits within $2,000/month',
+      'Training and adoption plan — how do you bring the team to competency',
+      'Governance policy — what is prohibited and what consequences apply',
+      'Review cadence — when and how the stack gets evaluated and updated'
+    ],
+    scoringRubric: [
+      { id: 'r1', label: 'Stack Completeness', description: 'All major work functions covered with specific tool assignments', maxPoints: 25 },
+      { id: 'r2', label: 'Data Governance Rigor', description: 'Client confidentiality protections are specific and enforceable', maxPoints: 30 },
+      { id: 'r3', label: 'Budget Credibility', description: 'Cost breakdown adds up to ≤$2,000/month with justifications', maxPoints: 25 },
+      { id: 'r4', label: 'Implementation Realism', description: 'Training plan and governance are achievable for a 10-person team', maxPoints: 20 }
+    ],
+    explanation: 'Building an AI stack for a professional services firm requires balancing capability, cost, and compliance. The governance policy is not a nice-to-have — it is the mechanism that prevents a junior analyst from accidentally pasting client board materials into a consumer AI tool. The most sophisticated tool selection is worthless if usage policies are not enforced. Budget discipline forces real prioritization: when you must choose between tools, you learn which capabilities actually matter to the work.',
+    skills: ['tool_evaluation', 'cost_optimization', 'capability_mapping', 'governance_design']
+  },
+
+  // ─── Multi-Agent Systems ─────────────────────────────────────────────────────
+  {
+    id: 'ma_001',
+    type: 'prompt_construction',
+    domain: 'multi_agent_systems',
+    difficulty: 'advanced',
+    title: 'Design a Three-Agent Research System',
+    timeLimit: 720,
+    points: 180,
+    context: 'You are an analyst at an investment firm. Your team needs to produce verified research briefs on companies they are evaluating. Currently one analyst spends 6 hours per company manually searching, synthesizing, and fact-checking. Your CTO wants a three-agent system where: Agent 1 searches and gathers raw information, Agent 2 synthesizes it into a structured brief, Agent 3 fact-checks the brief before it reaches analysts. The system should reduce analyst time to 30 minutes of review per company.',
+    targetOutput: 'A complete three-agent system specification showing: the system prompt for each agent, the exact format of the handoff between each agent, the quality criteria Agent 3 uses for fact-checking, and the human review checklist for the analyst\'s 30-minute review.',
+    brokenPrompt: 'Build an AI research system that searches for information about a company, summarizes it, and checks the facts.',
+    referencePrompt: 'Design a three-agent research pipeline for investment analysis. AGENT 1 — RESEARCHER: Your role is information gathering only. Given a company name, search for and compile: (1) Business description and revenue model, (2) Key financial metrics from the most recent public filings (flag each as VERIFIED SOURCE or ESTIMATED), (3) Major investors and funding history, (4) Key executives and their backgrounds, (5) Recent news from the past 90 days, (6) Primary competitors. Output as structured JSON with a sources_consulted array. Do not synthesize or interpret — gather and structure only. Flag any field where you cannot find reliable information as NULL with a note. AGENT 2 — SYNTHESIZER: You receive structured research JSON from Agent 1. Produce a 600-word investment brief with sections: Business Overview, Financial Position, Strategic Position, Key Risks, Recent Developments. For every specific number you include from the research, add (confidence: [HIGH/MEDIUM/LOW]) immediately after it. Do not add information beyond what is in the research JSON. If a section has insufficient data, note the gap explicitly. AGENT 3 — FACT CHECKER: You receive the investment brief from Agent 2 and the original research JSON from Agent 1. Your job: (1) Verify every specific number in the brief appears in the original research JSON, (2) Flag any claim in the brief not traceable to the research JSON, (3) Verify all HIGH confidence labels are actually supported by VERIFIED SOURCE items, (4) Output a fact-check report listing: VERIFIED CLAIMS, UNVERIFIED CLAIMS, FLAGGED DISCREPANCIES. Brief passes if zero unverified claims and zero discrepancies. Brief fails if any unverified claim or discrepancy exists — return to Agent 2 with specific correction instructions.',
+    successCriteria: [
+      { id: 'sc1', label: 'Three Distinct Agent Roles', description: 'Each agent has a clearly defined, non-overlapping responsibility', maxPoints: 25 },
+      { id: 'sc2', label: 'Handoff Format Specified', description: 'The exact format passing between each agent is defined', maxPoints: 25 },
+      { id: 'sc3', label: 'Fact-Check Mechanism Defined', description: 'Agent 3 has specific, verifiable criteria — not just review for quality', maxPoints: 25 },
+      { id: 'sc4', label: 'Human Review Defined', description: 'The analyst review step is specified with clear pass/fail criteria', maxPoints: 25 }
+    ],
+    explanation: 'Multi-agent systems work because they separate concerns — each agent does one thing well instead of one agent doing many things poorly. The critical design principle is that handoffs between agents must be structured data, not conversational text. When Agent 1 passes a JSON object to Agent 2, Agent 2 cannot misinterpret the data. When Agent 2 passes a brief to Agent 3 alongside the original JSON, Agent 3 can perform systematic verification rather than impressionistic review. The fact-checker that checks specific claims against a structured source is dramatically more reliable than a single agent asked to research, synthesize, and verify simultaneously.',
+    skills: ['multi_agent_roles', 'agent_communication_protocol', 'human_in_loop']
+  },
+  {
+    id: 'ma_002',
+    type: 'prompt_debug',
+    domain: 'multi_agent_systems',
+    difficulty: 'advanced',
+    title: 'The Conflicting Agent Outputs',
+    timeLimit: 480,
+    points: 160,
+    taskContext: 'A legal tech startup built a two-agent contract review system. Agent 1 extracts risk clauses and flags severity. Agent 2 produces a summary and recommendations based on Agent 1\'s output. Client reviews show Agent 1 and Agent 2 are producing conflicting assessments — Agent 1 flags a clause as HIGH risk but Agent 2 summarizes it as a minor issue. The conflict is making clients distrust both agents.',
+    brokenPrompt: 'AGENT 1 PROMPT: Review this contract and identify risk clauses. Rate each risk as high, medium, or low based on your assessment. AGENT 2 PROMPT: You receive a risk assessment from our AI reviewer. Summarize the key issues and provide recommendations. Focus on the most actionable items and what the client should negotiate.',
+    flaws: [
+      { id: 'f1', type: 'ambiguity', description: 'Agent 1 risk definitions are subjective — "your assessment" means different criteria are applied on different runs, causing inconsistent severity ratings', location: 'AGENT 1: "based on your assessment"' },
+      { id: 'f2', type: 'conflict', description: 'Agent 2 is told to "focus on most actionable items" which allows it to downgrade HIGH risks it deems less actionable, directly contradicting Agent 1\'s severity ratings', location: 'AGENT 2: "Focus on the most actionable items"' },
+      { id: 'f3', type: 'format_issue', description: 'No structured handoff format — Agent 2 receives Agent 1\'s prose output and may misread or reinterpret severity designations', location: 'Entire system — no data structure defined' },
+      { id: 'f4', type: 'missing_context', description: 'No instruction to Agent 2 to preserve Agent 1\'s severity ratings — Agent 2 treats them as suggestions rather than constraints', location: 'AGENT 2 prompt — no severity preservation rule' }
+    ],
+    referencePrompt: 'AGENT 1 PROMPT: Review this contract and identify risk clauses. Output structured JSON ONLY:\n{\n  "risks": [\n    {\n      "clause_reference": string (section and page),\n      "clause_text": string (exact quote under 50 words),\n      "risk_category": "indemnification" | "liability_cap" | "ip_ownership" | "termination" | "payment" | "confidentiality" | "other",\n      "severity": "HIGH" | "MEDIUM" | "LOW",\n      "severity_reason": string (cite specific legal exposure — max 25 words)\n    }\n  ]\n}\n\nSeverity definitions (non-negotiable): HIGH = uncapped liability, broad indemnification, IP assignment to counterparty, or termination without cause. MEDIUM = liability cap below contract value, narrow IP restrictions, or conditional termination. LOW = standard notice requirements, payment terms within market norms.\n\nAGENT 2 PROMPT: You receive a structured risk JSON from Agent 1. Your role: produce a client-ready summary that preserves all severity ratings exactly as assigned. Rules: (1) Do not downgrade any risk Agent 1 rated HIGH — if you disagree, note disagreement separately but preserve the HIGH rating in your summary, (2) List all HIGH risks first, MEDIUM second, LOW third, (3) For each risk, provide one actionable negotiation recommendation. Output format: RISK SUMMARY section followed by NEGOTIATION PRIORITIES section. Never omit a risk from Agent 1\'s output.',
+    successCriteria: [
+      { id: 'sc1', label: 'All Conflict Sources Identified', description: 'Found the subjective criteria, downgrade permission, format gap, and preservation failure', maxPoints: 40 },
+      { id: 'sc2', label: 'Structured Handoff Format Added', description: 'Fixed system uses JSON handoff preventing misinterpretation', maxPoints: 30 },
+      { id: 'sc3', label: 'Severity Preservation Rule Added', description: 'Agent 2 is prohibited from overriding Agent 1\'s severity ratings', maxPoints: 30 }
+    ],
+    explanation: 'Agent conflicts arise when the second agent has discretion to override the first agent\'s outputs. The fix is treating the first agent\'s structured output as a constraint, not a suggestion. Agent 2 can add context and recommendations but cannot downgrade assessments from Agent 1 without explicit flagging. The JSON handoff format is essential — when data passes between agents as structured objects, there is no ambiguity about what was said. Prose handoffs always introduce reinterpretation.',
+    skills: ['multi_agent_roles', 'agent_communication_protocol', 'failure_mode_recognition', 'safety_architecture']
+  },
+  {
+    id: 'ma_003',
+    type: 'output_analysis',
+    domain: 'multi_agent_systems',
+    difficulty: 'expert',
+    title: 'Catch the Cascading Error',
+    timeLimit: 540,
+    points: 180,
+    originalPrompt: 'Three-agent pipeline output for strategic analysis:\nAgent 1 (Researcher) output: "TechCorp annual revenue: $847M (FY2023). YoY growth: 34%. Primary market: healthcare SaaS. Customer count: 2,400 enterprise clients."\nAgent 2 (Analyst) output: "TechCorp\'s 34% revenue growth on an $847M base implies they added approximately $220M in new revenue in FY2023. At 2,400 enterprise clients, average revenue per customer is $352,917. This strong unit economics profile positions them well for Series D funding."\nAgent 3 (Report Writer) output: "TechCorp demonstrates exceptional growth efficiency. With $352K average contract value and 34% growth, the company added approximately 220 new enterprise logos in FY2023. This expansion rate is among the highest in healthcare SaaS."',
+    aiOutput: 'This three-agent pipeline output appears to flow logically from research through analysis to conclusions.',
+    hiddenFlaws: [
+      { id: 'hf1', type: 'logical_error', description: 'Agent 2 calculates new revenue ($220M) and new customers (from Agent 3) as separate facts, but Agent 3 then converts the revenue figure to a customer count — $220M ÷ $352K ≈ 624 new logos, not 220. The pipeline has converted a dollar figure into a customer figure using the wrong denominator.', evidence: '"added approximately $220M in new revenue in FY2023" → "added approximately 220 new enterprise logos"' },
+      { id: 'hf2', type: 'hallucination', description: 'Agent 1 provides revenue and growth rate but no data on new customers added. Agent 3 fabricates a specific new logo count (220) by incorrectly treating new revenue as if it equals new customer count — 220M as a count, not a dollar figure.', evidence: '"added approximately 220 new enterprise logos" — no source for this figure in Agent 1 output' },
+      { id: 'hf3', type: 'missed_instruction', description: 'The pipeline has no fact-checking agent to verify that Agent 3\'s conclusions trace back to Agent 1\'s sourced data. Agent 3 introduces a compounded error without any validation layer catching it.', evidence: 'No agent in the described pipeline validates Agent 3 outputs against Agent 1 sourced data' }
+    ],
+    correctionTask: 'Write the system prompt for a validation agent (Agent 4) that would catch this cascading error. The agent must verify every quantitative claim in Agent 3\'s output traces back to a specific number in Agent 1\'s output without unit conversion errors.',
+    successCriteria: [
+      { id: 'sc1', label: 'Cascading Error Identified', description: 'Student identifies the dollar-to-count unit conversion error spanning Agents 2 and 3', maxPoints: 40 },
+      { id: 'sc2', label: 'Hallucination Source Traced', description: 'Student traces the fabricated "220 logos" back to the incorrect conversion', maxPoints: 30 },
+      { id: 'sc3', label: 'Validation Agent Designed', description: 'Agent 4 prompt systematically checks quantitative claims against source data', maxPoints: 30 }
+    ],
+    explanation: 'Cascading errors in multi-agent systems are harder to catch than single-agent errors because each agent\'s output looks locally reasonable. Agent 2\'s math is correct. Agent 3\'s logic is plausible. The error only becomes visible when you trace the full chain: Agent 3 treated "$220M in new revenue" as if it were "220 new customers" by dropping the M. This is the most dangerous class of error in automated pipelines — internally consistent, looks credible, but wrong. The fix is a dedicated validation agent that checks every output-stage number against a specific source-stage number with explicit unit verification.',
+    skills: ['cascade_error_detection', 'multi_agent_validation', 'logical_audit', 'safety_architecture']
+  },
+  {
+    id: 'ma_004',
+    type: 'scenario_simulation',
+    domain: 'multi_agent_systems',
+    difficulty: 'expert',
+    title: 'Design an Agentic Safety Architecture',
+    timeLimit: 0,
+    points: 200,
+    scenario: 'You are the AI Safety Lead at a financial services firm. The engineering team wants to deploy a three-agent system that autonomously monitors client portfolios, identifies rebalancing opportunities, and drafts trade recommendations for advisor review. The system will run overnight on 3,000 client accounts. Your job is to design the safety architecture that prevents the system from causing financial harm through errors, hallucinations, or unexpected behavior.',
+    role: 'AI Safety Lead',
+    objective: 'Design the complete safety architecture for this agentic system. The system can recommend trades but cannot execute them. Your architecture must prevent cascading errors, ensure human review of all recommendations, and include failure modes and circuit breakers.',
+    requiredElements: [
+      'Confidence threshold system — when agents must flag rather than proceed',
+      'Data validation layer — how each agent verifies its inputs before acting',
+      'Inter-agent conflict resolution — what happens when agents disagree',
+      'Human-in-the-loop requirements — what must be reviewed and cannot be automated',
+      'Circuit breaker logic — what conditions halt the entire system',
+      'Audit trail specification — what gets logged for regulatory compliance',
+      'Failure mode taxonomy — the five most likely failure modes and their mitigations'
+    ],
+    scoringRubric: [
+      { id: 'r1', label: 'Safety Architecture Completeness', description: 'All 7 required elements present and fully specified', maxPoints: 30 },
+      { id: 'r2', label: 'Circuit Breaker Specificity', description: 'Circuit breaker conditions are specific and measurable — not vague thresholds', maxPoints: 25 },
+      { id: 'r3', label: 'Human Review Protocol', description: 'Defines exactly what humans review and the minimum review standard', maxPoints: 25 },
+      { id: 'r4', label: 'Failure Mode Realism', description: 'Five failure modes are plausible and mitigations are actionable', maxPoints: 20 }
+    ],
+    explanation: 'Agentic systems in financial services require safety architectures that treat the system\'s own outputs as potentially wrong by default. Confidence thresholds prevent the system from acting on uncertain data. Data validation catches corrupted inputs before they cascade. Circuit breakers halt the system when behavior exceeds normal parameters. The human review protocol is not a formality — it is the last line of defense and must be designed so reviewers can actually catch errors in the time allocated. Audit trails are non-negotiable in regulated industries: you must be able to explain every recommendation the system made.',
+    skills: ['safety_architecture', 'failure_mode_recognition', 'human_in_loop', 'multi_agent_roles']
+  },
+
+  // ─── Professional Ethics & Risk ──────────────────────────────────────────────
+  {
+    id: 'pe_ethics_001',
+    type: 'output_analysis',
+    domain: 'professional_ethics',
+    difficulty: 'foundational',
+    title: 'The Confidentiality Breach',
+    timeLimit: 420,
+    points: 130,
+    originalPrompt: 'Analyze the strategic weaknesses of our client Meridian Healthcare based on the following internal board presentation and advise on how competitors could exploit them. [ATTACHED: Meridian_Board_Q3_2024_Confidential.pdf]',
+    aiOutput: 'Based on the attached Meridian Healthcare board presentation, here are the key strategic vulnerabilities: 1. FINANCIAL EXPOSURE: Meridian\'s Q3 cash position of $47M is critically low given their $180M debt maturity in 14 months. Their CFO\'s note indicates they are in preliminary discussions with two lenders but no terms have been agreed. 2. REGULATORY RISK: The board presentation reveals an undisclosed FDA warning letter received in September regarding their manufacturing facility in Ohio. Legal counsel estimates a 40% probability of facility shutdown within 6 months. 3. TALENT CRISIS: Three of their top five oncology researchers have accepted competing offers, effective Q1. The board has not yet disclosed this to investors. 4. COMPETITIVE BLIND SPOT: Meridian\'s strategic plan does not account for the GenMed platform launching in March, which directly targets their core oncology segment. Competitors could exploit these through: aggressive talent recruitment, accelerating their own FDA compliance timeline, approaching Meridian\'s at-risk lenders, and targeting Meridian\'s top customers during their distraction period.',
+    hiddenFlaws: [
+      { id: 'hf1', type: 'missed_instruction', description: 'The prompt itself is the problem — it instructs the AI to analyze confidential client information and advise on how to exploit client weaknesses, which is a serious professional ethics violation', evidence: 'advise on how competitors could exploit them' },
+      { id: 'hf2', type: 'hallucination', description: 'The AI output includes specific confidential details (cash position, debt maturity, FDA warning, researcher departures) that if real would constitute a serious data breach through a consumer AI system', evidence: 'cash position of $47M is critically low given their $180M debt maturity' },
+      { id: 'hf3', type: 'logical_error', description: 'Using a consumer AI tool to process a confidential client board presentation violates client confidentiality obligations and likely the firm\'s own AI usage policy', evidence: 'Meridian_Board_Q3_2024_Confidential.pdf' }
+    ],
+    correctionTask: 'Identify the specific professional ethics violations in this prompt and output. Then write a corrected workflow that achieves the legitimate analytical goal — understanding competitive dynamics in the healthcare space — without creating confidentiality exposure.',
+    successCriteria: [
+      { id: 'sc1', label: 'Confidentiality Violation Identified', description: 'Student identifies that inputting confidential client data into consumer AI is the core problem', maxPoints: 35 },
+      { id: 'sc2', label: 'Data Breach Risk Articulated', description: 'Student explains why the AI output itself represents a data exposure risk', maxPoints: 30 },
+      { id: 'sc3', label: 'Legitimate Alternative Designed', description: 'Correction prompt achieves the analytical goal using public information only', maxPoints: 35 }
+    ],
+    explanation: 'This scenario represents the most common professional ethics failure in AI use: treating a powerful tool as a trustworthy confidential environment. Consumer AI systems retain conversation data. Client confidentiality obligations do not have an AI exception. The professional who pastes a client\'s confidential board presentation into ChatGPT has potentially violated their engagement agreement, their firm\'s policies, and possibly securities regulations — regardless of whether the AI output was useful. The correct workflow uses AI to analyze publicly available competitive intelligence, not confidential client materials.',
+    skills: ['confidentiality_assessment', 'hallucination_liability', 'regulatory_mapping']
+  },
+  {
+    id: 'pe_ethics_002',
+    type: 'live_challenge',
+    domain: 'professional_ethics',
+    difficulty: 'advanced',
+    title: 'Design an AI Usage Policy',
+    timeLimit: 600,
+    points: 160,
+    scenario: 'You are the Chief Operating Officer of a 40-person professional services firm serving financial, legal, and healthcare clients. The firm has no AI usage policy. Three incidents last quarter: (1) A consultant pasted a client\'s acquisition target list into ChatGPT for analysis. (2) A paralegal used Grammarly to polish a confidential legal filing. (3) A junior analyst submitted an AI-generated market analysis to a client without disclosure. You need to draft the firm\'s AI usage policy.',
+    requirements: [
+      'Data classification system — at least 3 tiers with examples from the firm\'s work',
+      'Approved and prohibited tools mapped to each data tier',
+      'Disclosure requirements — when AI use must be disclosed to clients',
+      'Work product ownership and attribution standards',
+      'Incident reporting protocol for policy violations',
+      'Specific prohibitions that address all three incidents above'
+    ],
+    constraints: [
+      'Policy must be implementable without dedicated technical infrastructure',
+      'Must be understandable by non-technical staff',
+      'Must address the specific regulated industries the firm serves (financial, legal, healthcare)'
+    ],
+    exampleOutput: 'DATA CLASSIFICATION TIER 1 — CONFIDENTIAL CLIENT DATA: Any client-specific information not publicly available (financial projections, legal strategy, patient data, acquisition targets). Prohibited tools: All consumer AI tools (ChatGPT, Claude.ai, Gemini, Perplexity, Grammarly consumer). Permitted tools: Enterprise tools with BAA/DPA signed, or offline tools only. TIER 2 — INTERNAL FIRM DATA: Employee information, pricing, internal strategies. Prohibited: Consumer AI tools. Permitted: Enterprise AI tools with data retention policies reviewed. TIER 3 — PUBLIC AND GENERIC: Publicly available information, general templates, hypothetical scenarios. Permitted: All approved tools. DISCLOSURE REQUIREMENT: Any client-facing deliverable with AI-generated content exceeding 20% of the work product must include the disclosure: "This analysis incorporates AI-assisted research and drafting. All factual claims have been independently verified." PROHIBITION 1: No client confidential data may be input into any consumer AI tool under any circumstances — this applies to work devices, personal devices, and third-party writing tools.',
+    successCriteria: [
+      { id: 'sc1', label: 'Data Classification System', description: 'At least 3 tiers with clear definitions and examples from the firm\'s work', maxPoints: 25 },
+      { id: 'sc2', label: 'Tool Mapping Complete', description: 'Every data tier has explicit permitted and prohibited tools', maxPoints: 25 },
+      { id: 'sc3', label: 'Three Incidents Addressed', description: 'Policy explicitly prevents all three incidents described', maxPoints: 30 },
+      { id: 'sc4', label: 'Disclosure Standards Defined', description: 'When and how AI use must be disclosed to clients', maxPoints: 20 }
+    ],
+    explanation: 'Professional services firms face unique AI governance challenges because client confidentiality obligations are stricter than general data privacy. A policy that says "use AI responsibly" is not a policy — it is a statement of aspiration that will not prevent the next incident. Effective AI policies specify exactly which tools are permitted for which data types and use concrete examples from the firm\'s actual work. The disclosure requirement is particularly important: professionals must know when transparency is legally or ethically required.',
+    skills: ['governance_design', 'confidentiality_assessment', 'regulatory_mapping', 'attribution_standards']
+  },
+  {
+    id: 'pe_ethics_003',
+    type: 'scenario_simulation',
+    domain: 'professional_ethics',
+    difficulty: 'expert',
+    title: 'The AI Compliance Audit',
+    timeLimit: 0,
+    points: 200,
+    scenario: 'You are an independent AI governance consultant hired by a 200-person regional bank. The bank uses AI across six functions: customer service chatbots, loan underwriting assistance, fraud detection, marketing personalization, HR hiring screening, and internal document search. The bank\'s Board has asked for a comprehensive compliance audit before their regulatory examination next quarter.',
+    role: 'AI Governance Consultant',
+    objective: 'Conduct a complete compliance audit framework for the bank\'s AI usage across all six functions. Identify the highest-risk compliance gaps, define the audit methodology, and produce a prioritized remediation roadmap the bank can act on before their exam.',
+    requiredElements: [
+      'Regulatory mapping — which regulations apply to each of the six AI functions',
+      'Risk ranking — rank all six functions by compliance exposure from highest to lowest',
+      'Audit methodology — what evidence to collect and how to evaluate it for each function',
+      'Model documentation requirements — what records must exist for each AI system',
+      'Bias testing requirements — which functions require bias audits and how to conduct them',
+      'Incident response plan — what the bank must do if an AI system causes harm to a customer',
+      'Remediation roadmap — prioritized actions from most critical to least critical with timelines'
+    ],
+    scoringRubric: [
+      { id: 'r1', label: 'Regulatory Accuracy', description: 'Correct regulations cited for each function (ECOA, FCRA, CRA, UDAP, etc.)', maxPoints: 30 },
+      { id: 'r2', label: 'Risk Ranking Justification', description: 'Risk ranking is justified by specific regulatory exposure, not just intuition', maxPoints: 25 },
+      { id: 'r3', label: 'Audit Methodology Specificity', description: 'Evidence collection and evaluation methods are specific and actionable', maxPoints: 25 },
+      { id: 'r4', label: 'Remediation Realism', description: 'Actions are achievable in one quarter with a bank\'s typical resources', maxPoints: 20 }
+    ],
+    explanation: 'Financial services AI compliance is a domain where specific regulatory knowledge matters: ECOA requires fair lending compliance in any AI that influences credit decisions, FCRA governs adverse actions based on consumer reports, and emerging guidance from the OCC and CFPB requires explainability for AI-driven decisions that affect consumers. Hiring screening AI carries EEOC exposure. A compliance audit that does not map AI functions to specific regulations is not a compliance audit — it is a risk awareness exercise. The remediation roadmap must be prioritized by regulatory severity: loan underwriting and hiring AI carry the highest regulatory exposure and must be addressed first.',
+    skills: ['regulatory_mapping', 'governance_design', 'hallucination_liability', 'confidentiality_assessment']
+  }
 ];
 
 export default DRILLS;
