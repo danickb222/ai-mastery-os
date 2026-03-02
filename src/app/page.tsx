@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   getOperatorProfile,
@@ -46,16 +46,15 @@ export default function Dashboard() {
       const ls = getItem<LabSession[]>(STORAGE_KEYS.LAB_SESSIONS) || [];
       const lastDrill = getItem<LastDrillSession>(STORAGE_KEYS.LAST_DRILL_SESSION);
 
-      // Compute domain scores from drill history
       const ds: DomainScore[] = DOMAINS.map(domain => {
         const domainDrills = getDrillsByDomain(domain.id);
-        const completedDrills = drillHistory.filter(h => 
+        const completedDrills = drillHistory.filter(h =>
           domainDrills.some(d => d.id === h.drillId)
         );
         const avgScore = completedDrills.length > 0
           ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
           : 0;
-        
+
         return {
           domainId: domain.id,
           score: avgScore,
@@ -67,7 +66,7 @@ export default function Dashboard() {
 
       const newScore = computeOperatorScore(ds, as, ls);
       const newPercentile = Math.max(1, Math.round(100 - newScore));
-      
+
       const oldScore = p.operatorScore;
       const delta = newScore - oldScore;
 
@@ -123,137 +122,393 @@ export default function Dashboard() {
   );
 }
 
+// ─── Animated canvas background ───────────────────────────────────────────────
+
+interface CanvasParticle { x: number; y: number; size: number; speed: number; opacity: number; }
+interface CanvasRing { x: number; y: number; radius: number; maxRadius: number; speed: number; baseIndex: number; }
+
+function runHeroCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): () => void {
+  let frameId: number;
+  let yOffset = 0;
+  let particles: CanvasParticle[] = [];
+  let rings: CanvasRing[] = [];
+
+  function init(w: number, h: number) {
+    particles = Array.from({ length: 80 }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      size: 0.4 + Math.random() * 1.2,
+      speed: 0.08 + Math.random() * 0.25,
+      opacity: 0.08 + Math.random() * 0.35,
+    }));
+
+    rings = Array.from({ length: 3 }, (_, i) => ({
+      x: w / 2,
+      y: h * 0.42,
+      radius: 60 + i * 80,
+      maxRadius: 320 + i * 80,
+      speed: 0.35,
+      baseIndex: i,
+    }));
+  }
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    init(canvas.width, canvas.height);
+  }
+
+  function draw() {
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Layer 1 — Perspective grid
+    const vx = w / 2;
+    const vy = h * 0.45;
+    ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    ctx.lineWidth = 0.5;
+
+    const numLines = 24;
+    for (let i = 0; i < numLines; i++) {
+      const angle = (i / numLines) * Math.PI * 2;
+      const ex = vx + Math.cos(angle) * w * 1.5;
+      const ey = vy + Math.sin(angle) * h * 1.5;
+      ctx.beginPath();
+      ctx.moveTo(vx, vy);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
+
+    const numHLines = 12;
+    const spacing = (h - vy) / numHLines;
+    for (let i = 0; i < numHLines; i++) {
+      const yPos = vy + (i + 1) * spacing * (1 + i * 0.15) + (yOffset % spacing);
+      if (yPos > h) continue;
+      const spread = ((yPos - vy) / (h - vy)) * w * 0.8;
+      ctx.beginPath();
+      ctx.ellipse(vx, yPos, spread, spread * 0.15, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    yOffset += 0.4;
+    if (yOffset >= spacing) yOffset = 0;
+
+    // Layer 2 — Particles
+    for (const p of particles) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${p.opacity})`;
+      ctx.fill();
+      p.y -= p.speed;
+      if (p.y < 0) {
+        p.y = canvas.height;
+        p.x = Math.random() * canvas.width;
+      }
+    }
+
+    // Layer 3 — Pulse rings
+    for (const ring of rings) {
+      ring.radius += ring.speed;
+      const t = ring.radius / ring.maxRadius;
+      const opacity = Math.sin(t * Math.PI) * 0.12;
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, ring.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,255,255,${opacity})`;
+      ctx.lineWidth = 0.75;
+      ctx.stroke();
+      if (ring.radius > ring.maxRadius) {
+        ring.radius = 60 + ring.baseIndex * 80;
+      }
+    }
+
+    frameId = requestAnimationFrame(draw);
+  }
+
+  resize();
+  window.addEventListener("resize", resize);
+  draw();
+
+  return () => {
+    cancelAnimationFrame(frameId);
+    window.removeEventListener("resize", resize);
+  };
+}
+
+function HeroCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    return runHeroCanvas(canvas, ctx);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        opacity: 0.6,
+      }}
+    />
+  );
+}
+
+// ─── First-run dashboard ───────────────────────────────────────────────────────
+
 function FirstRunDashboard({ onStart }: { onStart: () => void }) {
+  const fullText = "The training platform for operators who take AI seriously.";
+  const [displayText, setDisplayText] = useState("");
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const [showSubtitle, setShowSubtitle] = useState(false);
+
+  // Stat card hover state
+  const [hoveredStat, setHoveredStat] = useState<number | null>(null);
+  // CTA hover state
+  const [ctaHovered, setCtaHovered] = useState(false);
+
+  useEffect(() => {
+    let idx = 0;
+    const interval = setInterval(() => {
+      idx++;
+      setDisplayText(fullText.slice(0, idx));
+      if (idx >= fullText.length) {
+        clearInterval(interval);
+        setShowSubtitle(true);
+        setTimeout(() => setCursorVisible(false), 800);
+      }
+    }, 32);
+    return () => clearInterval(interval);
+  }, []);
+
+  const stats = [
+    { number: "12,847", label: "DRILLS THIS WEEK" },
+    { number: "71/100", label: "AVG SCORE" },
+    { number: "2,341", label: "OPERATORS" },
+  ];
+
   return (
     <div
       style={{
+        position: "relative",
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "80px 24px",
-        position: "relative",
         overflow: "hidden",
+        background: "#080808",
       }}
     >
-      {/* Orb 1 */}
-      <div style={{ position: "absolute", top: -200, left: "50%", transform: "translateX(-50%)", width: 800, height: 800, background: "radial-gradient(ellipse, rgba(79,110,247,0.12) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0, borderRadius: "50%" }} />
-      {/* Orb 2 */}
-      <div style={{ position: "absolute", top: "30%", left: -100, width: 400, height: 400, background: "radial-gradient(ellipse, rgba(139,92,246,0.08) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0, borderRadius: "50%" }} />
-      {/* Orb 3 */}
-      <div style={{ position: "absolute", top: "40%", right: -100, width: 400, height: 400, background: "radial-gradient(ellipse, rgba(16,185,129,0.06) 0%, transparent 65%)", pointerEvents: "none", zIndex: 0, borderRadius: "50%" }} />
+      <HeroCanvas />
 
-      {/* All content */}
-      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-
-        {/* Eyebrow pill */}
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(79,110,247,0.1)", border: "1px solid rgba(79,110,247,0.25)", borderRadius: 100, padding: "6px 16px", marginBottom: 24 }}>
-          <div style={{ width: 6, height: 6, background: "#4f6ef7", borderRadius: "50%", animation: "pulse-dot 2s infinite" }} />
-          <span style={{ fontSize: 12, fontWeight: 500, color: "rgba(238,238,240,0.7)", letterSpacing: "0.05em", fontFamily: "var(--font-body)" }}>
-            Now in Early Access
+      {/* Content */}
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          padding: "0 24px",
+          maxWidth: 860,
+          width: "100%",
+        }}
+      >
+        {/* Status pill */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            borderRadius: 100,
+            padding: "5px 14px",
+            marginBottom: 28,
+          }}
+        >
+          <div
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              background: "#ffffff",
+              opacity: 0.6,
+              animation: "ring-expand 2.5s ease-out infinite",
+            }}
+          />
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.1em",
+              color: "rgba(255,255,255,0.4)",
+              fontFamily: "Inter, system-ui, sans-serif",
+            }}
+          >
+            EARLY ACCESS
           </span>
         </div>
 
-        {/* Headline */}
-        <h1 style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "clamp(3rem, 8vw, 5.5rem)",
-          fontWeight: 700,
-          lineHeight: 1.0,
-          letterSpacing: "-0.04em",
-          textAlign: "center",
-          maxWidth: 800,
-          margin: 0,
-          background: "linear-gradient(135deg, #ffffff 0%, rgba(255,255,255,0.75) 50%, rgba(139,92,246,0.9) 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          backgroundClip: "text",
-        }}>
-          The training platform for operators who take AI seriously.
-        </h1>
+        {/* Typewriter headline */}
+        <div
+          style={{
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontSize: "clamp(2.6rem, 6.5vw, 5rem)",
+            fontWeight: 700,
+            lineHeight: 1.0,
+            letterSpacing: "-0.04em",
+            color: "#ffffff",
+            maxWidth: 780,
+            marginBottom: 0,
+          }}
+        >
+          {displayText}
+          <span
+            style={{
+              opacity: cursorVisible ? 1 : 0,
+              animation: cursorVisible ? "blink 0.9s step-end infinite" : "none",
+              transition: "opacity 0.3s ease",
+            }}
+          >
+            ▋
+          </span>
+        </div>
 
         {/* Subtitle */}
-        <p style={{ fontFamily: "var(--font-body)", fontSize: "1.125rem", color: "rgba(238,238,240,0.45)", textAlign: "center", maxWidth: 520, lineHeight: 1.7, marginTop: 20, marginBottom: 40 }}>
-          12 domains. 3 competency tiers. Performance-scored drills. No passive content — only active construction.
+        <p
+          style={{
+            fontSize: "1rem",
+            color: "rgba(255,255,255,0.38)",
+            maxWidth: 540,
+            lineHeight: 1.8,
+            marginBottom: 44,
+            marginTop: 20,
+            transition: "opacity 0.8s ease",
+            opacity: showSubtitle ? 1 : 0,
+          }}
+        >
+          12 domains. 3 competency tiers. Performance-scored drills built for the operators who will define how AI is used professionally.
         </p>
 
         {/* CTA button */}
-        <button onClick={onStart} className="hero-cta">
+        <button
+          onClick={onStart}
+          onMouseEnter={() => setCtaHovered(true)}
+          onMouseLeave={() => setCtaHovered(false)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            background: "#ffffff",
+            color: "#080808",
+            border: "none",
+            borderRadius: 8,
+            padding: "13px 34px",
+            fontSize: "0.9375rem",
+            fontWeight: 700,
+            fontFamily: "Inter, system-ui, sans-serif",
+            cursor: "pointer",
+            letterSpacing: "-0.01em",
+            transition: "all 180ms ease",
+            marginBottom: 14,
+            boxShadow: ctaHovered ? "0 0 40px rgba(255,255,255,0.2), 0 0 80px rgba(255,255,255,0.08)" : "none",
+            transform: ctaHovered ? "translateY(-2px)" : "none",
+          }}
+        >
           Start Your Diagnostic →
         </button>
 
-        {/* Below CTA hint */}
-        <p style={{ fontSize: 12, color: "rgba(238,238,240,0.3)", letterSpacing: "0.05em", marginTop: 12, fontFamily: "var(--font-body)" }}>
+        {/* Subtext */}
+        <p
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.2)",
+            letterSpacing: "0.07em",
+            fontFamily: "Inter, system-ui, sans-serif",
+            marginBottom: 72,
+            textTransform: "uppercase",
+          }}
+        >
           5 drills · No account required · ~8 minutes
         </p>
 
         {/* Stats row */}
-        <div style={{ display: "flex", flexDirection: "row", gap: 16, marginTop: 80, maxWidth: 680, width: "100%" }}>
-          <StatCard number="12,847" label="drills completed this week" />
-          <StatCard number="71/100" label="average operator score" />
-          <StatCard number="2,341" label="operators training" />
+        <div style={{ display: "flex", gap: 10, width: "100%", maxWidth: 620 }}>
+          {stats.map((s, i) => (
+            <div
+              key={i}
+              onMouseEnter={() => setHoveredStat(i)}
+              onMouseLeave={() => setHoveredStat(null)}
+              style={{
+                flex: 1,
+                background: hoveredStat === i ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.025)",
+                border: `1px solid ${hoveredStat === i ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`,
+                borderRadius: 12,
+                padding: "18px 20px",
+                textAlign: "center",
+                backdropFilter: "blur(20px)",
+                transition: "all 200ms ease",
+                cursor: "default",
+                transform: hoveredStat === i ? "translateY(-2px)" : "none",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "1.625rem",
+                  fontWeight: 700,
+                  color: "#ffffff",
+                  letterSpacing: "-0.04em",
+                  display: "block",
+                }}
+              >
+                {s.number}
+              </span>
+              <span
+                style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  fontSize: 10,
+                  fontWeight: 400,
+                  color: "rgba(255,255,255,0.22)",
+                  letterSpacing: "0.07em",
+                  textTransform: "uppercase",
+                  marginTop: 5,
+                  display: "block",
+                }}
+              >
+                {s.label}
+              </span>
+            </div>
+          ))}
         </div>
-
-        {/* Feature cards */}
-        <div style={{ display: "flex", flexDirection: "row", gap: 16, marginTop: 16, maxWidth: 680, width: "100%" }}>
-          <FeatureCard
-            title="Construction-based drills"
-            body="Not multiple choice. You build, debug, analyze, and design real professional outputs."
-            accentColor="rgba(79,110,247,0.6)"
-          />
-          <FeatureCard
-            title="AI-evaluated scoring"
-            body="Every submission scored by AI against a professional rubric. Not pattern matching."
-            accentColor="rgba(139,92,246,0.6)"
-          />
-          <FeatureCard
-            title="12 professional domains"
-            body="From prompt engineering to multi-agent systems. The complete operator curriculum."
-            accentColor="rgba(16,185,129,0.6)"
-          />
-        </div>
-
-        {/* Bottom tagline */}
-        <p style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", color: "rgba(238,238,240,0.2)", letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 64 }}>
-          This is not a course. There is no certificate for watching.
-        </p>
       </div>
-    </div>
-  );
-}
 
-function StatCard({ number, label }: { number: string; label: string }) {
-  return (
-    <div className="stat-card-hero">
-      <div style={{
-        fontFamily: "var(--font-display)",
-        fontSize: "2rem",
-        fontWeight: 700,
-        letterSpacing: "-0.03em",
-        background: "linear-gradient(135deg, #ffffff 0%, rgba(200,200,255,0.8) 100%)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-        backgroundClip: "text",
-      }}>
-        {number}
+      {/* Bottom tagline */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 28,
+          left: "50%",
+          transform: "translateX(-50%)",
+          fontSize: 10,
+          color: "rgba(255,255,255,0.1)",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          fontFamily: "Inter, system-ui, sans-serif",
+          whiteSpace: "nowrap",
+        }}
+      >
+        THIS IS NOT A COURSE. THERE IS NO CERTIFICATE FOR WATCHING.
       </div>
-      <div style={{ fontFamily: "var(--font-body)", fontSize: "0.75rem", fontWeight: 400, color: "rgba(238,238,240,0.35)", letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 6 }}>
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function FeatureCard({ title, body, accentColor }: { title: string; body: string; accentColor: string }) {
-  return (
-    <div className="feature-card-hero" style={{ borderTop: `2px solid ${accentColor}` }}>
-      <h3 style={{ fontFamily: "var(--font-display)", fontSize: "0.9375rem", fontWeight: 600, color: "#eeeef0", marginBottom: 6, marginTop: 0 }}>
-        {title}
-      </h3>
-      <p style={{ fontFamily: "var(--font-body)", fontSize: "0.875rem", color: "rgba(238,238,240,0.4)", lineHeight: 1.6, margin: 0 }}>
-        {body}
-      </p>
     </div>
   );
 }
@@ -305,22 +560,27 @@ function ReturningDashboard({
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Inactivity Alert */}
       {daysSinceActive > 3 && (
-        <Card className="animate-fade-up" style={{ borderLeft: "3px solid var(--warning-text)" }}>
-          <div className="p-4 flex items-center justify-between">
-            <p className="text-sm">
+        <div className="card animate-fade-up" style={{ borderLeft: "3px solid var(--warning)", padding: "16px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+            <p className="t-body" style={{ margin: 0 }}>
               You haven&apos;t trained in {daysSinceActive} days. Your relative rank has dropped.
             </p>
-            <Button onClick={() => router.push(`/run?domain=${weakestDomainId}`)}>
+            <button
+              onClick={() => router.push(`/run?domain=${weakestDomainId}`)}
+              className="btn btn-primary"
+            >
               Resume Now →
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Operator Header Strip */}
-      <div className="grid grid-cols-3 gap-px bg-[var(--border-subtle)] animate-fade-up">
-        <div className="bg-[var(--bg-card)] p-6 text-center">
-          <div className="flex items-center justify-center gap-2">
+      {/* Operator Header */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto 1fr", gap: 0, background: "var(--bg-card)", borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden" }} className="animate-fade-up">
+        {/* Score Block */}
+        <div style={{ padding: "32px 24px", textAlign: "center", position: "relative" }}>
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(255,255,255,0.03) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <div className="t-score score-glow">
               <ScoreCounter target={profile.operatorScore} />
             </div>
@@ -330,86 +590,128 @@ function ReturningDashboard({
               </div>
             )}
           </div>
-          <div className="t-label mt-2">OPERATOR SCORE</div>
+          <div className="t-label" style={{ marginTop: 8 }}>OPERATOR SCORE</div>
         </div>
 
-        <div className="bg-[var(--bg-card)] p-6 text-center">
-          <div className="t-display-sm">Top {profile.rankPercentile}%</div>
-          <Badge variant="default" className="mt-2 bg-[var(--accent)] text-white">
-            {profile.rankLabel}
-          </Badge>
-          <div className="t-label mt-2">of {totalParticipants.toLocaleString()} operators</div>
+        {/* Divider */}
+        <div style={{ width: 1, background: "var(--border)" }} />
+
+        {/* Rank Block */}
+        <div style={{ padding: "32px 24px", textAlign: "center" }}>
+          <div className="t-title" style={{ marginBottom: 8 }}>Top {profile.rankPercentile}%</div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 6, padding: "4px 10px" }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.7)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+              {profile.rankLabel}
+            </span>
+          </div>
+          <div className="t-label" style={{ marginTop: 8 }}>of {totalParticipants.toLocaleString()} operators</div>
         </div>
 
-        <div className="bg-[var(--bg-card)] p-6 text-center">
-          <div className="t-display-sm">{profile.streakDays}</div>
-          <div className="t-label mt-2">DAY STREAK</div>
+        {/* Divider */}
+        <div style={{ width: 1, background: "var(--border)" }} />
+
+        {/* Streak Block */}
+        <div style={{ padding: "32px 24px", textAlign: "center" }}>
+          <div className="t-title" style={{ marginBottom: 8 }}>{profile.streakDays}</div>
+          <div className="t-label">DAY STREAK</div>
           {profile.streakDays > 0 ? (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div className="w-2 h-2 rounded-full bg-[var(--success-bg)]" />
-              <span className="t-label text-[var(--success-text)]">Active</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--success)" }} />
+              <span className="t-label" style={{ color: "var(--success-text)" }}>Active</span>
             </div>
           ) : (
-            <div className="t-label text-[var(--text-muted)] mt-2">No active streak</div>
+            <div className="t-label" style={{ color: "var(--text-muted)", marginTop: 8 }}>No active streak</div>
           )}
         </div>
       </div>
 
-      <div className="h-px bg-[var(--border-default)]" />
-
       {/* Continue Block */}
       {lastSession && (
-        <Card className="card-highlight animate-fade-up" style={{ animationDelay: "50ms" }}>
-          <div className="p-6 flex items-center justify-between">
+        <div className="card-elevated animate-fade-up" style={{ animationDelay: "50ms", borderLeft: "3px solid rgba(255,255,255,0.2)", padding: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
             <div>
-              <div className="t-label">CONTINUE</div>
-              <h3 className="t-heading mt-1">{lastSession.domainName}</h3>
-              <p className="t-body mt-1">{lastSession.topicName}</p>
-              <p className="t-label text-[var(--text-muted)] mt-2">
+              <div className="t-label">CONTINUE TRAINING</div>
+              <h3 className="t-heading" style={{ marginTop: 8 }}>{lastSession.domainName}</h3>
+              <p className="t-body" style={{ marginTop: 4 }}>{lastSession.topicName}</p>
+              <p className="t-label" style={{ color: "var(--text-muted)", marginTop: 8 }}>
                 {new Date(lastSession.timestamp).toLocaleString()}
               </p>
             </div>
-            <Button 
-              variant="primary"
+            <button
               onClick={() => router.push(`/run?domain=${lastSession.domainId}&index=${lastSession.drillIndex}`)}
+              className="btn btn-primary"
             >
               Resume →
-            </Button>
+            </button>
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Recommended Drill Card */}
-      <Card 
-        className="card-elevated animate-fade-up" 
-        style={{ 
-          animationDelay: "100ms",
-          borderLeft: `3px solid ${DOMAINS.find(d => d.id === weakestDomainId)?.color || "var(--accent)"}`,
-          boxShadow: "0 0 40px rgba(79,110,247,0.06) inset"
-        }}
-      >
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-2">
+      {/* Two-column grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+        {/* Recommended Drill Card */}
+        <div
+          className="card-elevated card-hover animate-fade-up"
+          style={{
+            animationDelay: "100ms",
+            borderLeft: `3px solid ${DOMAINS.find(d => d.id === weakestDomainId)?.color || "rgba(255,255,255,0.2)"}`,
+            padding: "24px"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <div className="t-label">RECOMMENDED</div>
-            <Badge variant="default" className="bg-[var(--accent)] text-white">Priority</Badge>
+            <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 4, padding: "2px 8px" }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.7)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Priority</span>
+            </div>
           </div>
           <h3 className="t-heading">{DOMAINS.find(d => d.id === weakestDomainId)?.name}</h3>
-          <Badge variant="default" className="mt-2">
-            {DOMAINS.find(d => d.id === weakestDomainId)?.difficulty}
-          </Badge>
-          <p className="t-body mt-3">Your weakest domain. Close the gap.</p>
-          <Button 
-            variant="primary"
+          <div style={{ display: "inline-flex", alignItems: "center", background: "var(--bg-elevated)", border: "1px solid var(--border-mid)", borderRadius: 4, padding: "3px 8px", marginTop: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 500, color: "var(--text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+              {DOMAINS.find(d => d.id === weakestDomainId)?.difficulty}
+            </span>
+          </div>
+          <p className="t-body" style={{ marginTop: 12 }}>Your weakest domain. Close the gap.</p>
+          <button
             onClick={() => router.push(`/run?domain=${weakestDomainId}`)}
-            className="mt-4"
+            className="btn btn-primary"
+            style={{ marginTop: 16 }}
           >
             Start Drill →
-          </Button>
+          </button>
         </div>
-      </Card>
+
+        {/* Weakest Domain Stats Card */}
+        <div
+          className="card-elevated card-hover animate-fade-up"
+          style={{
+            animationDelay: "150ms",
+            padding: "24px"
+          }}
+        >
+          <div className="t-label" style={{ marginBottom: 12 }}>WEAKEST DOMAIN</div>
+          <h3 className="t-heading">{DOMAINS.find(d => d.id === weakestDomainId)?.name}</h3>
+          <div style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <span className="t-label">PROGRESS</span>
+              <span className="t-label">{weakestDomain?.drillsCompleted || 0}/{weakestDomain?.drillsTotal || 0}</span>
+            </div>
+            <ProgressBar
+              value={weakestDomain ? (weakestDomain.drillsCompleted / weakestDomain.drillsTotal) * 100 : 0}
+              size="sm"
+              color="red"
+            />
+          </div>
+          <div style={{ marginTop: 16 }}>
+            <span className="t-label">AVERAGE SCORE</span>
+            <div className="t-title" style={{ marginTop: 4, color: weakestDomain && weakestDomain.score > 0 ? "var(--danger-text)" : "var(--text-muted)" }}>
+              {weakestDomain && weakestDomain.score > 0 ? `${weakestDomain.score}/100` : "—"}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Domain Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
         {DOMAINS.map((domain, idx) => {
           const ds = domainScores.find(d => d.domainId === domain.id);
           const completed = ds?.drillsCompleted || 0;
@@ -418,83 +720,105 @@ function ReturningDashboard({
           const score = ds?.score || 0;
 
           return (
-            <Card 
-              key={domain.id} 
-              className="card-hover animate-fade-up"
-              style={{ 
-                animationDelay: `${150 + idx * 60}ms`,
-                borderLeft: `3px solid ${domain.color}`
+            <div
+              key={domain.id}
+              className="card card-hover animate-fade-up"
+              style={{
+                animationDelay: `${200 + idx * 40}ms`,
+                borderLeft: `3px solid ${domain.color}`,
+                padding: "16px"
               }}
             >
-              <div className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="t-heading text-sm">{domain.name}</h3>
-                  <Badge variant="default" className="text-xs">{domain.difficulty}</Badge>
-                </div>
-                <div className="t-label text-[var(--text-muted)] mb-2">
-                  {completed}/{total}
-                </div>
-                <ProgressBar 
-                  value={progress} 
-                  size="sm" 
-                  animated={true}
-                  color={score >= 80 ? "green" : score >= 60 ? "yellow" : "red"}
-                />
-                <div className="flex items-center justify-between mt-3">
-                  {score > 0 ? (
-                    <Badge 
-                      variant="default"
-                      className={
-                        score >= 80 
-                          ? "bg-[var(--success-bg)] text-[var(--success-text)]"
-                          : score >= 60
-                          ? "bg-[var(--warning-bg)] text-[var(--warning-text)]"
-                          : "bg-[var(--bg-elevated)]"
-                      }
-                    >
-                      {score}
-                    </Badge>
-                  ) : (
-                    <Badge variant="default">—</Badge>
-                  )}
-                  <button 
-                    onClick={() => router.push(`/run?domain=${domain.id}`)}
-                    className="t-label text-[var(--accent)] hover:underline"
-                  >
-                    Start →
-                  </button>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+                <h3 className="t-heading" style={{ fontSize: "0.875rem", lineHeight: 1.3 }}>{domain.name}</h3>
+                <div style={{ display: "inline-flex", alignItems: "center", background: "var(--bg-elevated)", border: "1px solid var(--border-mid)", borderRadius: 4, padding: "2px 6px", flexShrink: 0, marginLeft: 8 }}>
+                  <span style={{ fontSize: 9, fontWeight: 500, color: "var(--text-muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+                    {domain.difficulty}
+                  </span>
                 </div>
               </div>
-            </Card>
+
+              <div className="t-label" style={{ color: "var(--text-muted)", marginBottom: 8 }}>
+                {completed}/{total}
+              </div>
+
+              <ProgressBar
+                value={progress}
+                size="sm"
+                animated={true}
+                color={score >= 80 ? "green" : score >= 60 ? "yellow" : "red"}
+              />
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
+                {score > 0 ? (
+                  <div style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    background: score >= 80 ? "var(--success-bg)" : score >= 60 ? "var(--warning-bg)" : "var(--bg-elevated)",
+                    border: `1px solid ${score >= 80 ? "var(--success)" : score >= 60 ? "var(--warning)" : "var(--border-mid)"}`,
+                    borderRadius: 4,
+                    padding: "3px 8px"
+                  }}>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: score >= 80 ? "var(--success-text)" : score >= 60 ? "var(--warning-text)" : "var(--text-muted)",
+                      letterSpacing: "0.02em"
+                    }}>
+                      {score}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: "inline-flex", alignItems: "center", background: "var(--bg-elevated)", border: "1px solid var(--border-mid)", borderRadius: 4, padding: "3px 8px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>—</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => router.push(`/run?domain=${domain.id}`)}
+                  className="t-label"
+                  style={{ color: "rgba(255,255,255,0.5)", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                >
+                  Start →
+                </button>
+              </div>
+            </div>
           );
         })}
       </div>
 
       {/* Arena Widget */}
-      <Card className="card-elevated animate-fade-up" style={{ animationDelay: "500ms" }}>
-        <div className="p-6 flex items-center justify-between">
-          <div>
-            <div className="t-label">ARENA · SEASON 1</div>
-            <div className="t-body mt-1">{daysRemaining} days remaining</div>
-            <div className="mt-3 w-48">
-              <div className="h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-[var(--accent)] transition-all"
-                  style={{ width: `${seasonProgress}%` }}
+      <div className="card-elevated animate-fade-up" style={{ animationDelay: "500ms", padding: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
+          <div style={{ flex: 1 }}>
+            <div className="t-label" style={{ marginBottom: 8 }}>ARENA · SEASON 1</div>
+            <div className="t-body" style={{ marginBottom: 12 }}>{daysRemaining} days remaining</div>
+            <div style={{ width: "100%", maxWidth: 240 }}>
+              <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 1, overflow: "hidden" }}>
+                <div
+                  style={{
+                    height: "100%",
+                    background: "rgba(255,255,255,0.5)",
+                    width: `${seasonProgress}%`,
+                    transition: "width 0.5s ease",
+                    boxShadow: "0 0 6px rgba(255,255,255,0.3)",
+                  }}
                 />
               </div>
             </div>
           </div>
-          <div className="text-center">
-            <div className="t-display-sm">
+          <div style={{ textAlign: "center", padding: "0 24px" }}>
+            <div className="t-title">
               {arena.userRank > 0 ? `Rank ${arena.userRank}` : "Unranked"}
             </div>
           </div>
-          <Button variant="secondary" onClick={() => router.push("/arena")}>
+          <button
+            onClick={() => router.push("/arena")}
+            className="btn btn-secondary"
+          >
             Compete →
-          </Button>
+          </button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

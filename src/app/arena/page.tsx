@@ -68,7 +68,6 @@ export default function ArenaPage() {
   const seasonProgress = ((Date.now() - SEASON_START.getTime()) / (SEASON_END.getTime() - SEASON_START.getTime())) * 100;
 
   const leaderboard = generateLeaderboard();
-  const userInTop10 = arenaState && arenaState.bestScore > 0 && arenaState.bestScore >= 82;
 
   const handleEnterChallenge = () => {
     setShowCountdown(true);
@@ -102,10 +101,10 @@ export default function ArenaPage() {
 
       {/* Season Header Card */}
       <Card className="card-elevated animate-fade-up" style={{ animationDelay: "50ms" }}>
-        <div 
+        <div
           className="p-6"
           style={{
-            background: "linear-gradient(135deg, rgba(79,110,247,0.08) 0%, transparent 60%)"
+            background: "rgba(255,255,255,0.015)"
           }}
         >
           <div className="grid grid-cols-2 gap-6">
@@ -119,10 +118,15 @@ export default function ArenaPage() {
             </div>
           </div>
           <div className="mt-4">
-            <div className="h-1 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[var(--accent)] transition-all duration-500"
-                style={{ width: `${seasonProgress}%` }}
+            <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 1, overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  background: "rgba(255,255,255,0.5)",
+                  width: `${seasonProgress}%`,
+                  transition: "width 0.5s ease",
+                  boxShadow: "0 0 6px rgba(255,255,255,0.25)",
+                }}
               />
             </div>
           </div>
@@ -130,15 +134,15 @@ export default function ArenaPage() {
       </Card>
 
       {/* User Rank Card */}
-      <Card 
-        className="animate-fade-up" 
-        style={{ 
+      <Card
+        className="animate-fade-up"
+        style={{
           animationDelay: "100ms",
-          borderLeft: "3px solid var(--accent)"
+          borderLeft: "3px solid rgba(255,255,255,0.18)"
         }}
       >
         <div className="p-6">
-          <div className="grid grid-cols-3 divide-x divide-[var(--border-subtle)]">
+          <div className="grid grid-cols-3 divide-x divide-[rgba(255,255,255,0.06)]">
             <div className="text-center">
               <div className="t-score">
                 {arenaState && arenaState.userRank > 0 ? (
@@ -160,12 +164,12 @@ export default function ArenaPage() {
           </div>
           <div className="mt-4 text-center">
             {arenaState && arenaState.userRank > 0 ? (
-              <Badge variant="default" className="bg-[var(--accent)] text-white">
+              <Badge variant="default" className="badge-white">
                 RANKED
               </Badge>
             ) : (
               <>
-                <Badge variant="default" className="bg-[var(--warning-bg)] text-[var(--warning-text)]">
+                <Badge variant="default" className="badge-warning">
                   UNRANKED
                 </Badge>
                 <p className="t-body mt-2">Complete a session to enter the leaderboard.</p>
@@ -189,23 +193,21 @@ export default function ArenaPage() {
                 key={entry.rank}
                 className="flex items-center gap-4 h-[44px] px-4 rounded transition-colors"
                 style={{
-                  background: idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-elevated)"
+                  background: idx % 2 === 0 ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.035)"
                 }}
               >
-                <div className="t-mono text-sm w-8">{entry.rank}</div>
-                <div className="t-mono text-sm flex-1 text-[var(--text-secondary)]">{entry.handle}</div>
-                <div 
-                  className={`t-mono text-sm ${
-                    entry.score >= 90 ? "text-[var(--success-text)]" : "text-[var(--text-primary)]"
-                  }`}
+                <div className="t-mono text-sm w-8" style={{ color: "#ffffff" }}>{entry.rank}</div>
+                <div className="t-mono text-sm flex-1" style={{ color: "rgba(255,255,255,0.55)" }}>{entry.handle}</div>
+                <div
+                  className="t-mono text-sm"
+                  style={{ color: entry.score >= 90 ? "rgba(80,220,120,0.8)" : "rgba(255,255,255,0.8)" }}
                 >
                   {entry.score}
                 </div>
-                <Badge variant="default" className="text-xs">{entry.domain}</Badge>
-                <div 
-                  className={`text-sm ${
-                    entry.trend === "↑" ? "text-[var(--success-text)]" : "text-[var(--danger-text)]"
-                  }`}
+                <Badge variant="default">{entry.domain}</Badge>
+                <div
+                  className="text-sm"
+                  style={{ color: entry.trend === "↑" ? "rgba(80,220,120,0.8)" : "rgba(255,80,80,0.75)" }}
                 >
                   {entry.trend}
                 </div>
@@ -214,21 +216,21 @@ export default function ArenaPage() {
 
             {arenaState && arenaState.userRank > 10 && arenaState.bestScore > 0 && (
               <>
-                <div className="text-center py-2 text-[var(--text-secondary)]">···</div>
+                <div className="text-center py-2" style={{ color: "rgba(255,255,255,0.55)" }}>···</div>
                 <div
                   className="flex items-center gap-4 h-[44px] px-4 rounded"
                   style={{
-                    background: "rgba(79,110,247,0.08)",
-                    borderLeft: "2px solid var(--accent)"
+                    background: "rgba(255,255,255,0.04)",
+                    borderLeft: "2px solid rgba(255,255,255,0.18)"
                   }}
                 >
-                  <div className="t-mono text-sm w-8">{arenaState.userRank}</div>
+                  <div className="t-mono text-sm w-8" style={{ color: "#ffffff" }}>{arenaState.userRank}</div>
                   <div className="t-mono text-sm flex-1">
-                    <Badge variant="default" className="bg-[var(--accent)] text-white mr-2">YOU</Badge>
+                    <Badge variant="default" className="badge-white mr-2">YOU</Badge>
                     you
                   </div>
-                  <div className="t-mono text-sm text-[var(--text-primary)]">{arenaState.bestScore}</div>
-                  <Badge variant="default" className="text-xs">—</Badge>
+                  <div className="t-mono text-sm" style={{ color: "#ffffff" }}>{arenaState.bestScore}</div>
+                  <Badge variant="default">—</Badge>
                   <div className="text-sm">—</div>
                 </div>
               </>
@@ -265,23 +267,29 @@ export default function ArenaPage() {
       <div className="animate-fade-up" style={{ animationDelay: "250ms" }}>
         <div className="flex items-center gap-4">
           <div className="t-label">MODE</div>
-          <div 
-            className="inline-flex p-[3px] rounded-[20px] border border-[var(--border-default)]"
-            style={{ background: "var(--bg-elevated)" }}
+          <div
+            className="inline-flex p-[3px] rounded-[20px]"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}
           >
             <button
               onClick={() => setIsRanked(true)}
-              className={`px-4 py-1.5 rounded-[17px] text-sm transition-all ${
-                isRanked ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
-              }`}
+              className={`px-4 py-1.5 rounded-[17px] text-sm transition-all`}
+              style={{
+                background: isRanked ? "#ffffff" : "transparent",
+                color: isRanked ? "#080808" : "rgba(255,255,255,0.28)",
+                fontWeight: isRanked ? 600 : 400,
+              }}
             >
               Ranked
             </button>
             <button
               onClick={() => setIsRanked(false)}
-              className={`px-4 py-1.5 rounded-[17px] text-sm transition-all ${
-                !isRanked ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
-              }`}
+              className={`px-4 py-1.5 rounded-[17px] text-sm transition-all`}
+              style={{
+                background: !isRanked ? "#ffffff" : "transparent",
+                color: !isRanked ? "#080808" : "rgba(255,255,255,0.28)",
+                fontWeight: !isRanked ? 600 : 400,
+              }}
             >
               Practice
             </button>
@@ -289,9 +297,9 @@ export default function ArenaPage() {
         </div>
 
         {!isRanked && (
-          <Card className="mt-4" style={{ borderLeft: "3px solid var(--warning-text)" }}>
+          <Card className="mt-4" style={{ borderLeft: "3px solid rgba(250,190,80,0.8)" }}>
             <div className="p-4">
-              <p className="text-sm">
+              <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
                 Practice mode active. Results are not ranked and do not affect your Operator Score.
               </p>
             </div>

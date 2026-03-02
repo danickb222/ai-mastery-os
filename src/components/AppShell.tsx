@@ -82,12 +82,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-base)" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#080808" }}>
       <ShellErrorBoundary>
         {navVisible && (
           <>
             {/* Desktop nav — top bar */}
             <nav
+              className="md-nav"
               style={{
                 display: "none",
                 position: "fixed",
@@ -96,26 +97,37 @@ export function AppShell({ children }: { children: ReactNode }) {
                 right: 0,
                 zIndex: 50,
                 height: 56,
-                backgroundColor: "rgba(7,7,8,0.8)",
-                backdropFilter: "blur(20px)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "0 32px",
+                background: "rgba(8,8,8,0.72)",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
               }}
-              className="md-nav"
             >
+              {/* Gradient accent line */}
+              <div style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 1,
+                background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.12) 80%, transparent 100%)",
+                pointerEvents: "none",
+              }} />
+
               {/* Wordmark */}
               <span
                 style={{
-                  fontFamily: "var(--font-code)",
-                  fontSize: 11,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10,
                   letterSpacing: "0.15em",
                   color: "rgba(255,255,255,0.2)",
                   userSelect: "none",
                 }}
               >
-                AI MASTERY OS
+                AI DOJO
               </span>
 
               {/* Center tabs */}
@@ -132,16 +144,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                         alignItems: "center",
                         gap: 6,
                         padding: "6px 14px",
-                        borderRadius: 5,
+                        borderRadius: 8,
                         fontSize: 13,
-                        fontFamily: "var(--font-body)",
-                        fontWeight: active ? 500 : 400,
-                        color: active ? "#eeeef0" : "var(--text-muted)",
-                        background: active ? "rgba(79,110,247,0.15)" : "transparent",
-                        border: active ? "1px solid rgba(79,110,247,0.3)" : "1px solid transparent",
-                        boxShadow: active ? "0 0 12px rgba(79,110,247,0.2) inset" : "none",
+                        fontFamily: "'Inter', system-ui, sans-serif",
+                        fontWeight: 500,
+                        color: active ? "#ffffff" : "rgba(255,255,255,0.28)",
+                        background: active ? "rgba(255,255,255,0.08)" : "transparent",
+                        border: active ? "1px solid rgba(255,255,255,0.14)" : "1px solid transparent",
+                        boxShadow: active ? "0 0 16px rgba(255,255,255,0.06) inset" : "none",
                         textDecoration: "none",
-                        transition: "color var(--t-fast), background var(--t-fast)",
+                        transition: "color 150ms ease, background 150ms ease, border-color 150ms ease",
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -157,26 +169,16 @@ export function AppShell({ children }: { children: ReactNode }) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  color: "var(--text-muted)",
+                  color: "rgba(255,255,255,0.28)",
                   textDecoration: "none",
-                  transition: "color var(--t-fast)",
-                  padding: 4,
-                  borderRadius: 4,
+                  transition: "color 150ms ease",
+                  padding: 6,
+                  borderRadius: 6,
                 }}
                 aria-label="Settings"
               >
                 <GearIcon />
               </Link>
-              {/* Gradient accent line */}
-              <div style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 1,
-                background: "linear-gradient(90deg, transparent 0%, rgba(79,110,247,0.5) 30%, rgba(139,92,246,0.5) 70%, transparent 100%)",
-                pointerEvents: "none",
-              }} />
             </nav>
 
             {/* Mobile nav — bottom bar */}
@@ -189,8 +191,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 right: 0,
                 zIndex: 50,
                 height: 60,
-                backgroundColor: "#0e0e10",
-                borderTop: "1px solid #1a1a20",
+                backgroundColor: "rgba(8,8,8,0.90)",
+                backdropFilter: "blur(24px)",
+                WebkitBackdropFilter: "blur(24px)",
+                borderTop: "1px solid rgba(255,255,255,0.06)",
                 alignItems: "center",
                 justifyContent: "space-around",
                 padding: "0 8px",
@@ -211,12 +215,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                       gap: 3,
                       flex: 1,
                       padding: "4px 0",
-                      color: active ? "var(--text-primary)" : "var(--text-muted)",
+                      color: active ? "#ffffff" : "rgba(255,255,255,0.28)",
                       textDecoration: "none",
                       fontSize: 10,
-                      fontFamily: "var(--font-body)",
+                      fontFamily: "'Inter', system-ui, sans-serif",
                       fontWeight: 500,
-                      transition: "color var(--t-fast)",
+                      transition: "color 120ms cubic-bezier(0.4,0,0.2,1)",
                     }}
                   >
                     {item.icon}
@@ -233,12 +237,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   gap: 3,
                   flex: 1,
                   padding: "4px 0",
-                  color: pathname === "/settings" ? "var(--text-primary)" : "var(--text-muted)",
+                  color: pathname === "/settings" ? "#ffffff" : "rgba(255,255,255,0.28)",
                   textDecoration: "none",
                   fontSize: 10,
-                  fontFamily: "var(--font-body)",
+                  fontFamily: "'Inter', system-ui, sans-serif",
                   fontWeight: 500,
-                  transition: "color var(--t-fast)",
+                  transition: "color 120ms cubic-bezier(0.4,0,0.2,1)",
                 }}
                 aria-label="Settings"
               >
@@ -276,8 +280,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           .mobile-nav { display: none !important; }
           main.has-nav { padding-bottom: 0 !important; }
         }
-        .md-nav a:hover { color: var(--text-primary) !important; background: rgba(255,255,255,0.04); }
-        nav a:hover { color: var(--text-secondary) !important; }
+        .md-nav a:hover { color: rgba(255,255,255,0.65) !important; background: rgba(255,255,255,0.04) !important; }
+        nav a:hover { color: rgba(255,255,255,0.65) !important; }
       `}</style>
     </div>
   );

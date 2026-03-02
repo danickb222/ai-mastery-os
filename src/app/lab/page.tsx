@@ -927,7 +927,7 @@ export default function LabPage() {
             onClick={() => setActiveTab(tab)}
             className={`pb-2 px-1 transition-all ${
               activeTab === tab
-                ? "text-[var(--text-primary)] border-b-2 border-[var(--accent)] font-medium"
+                ? "text-[var(--text-primary)] border-b-2 border-[rgba(255,255,255,0.6)] font-medium"
                 : "text-[var(--text-muted)] border-b-2 border-transparent"
             }`}
             style={{ transitionDuration: "var(--t-fast)" }}
@@ -952,7 +952,7 @@ export default function LabPage() {
                       onClick={() => setEditorTab(tab)}
                       className={`px-4 py-2 text-sm transition-all ${
                         editorTab === tab
-                          ? "bg-[var(--bg-elevated)] border-b-2 border-[var(--accent)] rounded-t"
+                          ? "bg-[var(--bg-elevated)] border-b-2 border-[rgba(255,255,255,0.6)] rounded-t"
                           : "text-[var(--text-muted)]"
                       }`}
                     >
@@ -1064,7 +1064,7 @@ export default function LabPage() {
                         variant={selectedDomain === domain.id ? "default" : "default"}
                         onClick={() => setSelectedDomain(domain.id)}
                         className={`cursor-pointer ${
-                          selectedDomain === domain.id ? "bg-[var(--accent)] text-white" : ""
+                          selectedDomain === domain.id ? "bg-[rgba(255,255,255,0.12)] text-white border-[rgba(255,255,255,0.2)]" : ""
                         }`}
                       >
                         {domain.name}
@@ -1163,7 +1163,7 @@ export default function LabPage() {
             <Badge
               variant="default"
               onClick={() => setFilterDomain(null)}
-              className={`cursor-pointer ${!filterDomain ? "bg-[var(--accent)] text-white" : ""}`}
+              className={`cursor-pointer ${!filterDomain ? "bg-[rgba(255,255,255,0.12)] text-white border-[rgba(255,255,255,0.2)]" : ""}`}
             >
               All Domains
             </Badge>
@@ -1172,7 +1172,7 @@ export default function LabPage() {
                 key={domain.id}
                 variant="default"
                 onClick={() => setFilterDomain(domain.id)}
-                className={`cursor-pointer ${filterDomain === domain.id ? "bg-[var(--accent)] text-white" : ""}`}
+                className={`cursor-pointer ${filterDomain === domain.id ? "bg-[rgba(255,255,255,0.12)] text-white border-[rgba(255,255,255,0.2)]" : ""}`}
               >
                 {domain.name}
               </Badge>
@@ -1278,7 +1278,7 @@ export default function LabPage() {
             <Badge
               variant="default"
               onClick={() => setFilterDomain(null)}
-              className={`cursor-pointer ${!filterDomain ? "bg-[var(--accent)] text-white" : ""}`}
+              className={`cursor-pointer ${!filterDomain ? "bg-[rgba(255,255,255,0.12)] text-white border-[rgba(255,255,255,0.2)]" : ""}`}
             >
               All Domains
             </Badge>
@@ -1287,7 +1287,7 @@ export default function LabPage() {
                 key={domain.id}
                 variant="default"
                 onClick={() => setFilterDomain(domain.id)}
-                className={`cursor-pointer ${filterDomain === domain.id ? "bg-[var(--accent)] text-white" : ""}`}
+                className={`cursor-pointer ${filterDomain === domain.id ? "bg-[rgba(255,255,255,0.12)] text-white border-[rgba(255,255,255,0.2)]" : ""}`}
               >
                 {domain.name}
               </Badge>
@@ -1335,7 +1335,8 @@ export default function LabPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleLoadSession(session)}
-                        className="text-sm text-[var(--accent)] hover:underline"
+                        className="text-sm hover:underline"
+                        style={{ color: "rgba(255,255,255,0.5)" }}
                         title="Load into Workspace"
                       >
                         ↩

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Syne, DM_Sans, JetBrains_Mono } from "next/font/google";
+import { Syne, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 
@@ -10,10 +10,10 @@ const syne = Syne({
   display: "swap",
 });
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-dm",
+  weight: ["400", "500", "600"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -25,9 +25,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Mastery OS",
+  title: "AI Dojo",
   description:
-    "Drill-based training system for applied AI operators. Build your Operator Score.",
+    "Elite training platform for AI operators. Master 12 domains through performance-scored drills.",
 };
 
 export default function RootLayout({
@@ -39,13 +39,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${syne.variable} ${dmSans.variable} ${jetbrainsMono.variable}`}
+      className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable}`}
     >
       <head>
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#070708" />
+        <meta name="theme-color" content="#080808" />
       </head>
-      <body style={{ backgroundColor: "#070708" }}>
+      <body style={{ backgroundColor: "#080808" }}>
         <AppShell>{children}</AppShell>
       </body>
     </html>
