@@ -44,7 +44,7 @@ export function ScoreCounter({
   }, [target, duration, delay]);
 
   return (
-    <span className={className}>
+    <span className={`score-big ${className}`}>
       {count}
       {suffix}
     </span>

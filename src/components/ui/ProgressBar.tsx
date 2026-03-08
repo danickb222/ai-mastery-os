@@ -68,14 +68,17 @@ export function ProgressBar({
       )}
       <div
         className="progress-track"
-        style={{ height }}
+        style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}
       >
         <div
           className="progress-fill"
           style={{
-            width: `${width}%`,
-            background: colorMap[color] ?? colorMap.blue,
             height: "100%",
+            borderRadius: 2,
+            background: "var(--cyan)",
+            boxShadow: "0 0 6px rgba(0,212,255,0.5)",
+            width: `${width}%`,
+            transition: "width 2.4s cubic-bezier(0,0,0.2,1)",
           }}
         />
       </div>

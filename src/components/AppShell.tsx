@@ -81,8 +81,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Landing page renders its own nav, loader, and full layout
+  if (pathname === '/') return <>{children}</>;
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#080808" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#06070a" }}>
       <ShellErrorBoundary>
         {navVisible && (
           <>
@@ -90,95 +93,95 @@ export function AppShell({ children }: { children: ReactNode }) {
             <nav
               className="md-nav"
               style={{
-                display: "none",
                 position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 50,
-                height: 56,
+                top: 14,
+                left: "50%",
+                transform: "translateX(-50%)",
+                zIndex: 1000,
+                background: "rgba(8,9,12,0.88)",
+                backdropFilter: "blur(32px) saturate(220%)",
+                WebkitBackdropFilter: "blur(32px) saturate(220%)",
+                border: "1px solid rgba(255,255,255,0.09)",
+                borderRadius: 18,
+                padding: "0 8px",
+                height: 50,
+                display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                padding: "0 32px",
-                background: "rgba(8,8,8,0.72)",
-                backdropFilter: "blur(24px) saturate(180%)",
-                WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                gap: 2,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)",
+                whiteSpace: "nowrap",
               }}
             >
-              {/* Gradient accent line */}
               <div style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                height: 1,
-                background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.12) 80%, transparent 100%)",
-                pointerEvents: "none",
-              }} />
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+              }}>
+                {/* Wordmark */}
+                <Link
+                  href="/"
+                  style={{
+                    fontFamily: "var(--font-body)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.3em",
+                    color: "rgba(255,255,255,0.22)",
+                    textTransform: "uppercase",
+                    textDecoration: "none",
+                    padding: "6px 16px 6px 10px",
+                    marginRight: 4,
+                    borderRight: "1px solid rgba(255,255,255,0.07)",
+                  }}
+                >
+                  AI DOJO
+                </Link>
 
-              {/* Wordmark */}
-              <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 10,
-                  letterSpacing: "0.15em",
-                  color: "rgba(255,255,255,0.2)",
-                  userSelect: "none",
-                }}
-              >
-                AI DOJO
-              </span>
+                <div style={{ display: "flex", gap: 2 }}>
+                  {tabs.map((item) => {
+                    const active =
+                      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        style={{
+                          fontSize: 12.5,
+                          fontWeight: active ? 500 : 400,
+                          color: active ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.28)",
+                          padding: "6px 14px",
+                          borderRadius: 11,
+                          background: active ? "rgba(255,255,255,0.08)" : "transparent",
+                          textDecoration: "none",
+                          transition: "all 150ms ease",
+                          border: active ? "1px solid rgba(255,255,255,0.07)" : "1px solid transparent",
+                        }}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
 
-              {/* Center tabs */}
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                {tabs.map((item) => {
-                  const active =
-                    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        padding: "6px 14px",
-                        borderRadius: 8,
-                        fontSize: 13,
-                        fontFamily: "'Inter', system-ui, sans-serif",
-                        fontWeight: 500,
-                        color: active ? "#ffffff" : "rgba(255,255,255,0.28)",
-                        background: active ? "rgba(255,255,255,0.08)" : "transparent",
-                        border: active ? "1px solid rgba(255,255,255,0.14)" : "1px solid transparent",
-                        boxShadow: active ? "0 0 16px rgba(255,255,255,0.06) inset" : "none",
-                        textDecoration: "none",
-                        transition: "color 150ms ease, background 150ms ease, border-color 150ms ease",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                <Link
+                  href="/settings"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "6px 10px",
+                    color: "rgba(255,255,255,0.2)",
+                    textDecoration: "none",
+                    borderRadius: 11,
+                    transition: "all 150ms ease",
+                  }}
+                  aria-label="Settings"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                </Link>
               </div>
 
-              {/* Gear icon */}
-              <Link
-                href="/settings"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  color: "rgba(255,255,255,0.28)",
-                  textDecoration: "none",
-                  transition: "color 150ms ease",
-                  padding: 6,
-                  borderRadius: 6,
-                }}
-                aria-label="Settings"
-              >
-                <GearIcon />
-              </Link>
             </nav>
 
             {/* Mobile nav — bottom bar */}
@@ -191,10 +194,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 right: 0,
                 zIndex: 50,
                 height: 60,
-                backgroundColor: "rgba(8,8,8,0.90)",
+                backgroundColor: "rgba(6,7,10,0.92)",
                 backdropFilter: "blur(24px)",
                 WebkitBackdropFilter: "blur(24px)",
-                borderTop: "1px solid rgba(255,255,255,0.06)",
+                borderTop: "1px solid rgba(255,255,255,0.07)",
                 alignItems: "center",
                 justifyContent: "space-around",
                 padding: "0 8px",
@@ -265,9 +268,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div
           style={{
-            maxWidth: 1280,
+            maxWidth: 1320,
             margin: "0 auto",
-            padding: "32px 24px",
+            padding: "40px 28px",
           }}
         >
           {children}

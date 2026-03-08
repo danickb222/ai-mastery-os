@@ -3,23 +3,30 @@ import { ReactNode } from "react";
 
 interface BadgeProps {
   children: ReactNode;
-  variant?: "default" | "success" | "warning" | "info";
+  variant?: "default" | "success" | "warning" | "danger" | "accent";
   className?: string;
   onClick?: () => void;
 }
 
-const variants = {
-  default: "bg-white/10 text-gray-300",
-  success: "bg-emerald-500/20 text-emerald-400",
-  warning: "bg-amber-500/20 text-amber-400",
-  info: "bg-indigo-500/20 text-indigo-400",
+const variants: Record<string, string> = {
+  default: "badge badge-advanced",
+  foundational: "badge badge-foundational",
+  FOUNDATIONAL: "badge badge-foundational",
+  advanced: "badge badge-advanced",
+  ADVANCED: "badge badge-advanced",
+  expert: "badge badge-expert",
+  EXPERT: "badge badge-expert",
+  success: "badge badge-foundational",
+  warning: "badge badge-expert",
+  danger: "badge badge-expert",
+  accent: "badge badge-foundational",
 };
 
 export function Badge({ children, variant = "default", className = "", onClick }: BadgeProps) {
   return (
     <span 
       onClick={onClick}
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${variants[variant]} ${className} ${onClick ? "cursor-pointer" : ""}`}
+      className={`${variants[variant] || "badge badge-advanced"} ${className} ${onClick ? "cursor-pointer" : ""}`}
     >
       {children}
     </span>

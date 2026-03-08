@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { DOMAINS } from "@/core/content/domains";
 import { getDrillsByDomain } from "@/core/content/drills";
 import type { DrillResult } from "@/core/types/drills";
@@ -55,99 +56,101 @@ export default function CurriculumPage() {
   });
 
   return (
-    <div style={{ paddingTop: 48, maxWidth: 1280, margin: "0 auto" }}>
+    <div style={{ paddingTop: 48, background: "var(--bg)", minHeight: "100vh" }}>
       {/* Page header */}
-      <div style={{ marginBottom: 48 }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", fontFamily: "Inter, system-ui, sans-serif", marginBottom: 12 }}>
-          CURRICULUM
-        </div>
-        <h1 style={{ color: "#ffffff", fontFamily: "Inter, system-ui, sans-serif", fontWeight: 700, fontSize: "clamp(2.2rem, 4vw, 3.5rem)", letterSpacing: "-0.04em", marginBottom: 12, lineHeight: 1.0 }}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        style={{ marginBottom: 48 }}
+      >
+        <p className="t-tag" style={{ marginBottom: 20 }}>Curriculum</p>
+
+        <h1 className="t-hero" style={{ marginBottom: 16 }}>
           Train.
         </h1>
-        <p style={{ color: "rgba(255,255,255,0.35)", fontFamily: "Inter, system-ui, sans-serif", fontSize: "0.9375rem", lineHeight: 1.7, maxWidth: 600 }}>
-          12 professional domains. Performance-scored drills. Master the complete operator skill set through active construction.
+
+        <p style={{ fontSize: 15, color: "var(--text-muted)", lineHeight: 1.75, maxWidth: 520 }}>
+          12 professional domains. Performance-scored drills. Master the complete operator skill set.
         </p>
-      </div>
+      </motion.div>
 
       {/* Domain grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12, marginTop: 48 }}>
         {domainData.map((domain, idx) => (
-          <div
+          <motion.div
             key={domain.id}
-            className="card card-hover animate-fade-up"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: idx * 0.06, duration: 0.5 }}
+            whileHover={{ scale: 1.01, y: -3 }}
             style={{
-              borderLeft: `3px solid ${domain.color}`,
-              padding: "24px",
               position: "relative",
+              overflow: "hidden",
+              background: "var(--bg3)",
+              border: "1px solid var(--border)",
+              borderLeft: `3px solid ${domain.color}`,
+              borderRadius: 14,
+              padding: 24,
               cursor: "pointer",
-              animationDelay: `${idx * 50}ms`
+              transition: "all 240ms cubic-bezier(0.4,0,0.2,1)",
             }}
             onClick={() => router.push(`/run?domain=${domain.id}`)}
           >
-            {/* Subtle glow orb using domain color */}
-            <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: `radial-gradient(ellipse, ${domain.color}15 0%, transparent 70%)`, pointerEvents: "none" }} />
+            {/* Glow orb top-right */}
+            <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, background: `radial-gradient(ellipse, ${domain.color}18 0%, transparent 70%)`, pointerEvents: "none" }} />
+            
 
             {/* Top row: name + difficulty badge */}
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12, position: "relative" }}>
-              <h3 className="t-heading" style={{ margin: 0, flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+              <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 400, color: "var(--text-primary)", marginBottom: 10, letterSpacing: "-0.01em" }}>
                 {domain.name}
               </h3>
-              <div style={{ display: "inline-flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 10px", flexShrink: 0, marginLeft: 12 }}>
-                <span style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.28)", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                  {domain.difficulty}
-                </span>
+              <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: "2px 10px", flexShrink: 0, marginLeft: 12 }}>
+                {domain.difficulty}
               </div>
             </div>
 
             {/* Description */}
-            <p className="description-clamp t-body" style={{ marginBottom: 20, marginTop: 8 }}>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, marginBottom: 20 }}>
               {domain.description}
             </p>
 
-            {/* Stats row */}
-            <div style={{ display: "flex", gap: 20, marginBottom: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="t-label" style={{ color: "var(--text-muted)" }}>DRILLS</span>
-                <span className="t-body" style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                  {domain.completedDrills}/{domain.totalDrills}
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span className="t-label" style={{ color: "var(--text-muted)" }}>TIME</span>
-                <span className="t-body" style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                  ~{domain.estimatedMinutes}m
-                </span>
-              </div>
+            {/* Stats */}
+            <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", display: "flex", gap: 16, marginBottom: 12 }}>
+              <span>{domain.completedDrills}/{domain.totalDrills} drills</span>
+              <span>~{domain.estimatedMinutes}m</span>
             </div>
 
             {/* Progress bar */}
-            <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 1, overflow: "hidden", marginBottom: 16 }}>
-              <div style={{
-                height: "100%",
-                borderRadius: 1,
-                width: `${domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}%`,
-                background: "rgba(255,255,255,0.5)",
-                boxShadow: "0 0 6px rgba(255,255,255,0.25)",
-                transition: "width 0.5s ease"
-              }} />
+            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginBottom: 16 }}>
+              <motion.div
+                initial={{ width: 0 }}
+                whileInView={{ width: `${domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}%` }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.06 + 0.1, duration: 1.0, ease: "easeOut" }}
+                style={{
+                  height: "100%",
+                  background: "rgba(255,255,255,0.45)",
+                  boxShadow: "0 0 6px rgba(255,255,255,0.25)",
+                }}
+              />
             </div>
 
             {/* Bottom row */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <div>
-                <span className="t-label" style={{ color: "var(--text-muted)", marginRight: 8 }}>AVG SCORE</span>
-                <span style={{ fontFamily: "Inter, system-ui, sans-serif", fontSize: "0.875rem", fontWeight: 600, color: domain.avgScore > 0 ? domain.color : "var(--text-muted)" }}>
-                  {domain.avgScore > 0 ? `${domain.avgScore}/100` : "—"}
-                </span>
-              </div>
-              <span style={{ fontFamily: "Inter, system-ui, sans-serif", fontSize: "0.8125rem", fontWeight: 500, color: "rgba(255,255,255,0.5)", letterSpacing: "0.02em", transition: "color 120ms ease" }}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <span style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.1em", color: "var(--text-dim)", textTransform: "uppercase" }}>
+                {domain.avgScore > 0 ? `AVG ${domain.avgScore}/100` : "NOT STARTED"}
+              </span>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600, color: "var(--cyan)", cursor: "pointer", background: "none", border: "none", display: "flex", alignItems: "center", gap: 4 }}
                 onMouseEnter={e => (e.currentTarget.style.color = "#ffffff")}
-                onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "var(--cyan)")}
               >
                 Start →
               </span>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

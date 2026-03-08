@@ -61,20 +61,22 @@ export default function ProfilePage() {
   if (!loaded) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 w-48 rounded bg-white/10" />
-        <div className="h-32 rounded-xl bg-white/10" />
+        <div style={{ height: 32, width: 192, borderRadius: 8, background: "rgba(255,255,255,0.1)" }} />
+        <div style={{ height: 128, borderRadius: 16, background: "rgba(255,255,255,0.1)" }} />
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center">
-        <h1 className="text-3xl font-bold text-white">Operator Profile</h1>
-        <p className="text-gray-400">Complete the diagnostic to create your profile.</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 20, textAlign: "center" }}>
+        <p className="t-tag" style={{ justifyContent: "center", marginBottom: 8 }}>Operator Profile</p>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 52, fontWeight: 400, color: "var(--text-primary)", letterSpacing: "-0.03em", lineHeight: 0.92 }}>Your profile awaits.</h2>
+        <p style={{ fontSize: 14, color: "var(--text-muted)", maxWidth: 360, lineHeight: 1.7 }}>Complete the diagnostic to generate your operator score.</p>
         <a
           href="/run?mode=diagnostic"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition-colors"
+          className="btn btn-primary"
+          style={{ marginTop: 16 }}
         >
           Start Your Diagnostic →
         </a>
@@ -119,61 +121,53 @@ export default function ProfilePage() {
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       {/* Header */}
       <div>
-        <div className="t-label">OPERATOR PROFILE</div>
+        <p className="t-tag">Operator Profile</p>
       </div>
 
       {/* Score Hero */}
       <div className="text-center py-12">
-        <div className="t-score score-glow">
-          <ScoreCounter target={profile.operatorScore} />
+        <ScoreCounter target={profile.operatorScore} />
+        <div style={{ marginTop: 16 }}>
+          <span className="badge badge-expert">
+            {profile.rankLabel}
+          </span>
         </div>
-        <Badge variant="default" className="mt-4 bg-[var(--accent)] text-white">
-          {profile.rankLabel}
-        </Badge>
-        <p className="t-body text-[var(--text-muted)] mt-3">
+        <p className="score-label" style={{ marginTop: 12 }}>
           Top {profile.rankPercentile}% globally
         </p>
       </div>
 
       {/* Three Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="card-hover">
-          <div className="p-6 text-center">
-            <div className="t-display-sm">{profile.streakDays}</div>
-            <div className="t-label mt-2">Day Streak</div>
-            {profile.streakDays > 0 && (
-              <div className="flex items-center justify-center gap-2 mt-2">
-                <div className="w-2 h-2 rounded-full bg-[var(--success-bg)]" />
-                <span className="text-xs text-[var(--success-text)]">Active</span>
-              </div>
-            )}
-          </div>
-        </Card>
+        <div className="stat-block">
+          <span className="stat-num">{profile.streakDays}</span>
+          <span className="stat-label">Day Streak</span>
+          {profile.streakDays > 0 && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <div style={{ width: 8, height: 8, borderRadius: 4, background: "var(--cyan)" }} />
+              <span style={{ fontSize: 10, color: "var(--cyan)" }}>Active</span>
+            </div>
+          )}
+        </div>
 
-        <Card className="card-hover">
-          <div className="p-6 text-center">
-            <div className="t-display-sm">{activeDomains}</div>
-            <div className="t-label mt-2">Domains Trained</div>
-          </div>
-        </Card>
+        <div className="stat-block">
+          <span className="stat-num">{activeDomains}</span>
+          <span className="stat-label">Domains Trained</span>
+        </div>
 
-        <Card className="card-hover">
-          <div className="p-6 text-center">
-            <div className="t-display-sm">{totalDrills}</div>
-            <div className="t-label mt-2">Drills Completed</div>
-          </div>
-        </Card>
+        <div className="stat-block">
+          <span className="stat-num">{totalDrills}</span>
+          <span className="stat-label">Drills Completed</span>
+        </div>
       </div>
 
       {/* Domain Breakdown */}
       <div>
-        <div className="t-label mb-4">DOMAIN PERFORMANCE</div>
+        <p className="t-tag" style={{ marginBottom: 16 }}>Domain Performance</p>
         {domainsWithScores.length === 0 ? (
-          <Card>
-            <div className="p-10 text-center border border-dashed border-[var(--border-default)] rounded-lg">
-              <p className="t-body">Complete drills to build your performance profile.</p>
-            </div>
-          </Card>
+          <div style={{ padding: 40, textAlign: "center", border: "1px dashed var(--border)", borderRadius: 14 }}>
+            <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Complete drills to build your performance profile.</p>
+          </div>
         ) : (
           <div className="space-y-3">
             {domainsWithScores.map((ds, idx) => {
@@ -181,29 +175,31 @@ export default function ProfilePage() {
               if (!domain) return null;
 
               return (
-                <Card 
+                <div
                   key={ds.domainId} 
-                  className="card-hover animate-fade-up"
+                  className="animate-fade-up"
                   style={{ 
                     animationDelay: `${idx * 50}ms`,
-                    borderLeft: `3px solid ${domain.color}`
+                    background: "var(--bg3)",
+                    border: "1px solid var(--border)",
+                    borderLeft: `3px solid ${domain.color}`,
+                    borderRadius: 14,
+                    padding: 20,
+                    transition: "all 240ms ease"
                   }}
                 >
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="t-heading">{domain.name}</h3>
-                      <div className="t-mono text-sm">{ds.score}/100</div>
-                    </div>
-                    <ProgressBar 
-                      value={(ds.drillsCompleted / ds.drillsTotal) * 100} 
-                      size="sm"
-                      color={ds.score >= 80 ? "green" : ds.score >= 60 ? "yellow" : "red"}
-                    />
-                    <div className="t-label text-[var(--text-muted)] mt-2">
-                      {ds.drillsCompleted}/{ds.drillsTotal} drills
-                    </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 400, color: "var(--text-primary)" }}>{domain.name}</h3>
+                    <div style={{ fontFamily: "var(--font-code)", fontSize: 12, color: "var(--text-muted)" }}>{ds.score}/100</div>
                   </div>
-                </Card>
+                  <ProgressBar 
+                    value={(ds.drillsCompleted / ds.drillsTotal) * 100} 
+                    size="sm"
+                  />
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase", marginTop: 8 }}>
+                    {ds.drillsCompleted}/{ds.drillsTotal} drills
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -212,83 +208,80 @@ export default function ProfilePage() {
 
       {/* Operator Card (Shareable) */}
       <div>
-        <div className="t-label mb-4">OPERATOR CREDENTIAL</div>
+        <p className="t-tag" style={{ marginBottom: 16 }}>Operator Credential</p>
         <div className="max-w-[400px] mx-auto">
-          <Card className="card-elevated">
-            <div className="p-7 space-y-6">
+          <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 20, padding: 32 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div className="flex items-start justify-between">
-                <div className="t-label">AI MASTERY OS</div>
+                <span style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.2em", color: "var(--text-dim)", textTransform: "uppercase" }}>AI MASTERY OS</span>
               </div>
 
               <div className="text-center">
-                <div className="t-score">{profile.operatorScore}</div>
-                <Badge variant="default" className="mt-2 bg-[var(--accent)] text-white">
+                <div className="score-big">{profile.operatorScore}</div>
+                <span className="badge badge-expert" style={{ marginTop: 8, display: "inline-block" }}>
                   {profile.rankLabel}
-                </Badge>
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
-                  <div className="t-display-sm text-sm">{profile.streakDays}</div>
-                  <div className="t-label text-xs">Streak</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{profile.streakDays}</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Streak</div>
                 </div>
                 <div>
-                  <div className="t-display-sm text-sm">{activeDomains}</div>
-                  <div className="t-label text-xs">Domains</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{activeDomains}</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Domains</div>
                 </div>
                 <div>
-                  <div className="t-display-sm text-sm">{totalDrills}</div>
-                  <div className="t-label text-xs">Drills</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{totalDrills}</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Drills</div>
                 </div>
                 <div>
-                  <div className="t-display-sm text-sm">{bestArenaScore}</div>
-                  <div className="t-label text-xs">Arena</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{bestArenaScore}</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Arena</div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[var(--border-default)] text-right">
-                <div className="t-label text-xs">Verified Operator</div>
+              <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", textAlign: "right" }}>
+                <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Verified Operator</div>
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Button 
-            variant="secondary" 
+          <button
+            className="btn btn-secondary"
             onClick={handleCopy}
-            className="w-full mt-4"
+            style={{ width: "100%", marginTop: 16 }}
           >
             {copied ? "✓ Copied" : "Copy to Clipboard"}
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Certification Section */}
-      <Card className="border-dashed">
-        <div className="p-6">
-          <div className="t-label mb-3">CERTIFICATION</div>
-          <p className="t-body mb-4">
-            Certification exams open quarterly to operators who complete all core domains and achieve an Operator Score above 75.
-          </p>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1">
-              <div className="t-label text-xs mb-2">
-                {domainsWithScores.length}/{DOMAINS.length} domains complete
-              </div>
-              <ProgressBar 
-                value={(domainsWithScores.length / DOMAINS.length) * 100}
-                size="sm"
-                color="blue"
-              />
+      <div style={{ background: "var(--bg3)", border: "1px dashed var(--border)", borderRadius: 14, padding: 24 }}>
+        <p className="t-tag" style={{ marginBottom: 12 }}>Certification</p>
+        <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.7 }}>
+          Certification exams open quarterly to operators who complete all core domains and achieve an Operator Score above 75.
+        </p>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1">
+            <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 8 }}>
+              {domainsWithScores.length}/{DOMAINS.length} domains complete
             </div>
+            <ProgressBar 
+              value={(domainsWithScores.length / DOMAINS.length) * 100}
+              size="sm"
+            />
           </div>
-          <Button 
-            variant="secondary" 
-            disabled={!certificationEligible}
-          >
-            {certificationEligible ? "Apply for Certification" : "Not Yet Eligible"}
-          </Button>
         </div>
-      </Card>
+        <button
+          className="btn btn-secondary"
+          disabled={!certificationEligible}
+        >
+          {certificationEligible ? "Apply for Certification" : "Not Yet Eligible"}
+        </button>
+      </div>
     </div>
   );
 }

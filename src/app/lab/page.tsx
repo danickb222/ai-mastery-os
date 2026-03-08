@@ -914,23 +914,18 @@ export default function LabPage() {
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div>
-        <div className="t-label">PROMPT LAB</div>
-        <h1 className="t-display-sm">The Lab</h1>
-        <p className="t-body">Build your prompt toolkit. Every serious operator has one.</p>
+        <p className="t-tag" style={{ marginBottom: 20 }}>Prompt Lab</p>
+        <h1 className="t-hero" style={{ marginBottom: 8 }}>The Lab.</h1>
+        <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Build your prompt toolkit. Every serious operator has one.</p>
       </div>
 
       {/* Page Tabs */}
-      <div className="flex gap-6 border-b-2 border-transparent">
+      <div className="tab-bar">
         {(["workspace", "reference", "saved"] as TabType[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`pb-2 px-1 transition-all ${
-              activeTab === tab
-                ? "text-[var(--text-primary)] border-b-2 border-[rgba(255,255,255,0.6)] font-medium"
-                : "text-[var(--text-muted)] border-b-2 border-transparent"
-            }`}
-            style={{ transitionDuration: "var(--t-fast)" }}
+            className={activeTab === tab ? "tab-item active" : "tab-item"}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
@@ -945,16 +940,12 @@ export default function LabPage() {
             <Card>
               <div className="p-6 space-y-4">
                 {/* Editor Sub-tabs */}
-                <div className="flex gap-2">
+                <div className="tab-bar">
                   {(["system", "user", "variables"] as EditorTab[]).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setEditorTab(tab)}
-                      className={`px-4 py-2 text-sm transition-all ${
-                        editorTab === tab
-                          ? "bg-[var(--bg-elevated)] border-b-2 border-[rgba(255,255,255,0.6)] rounded-t"
-                          : "text-[var(--text-muted)]"
-                      }`}
+                      className={editorTab === tab ? "tab-item active" : "tab-item"}
                     >
                       {tab.charAt(0).toUpperCase() + tab.slice(1)}
                       {tab === "system" && " Prompt"}
@@ -970,8 +961,8 @@ export default function LabPage() {
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       placeholder="Define the AI's role, constraints, and behavior. This runs before every user message and shapes all responses."
-                      className="input w-full min-h-[220px] font-[var(--font-mono)]"
-                      style={{ fontFamily: "var(--font-mono)" }}
+                      className="input"
+                      style={{ minHeight: 280, fontFamily: "var(--font-mono)" }}
                     />
                     <div className="flex justify-between">
                       <div className="t-label">{systemPrompt.length} characters</div>
@@ -989,8 +980,8 @@ export default function LabPage() {
                       value={userMessage}
                       onChange={(e) => setUserMessage(e.target.value)}
                       placeholder="Write the specific task or question. Use {{variable_name}} to insert dynamic values defined in the Variables tab."
-                      className="input w-full min-h-[180px] font-[var(--font-mono)]"
-                      style={{ fontFamily: "var(--font-mono)" }}
+                      className="input"
+                      style={{ minHeight: 280, fontFamily: "var(--font-mono)" }}
                     />
                     <div className="flex justify-between">
                       <div className="t-label">{userMessage.length} characters</div>
@@ -1059,16 +1050,13 @@ export default function LabPage() {
                   <div className="t-label mb-2">DOMAIN</div>
                   <div className="flex flex-wrap gap-2">
                     {DOMAINS.map(domain => (
-                      <Badge
+                      <button
                         key={domain.id}
-                        variant={selectedDomain === domain.id ? "default" : "default"}
                         onClick={() => setSelectedDomain(domain.id)}
-                        className={`cursor-pointer ${
-                          selectedDomain === domain.id ? "bg-[rgba(255,255,255,0.12)] text-white border-[rgba(255,255,255,0.2)]" : ""
-                        }`}
+                        className={selectedDomain === domain.id ? "domain-pill selected" : "domain-pill"}
                       >
                         {domain.name}
-                      </Badge>
+                      </button>
                     ))}
                   </div>
                   {domainError && (
@@ -1080,12 +1068,12 @@ export default function LabPage() {
 
                 {/* Action Row */}
                 <div className="flex items-center gap-3 pt-2">
-                  <Button variant="primary" onClick={handleScore} className="flex-1">
+                  <button className="btn btn-primary" onClick={handleScore} style={{ flex: 1, padding: "14px 24px", fontSize: 13 }}>
                     Score This Prompt →
-                  </Button>
-                  <Button variant="ghost" onClick={handleClear}>
+                  </button>
+                  <button className="btn btn-ghost" onClick={handleClear}>
                     Clear
-                  </Button>
+                  </button>
                   <div className="t-label text-[var(--text-secondary)]">
                     {systemPrompt.length + userMessage.length} total chars
                   </div>
@@ -1097,15 +1085,13 @@ export default function LabPage() {
           {/* Right Column - Score Display */}
           <div className="space-y-4">
             {!scored ? (
-              <Card>
-                <div className="p-10 text-center border border-dashed border-[var(--border-default)] rounded-lg">
-                  <p className="t-body">Submit a prompt to receive your quality score.</p>
-                  <p className="t-label text-[var(--text-secondary)] mt-2">Scored across four dimensions.</p>
-                </div>
-              </Card>
+              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 16, padding: 28, minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
+                  <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Submit a prompt to receive your quality score.</p>
+                  <p className="t-label" style={{ color: "var(--text-dim)" }}>Scored across four dimensions.</p>
+              </div>
             ) : (
-              <Card className="animate-scale-in">
-                <div className="p-6 space-y-6">
+              <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 16, padding: 28, minHeight: 300 }} className="animate-scale-in">
+                <div className="space-y-6">
                   <div className="text-center">
                     <div className="t-score score-glow">
                       <ScoreCounter target={scoringResult.percentage} />
@@ -1144,7 +1130,7 @@ export default function LabPage() {
                     </p>
                   )}
                 </div>
-              </Card>
+              </div>
             )}
           </div>
         </div>
