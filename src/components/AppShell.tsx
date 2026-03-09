@@ -69,8 +69,8 @@ const tabs = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [navVisible, setNavVisible] = useState(true);
-  const [toast, setToast] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
+  const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleDrillStart = () => setNavVisible(false);
@@ -83,10 +83,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  function showComingSoon() {
-    setToast(true);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(false), 1500);
+  function showComingSoon(href: string) {
+    setComingSoonTab(href);
+    if (comingSoonTimer.current) clearTimeout(comingSoonTimer.current);
+    comingSoonTimer.current = setTimeout(() => setComingSoonTab(null), 2000);
   }
 
   // Landing page renders its own nav
@@ -97,20 +97,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ShellErrorBoundary>
         {navVisible && (
           <>
-            {/* Coming soon toast */}
-            {toast && (
-              <div style={{
-                position: "fixed", top: 72, left: "50%", transform: "translateX(-50%)",
-                zIndex: 2000, background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 8, padding: "7px 16px",
-                fontFamily: "var(--font-code)", fontSize: 11, letterSpacing: "0.1em",
-                color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
-                animation: "fadeInDown 0.2s ease",
-              }}>
-                Coming soon
-              </div>
-            )}
 
             {/* Desktop nav — top bar */}
             <nav
@@ -173,25 +159,38 @@ export function AppShell({ children }: { children: ReactNode }) {
                     const active = !item.locked && (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href));
                     if (item.locked) {
                       return (
-                        <button
-                          key={item.href}
-                          onClick={showComingSoon}
-                          title="Coming soon"
-                          style={{
-                            fontSize: 12.5,
-                            fontWeight: 400,
-                            color: "rgba(255,255,255,0.3)",
-                            padding: "6px 14px",
-                            borderRadius: 11,
-                            background: "transparent",
-                            border: "1px solid transparent",
-                            opacity: 0.4,
-                            cursor: "default",
-                            fontFamily: "inherit",
-                          }}
-                        >
-                          {item.label}
-                        </button>
+                        <div key={item.href} style={{ position: "relative" }}>
+                          <button
+                            onClick={() => showComingSoon(item.href)}
+                            style={{
+                              fontSize: 12.5,
+                              fontWeight: 400,
+                              color: "rgba(255,255,255,0.35)",
+                              padding: "6px 14px",
+                              borderRadius: 11,
+                              background: "transparent",
+                              border: "1px solid transparent",
+                              cursor: "default",
+                              fontFamily: "inherit",
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                          <div style={{
+                            position: "absolute", top: "100%", left: "50%",
+                            transform: "translateX(-50%)",
+                            marginTop: 6,
+                            background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
+                            borderRadius: 6, padding: "4px 10px",
+                            fontFamily: "var(--font-code)", fontSize: 10, letterSpacing: "0.1em",
+                            color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
+                            zIndex: 2000, pointerEvents: "none",
+                            opacity: comingSoonTab === item.href ? 1 : 0,
+                            transition: "opacity 0.2s ease",
+                          }}>
+                            Coming soon
+                          </div>
+                        </div>
                       );
                     }
                     return (
@@ -217,22 +216,20 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
 
                 <Link
-                  href="/settings"
+                  href="/diagnostic"
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "6px 10px",
-                    color: "rgba(255,255,255,0.2)",
+                    marginLeft: 8,
+                    padding: "6px 14px",
+                    background: "#fff",
+                    borderRadius: 10,
+                    color: "#000",
+                    fontSize: 12,
+                    fontWeight: 700,
                     textDecoration: "none",
-                    borderRadius: 11,
-                    transition: "all 150ms ease",
+                    whiteSpace: "nowrap",
                   }}
-                  aria-label="Settings"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
+                  Start Diagnostic
                 </Link>
               </div>
             </nav>
@@ -263,7 +260,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   return (
                     <button
                       key={item.href}
-                      onClick={showComingSoon}
+                      onClick={() => showComingSoon(item.href)}
                       title="Coming soon"
                       style={{
                         display: "flex",
@@ -352,7 +349,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       <style>{`
-        @keyframes fadeInDown { from { opacity: 0; transform: translateX(-50%) translateY(-6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @media (min-width: 768px) {
           .md-nav { display: flex !important; }
           .mobile-nav { display: none !important; }

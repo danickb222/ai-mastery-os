@@ -34,6 +34,8 @@ export default function Dashboard() {
   const [daysSinceActive, setDaysSinceActive] = useState(0);
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
+  const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let p = getOperatorProfile();
@@ -456,6 +458,12 @@ export default function Dashboard() {
     };
   }, []);
 
+  function showComingSoon(href: string) {
+    setComingSoonTab(href);
+    if (comingSoonTimer.current) clearTimeout(comingSoonTimer.current);
+    comingSoonTimer.current = setTimeout(() => setComingSoonTab(null), 2000);
+  }
+
   async function handleWaitlist(e: React.FormEvent) {
     e.preventDefault();
     setWaitlistStatus('loading');
@@ -476,13 +484,87 @@ export default function Dashboard() {
       {/* Page */}
       <div id="page">
 
-        {/* Nav */}
-        <nav>
-          <a href="/" className="nav-logo">AI Dojo</a>
-          <a href="/" className="nav-a on">Dashboard</a>
-          <a href="/curriculum" className="nav-a">Train</a>
-          <a href="/arena" className="nav-a">Arena</a>
-          <a href="/lab" className="nav-a">Lab</a>
+        {/* Nav — matches AppShell exactly */}
+        <nav style={{
+          position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)",
+          zIndex: 1000, background: "rgba(8,9,12,0.88)",
+          backdropFilter: "blur(32px) saturate(220%)", WebkitBackdropFilter: "blur(32px) saturate(220%)",
+          border: "1px solid rgba(255,255,255,0.09)", borderRadius: 18,
+          padding: "0 8px", height: 50, display: "flex", alignItems: "center", gap: 2,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)",
+          whiteSpace: "nowrap",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <a href="/" style={{
+              fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: "0.3em",
+              color: "rgba(255,255,255,0.22)", textTransform: "uppercase", textDecoration: "none",
+              padding: "6px 16px 6px 10px", marginRight: 4, borderRight: "1px solid rgba(255,255,255,0.07)",
+              display: "flex", alignItems: "center", gap: 6,
+            }}>
+              AI DOJO
+              <span style={{
+                fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.16em", color: "var(--cyan)",
+                background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.25)", borderRadius: 4, padding: "1px 5px",
+              }}>BETA</span>
+            </a>
+            <div style={{ display: "flex", gap: 2 }}>
+              {/* Dashboard — active on homepage */}
+              <a href="/" style={{
+                fontSize: 12.5, fontWeight: 500, color: "rgba(255,255,255,0.9)", padding: "6px 14px",
+                borderRadius: 11, background: "rgba(255,255,255,0.08)", textDecoration: "none",
+                border: "1px solid rgba(255,255,255,0.07)",
+              }}>Dashboard</a>
+              {/* Train */}
+              <a href="/curriculum" style={{
+                fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.28)", padding: "6px 14px",
+                borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",
+                transition: "all 150ms ease",
+              }}>Train</a>
+              {/* Arena — locked */}
+              <div style={{ position: "relative" }}>
+                <button onClick={() => showComingSoon('/arena')} style={{
+                  fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.35)", padding: "6px 14px",
+                  borderRadius: 11, background: "transparent", border: "1px solid transparent",
+                  cursor: "default", fontFamily: "inherit",
+                }}>Arena</button>
+                <div style={{
+                  position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)",
+                  marginTop: 6, background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6, padding: "4px 10px", fontFamily: "var(--font-code)", fontSize: 10,
+                  letterSpacing: "0.1em", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
+                  zIndex: 2000, pointerEvents: "none",
+                  opacity: comingSoonTab === '/arena' ? 1 : 0, transition: "opacity 0.2s ease",
+                }}>Coming soon</div>
+              </div>
+              {/* Lab — locked */}
+              <div style={{ position: "relative" }}>
+                <button onClick={() => showComingSoon('/lab')} style={{
+                  fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.35)", padding: "6px 14px",
+                  borderRadius: 11, background: "transparent", border: "1px solid transparent",
+                  cursor: "default", fontFamily: "inherit",
+                }}>Lab</button>
+                <div style={{
+                  position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)",
+                  marginTop: 6, background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 6, padding: "4px 10px", fontFamily: "var(--font-code)", fontSize: 10,
+                  letterSpacing: "0.1em", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
+                  zIndex: 2000, pointerEvents: "none",
+                  opacity: comingSoonTab === '/lab' ? 1 : 0, transition: "opacity 0.2s ease",
+                }}>Coming soon</div>
+              </div>
+              {/* Profile */}
+              <a href="/profile" style={{
+                fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.28)", padding: "6px 14px",
+                borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",
+                transition: "all 150ms ease",
+              }}>Profile</a>
+            </div>
+            {/* Start Diagnostic white pill */}
+            <a href="/diagnostic" style={{
+              marginLeft: 8, padding: "6px 14px", background: "#fff", borderRadius: 10,
+              color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
+            }}>Start Diagnostic</a>
+          </div>
         </nav>
 
         {/* Hero */}
@@ -521,7 +603,7 @@ export default function Dashboard() {
                 </svg>
               </a>
             </div>
-            <div id="waitlist" style={{ marginTop: 40 }}>
+            <div id="waitlist" style={{ marginTop: 40, textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 12 }}>
                 EARLY ACCESS
               </div>
@@ -546,7 +628,7 @@ export default function Dashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     onSubmit={handleWaitlist}
-                    style={{ display: 'flex', gap: 10, maxWidth: 480 }}
+                    style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}
                   >
                     <input
                       type="email"
@@ -555,7 +637,7 @@ export default function Dashboard() {
                       value={waitlistEmail}
                       onChange={e => setWaitlistEmail(e.target.value)}
                       style={{
-                        width: 280, padding: '12px 16px',
+                        width: 260, padding: '12px 16px',
                         background: 'var(--bg3)',
                         border: '1px solid var(--border)',
                         borderRadius: 10, color: '#fff',
@@ -609,6 +691,44 @@ export default function Dashboard() {
                 <p className="code-desc">Every drill gives you a brief, a target, and a rubric. You produce the output. AI scores it in seconds against weighted criteria — no partial credit.</p>
               </div>
               <DrillPreview />
+            </div>
+          </div>
+        </section>
+
+        {/* Gap section */}
+        <section id="gap" style={{ padding: '80px 28px' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 64, alignItems: 'center' }}>
+            {/* Left: heading */}
+            <div className="rv">
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 16 }}>
+                The method
+              </div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 24 }}>
+                Built for the gap between knowing and <em>doing.</em>
+              </h2>
+              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, maxWidth: 420 }}>
+                You can read about prompt engineering for weeks. Or you can build 50 prompts, get scored on every one, and know exactly where you stand.
+              </p>
+            </div>
+            {/* Right: feature cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { label: 'Live AI scoring', desc: 'Every submission is evaluated against a weighted rubric in seconds — no partial credit, no ambiguity.' },
+                { label: 'Precision feedback', desc: 'See exactly which criteria you hit or missed, with a score on every dimension of your output.' },
+                { label: 'Adaptive difficulty', desc: 'The system routes you to your weakest areas. Harder drills unlock as you improve.' },
+              ].map((item, i) => (
+                <div key={item.label} className="rv" style={{
+                  background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 22px',
+                  display: 'flex', gap: 16, alignItems: 'flex-start',
+                  transitionDelay: `${i * 80}ms`,
+                }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cyan)', marginTop: 6, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 5 }}>{item.label}</div>
+                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>

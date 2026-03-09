@@ -30,7 +30,7 @@ export default function DrillPreview() {
         if (n >= DEMO_PROMPT.length) { clearInterval(iv); return n }
         return n + 1
       })
-    }, 11)
+    }, 45)
     return () => clearInterval(iv)
   }, [phase])
 
@@ -47,18 +47,18 @@ export default function DrillPreview() {
     // Phase 2: start typing
     timers.push(setTimeout(() => setPhase(2), 1000))
 
-    // Phase 3: submit click
+    // Phase 3: submit click (after ~182 chars * 45ms = 8190ms typing + 1000ms delay)
     timers.push(setTimeout(() => {
       setPhase(3)
       setSubmitActive(true)
       timers.push(setTimeout(() => setSubmitActive(false), 300))
-    }, 3100))
+    }, 9300))
 
     // Phase 4: score animation
     timers.push(setTimeout(() => {
       setPhase(4)
       const start = performance.now()
-      const dur = 1400
+      const dur = 1500
       const animScore = (now: number) => {
         const p = Math.min((now - start) / dur, 1)
         const eased = 1 - Math.pow(1 - p, 3)
@@ -82,10 +82,10 @@ export default function DrillPreview() {
     }, 3500))
 
     // Phase 5: hold
-    timers.push(setTimeout(() => setPhase(5), 5800))
+    timers.push(setTimeout(() => setPhase(5), 11200))
 
     // Loop
-    timers.push(setTimeout(() => setCycle(c => c + 1), 8000))
+    timers.push(setTimeout(() => setCycle(c => c + 1), 12000))
 
     return () => {
       timers.forEach(clearTimeout)
