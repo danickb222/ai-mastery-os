@@ -81,10 +81,10 @@ export default function CurriculumPage() {
           <motion.div
             key={domain.id}
             initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: idx > 0 ? 0.45 : 1, y: 0 }}
+            whileInView={{ opacity: idx > 0 ? 0.4 : 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: idx * 0.06, duration: 0.5 }}
-            whileHover={idx === 0 ? { scale: 1.01, y: -3 } : {}}
+            whileHover={idx === 0 ? { scale: 1.01, y: -3 } : { opacity: 0.55 }}
             style={{
               position: "relative",
               overflow: "hidden",
@@ -93,12 +93,11 @@ export default function CurriculumPage() {
               borderLeft: `3px solid ${domain.color}`,
               borderRadius: 14,
               padding: 24,
-              cursor: idx === 0 ? "pointer" : "default",
+              cursor: "pointer",
               transition: "all 240ms cubic-bezier(0.4,0,0.2,1)",
-              opacity: idx > 0 ? 0.45 : 1,
-              pointerEvents: idx > 0 ? "none" : "auto",
+              opacity: idx > 0 ? 0.4 : 1,
             }}
-            onClick={idx === 0 ? () => router.push(`/run?domain=${domain.id}`) : () => {}}
+            onClick={idx === 0 ? () => router.push(`/run?domain=${domain.id}`) : () => router.push('/#waitlist')}
           >
             {/* Glow orb top-right */}
             <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, background: `radial-gradient(ellipse, ${domain.color}18 0%, transparent 70%)`, pointerEvents: "none" }} />
@@ -159,7 +158,7 @@ export default function CurriculumPage() {
                   Start →
                 </span>
               ) : (
-                <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontFamily: "var(--font-code)", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 6 }}>
                   🔒 Coming soon
                 </span>
               )}

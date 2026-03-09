@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { ShellErrorBoundary } from "./ShellErrorBoundary";
 
 function DashboardIcon() {
@@ -59,14 +59,18 @@ function GearIcon() {
 }
 
 const tabs = [
-  { label: "Dashboard", href: "/", icon: <DashboardIcon /> },
-  { label: "Train", href: "/curriculum", icon: <TrainIcon /> },
-  { label: "Profile", href: "/profile", icon: <ProfileIcon /> },
+  { label: "Dashboard", href: "/", icon: <DashboardIcon />, locked: false },
+  { label: "Train", href: "/curriculum", icon: <TrainIcon />, locked: false },
+  { label: "Arena", href: "/arena", icon: <ArenaIcon />, locked: true },
+  { label: "Lab", href: "/lab", icon: <LabIcon />, locked: true },
+  { label: "Profile", href: "/profile", icon: <ProfileIcon />, locked: false },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [navVisible, setNavVisible] = useState(true);
+  const [toast, setToast] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleDrillStart = () => setNavVisible(false);
@@ -79,7 +83,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Landing page renders its own nav, loader, and full layout
+  function showComingSoon() {
+    setToast(true);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(false), 1500);
+  }
+
+  // Landing page renders its own nav
   if (pathname === '/') return <>{children}</>;
 
   return (
@@ -87,6 +97,21 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ShellErrorBoundary>
         {navVisible && (
           <>
+            {/* Coming soon toast */}
+            {toast && (
+              <div style={{
+                position: "fixed", top: 72, left: "50%", transform: "translateX(-50%)",
+                zIndex: 2000, background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 8, padding: "7px 16px",
+                fontFamily: "var(--font-code)", fontSize: 11, letterSpacing: "0.1em",
+                color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+                animation: "fadeInDown 0.2s ease",
+              }}>
+                Coming soon
+              </div>
+            )}
+
             {/* Desktop nav — top bar */}
             <nav
               className="md-nav"
@@ -110,11 +135,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 whiteSpace: "nowrap",
               }}
             >
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 2,
-              }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                 {/* Wordmark */}
                 <Link
                   href="/"
@@ -129,27 +150,50 @@ export function AppShell({ children }: { children: ReactNode }) {
                     padding: "6px 16px 6px 10px",
                     marginRight: 4,
                     borderRight: "1px solid rgba(255,255,255,0.07)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
                   }}
                 >
                   AI DOJO
                   <span style={{
-                    marginLeft: 6,
-                    fontFamily: 'var(--font-code)',
+                    fontFamily: "var(--font-code)",
                     fontSize: 8,
-                    letterSpacing: '0.16em',
-                    color: 'var(--cyan)',
-                    background: 'rgba(0,212,255,0.1)',
-                    border: '1px solid rgba(0,212,255,0.25)',
+                    letterSpacing: "0.16em",
+                    color: "var(--cyan)",
+                    background: "rgba(0,212,255,0.1)",
+                    border: "1px solid rgba(0,212,255,0.25)",
                     borderRadius: 4,
-                    padding: '1px 5px',
-                    verticalAlign: 'middle',
+                    padding: "1px 5px",
                   }}>BETA</span>
                 </Link>
 
                 <div style={{ display: "flex", gap: 2 }}>
                   {tabs.map((item) => {
-                    const active =
-                      item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                    const active = !item.locked && (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href));
+                    if (item.locked) {
+                      return (
+                        <button
+                          key={item.href}
+                          onClick={showComingSoon}
+                          title="Coming soon"
+                          style={{
+                            fontSize: 12.5,
+                            fontWeight: 400,
+                            color: "rgba(255,255,255,0.3)",
+                            padding: "6px 14px",
+                            borderRadius: 11,
+                            background: "transparent",
+                            border: "1px solid transparent",
+                            opacity: 0.4,
+                            cursor: "default",
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      );
+                    }
                     return (
                       <Link
                         key={item.href}
@@ -191,7 +235,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </svg>
                 </Link>
               </div>
-
             </nav>
 
             {/* Mobile nav — bottom bar */}
@@ -215,8 +258,35 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="mobile-nav"
             >
               {tabs.map((item) => {
-                const active =
-                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                const active = !item.locked && (item.href === "/" ? pathname === "/" : pathname.startsWith(item.href));
+                if (item.locked) {
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={showComingSoon}
+                      title="Coming soon"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 3,
+                        flex: 1,
+                        padding: "4px 0",
+                        color: "rgba(255,255,255,0.28)",
+                        background: "none",
+                        border: "none",
+                        fontSize: 10,
+                        fontFamily: "'Inter', system-ui, sans-serif",
+                        fontWeight: 500,
+                        opacity: 0.4,
+                        cursor: "default",
+                      }}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                }
                 return (
                   <Link
                     key={item.href}
@@ -276,18 +346,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}
         className={navVisible ? "has-nav" : ""}
       >
-        <div
-          style={{
-            maxWidth: 1320,
-            margin: "0 auto",
-            padding: "40px 28px",
-          }}
-        >
+        <div style={{ maxWidth: 1320, margin: "0 auto", padding: "40px 28px" }}>
           {children}
         </div>
       </main>
 
       <style>{`
+        @keyframes fadeInDown { from { opacity: 0; transform: translateX(-50%) translateY(-6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
         @media (min-width: 768px) {
           .md-nav { display: flex !important; }
           .mobile-nav { display: none !important; }

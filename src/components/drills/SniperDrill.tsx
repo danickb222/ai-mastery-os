@@ -83,6 +83,15 @@ function heuristicScore(text: string, drill: Drill): number {
   let score = 0
   const lower = text.toLowerCase()
 
+  // Directive language check — must contain an imperative verb to score above 20
+  const hasDirective = /\b(write|generate|create|produce|draft|summarise|summarize|list|analyse|analyze|you are|your task|act as)\b/i.test(text)
+
+  // Verbatim overlap penalty — if 6+ letter words in submission match context/target at ratio > 0.4
+  const briefText = (drill.context + ' ' + drill.targetOutput).toLowerCase()
+  const subWords6 = lower.match(/\b[a-z]{6,}\b/g) ?? []
+  const briefWords6 = new Set(briefText.match(/\b[a-z]{6,}\b/g) ?? [])
+  const overlapRatio = subWords6.length > 0 ? subWords6.filter(w => briefWords6.has(w)).length / subWords6.length : 0
+
   // Length — more text = more specificity
   if (text.length > 80) score += 10
   if (text.length > 180) score += 8
@@ -106,7 +115,13 @@ function heuristicScore(text: string, drill: Drill): number {
   const unique = [...new Set(ctxWords)]
   score += Math.min(12, unique.filter(w => lower.includes(w)).length * 2)
 
-  return Math.min(95, score)
+  let finalScore = Math.min(95, score)
+
+  // Apply caps
+  if (!hasDirective) finalScore = Math.min(finalScore, 20)
+  if (overlapRatio > 0.4) finalScore = Math.min(finalScore, 18)
+
+  return finalScore
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -122,7 +137,6 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
   const [scoreHistory, setScoreHistory] = useState<number[]>([])
   const [timeLeft, setTimeLeft] = useState(drill.timeLimit ?? 480)
   const [scanActive, setScanActive] = useState(false)
-  const [showCelebration, setShowCelebration] = useState(false)
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scoreRef = useRef(0)
@@ -205,11 +219,6 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
       setCriteriaScores(cs)
       setFeedback(fb)
 
-      if (score >= 90) {
-        setShowCelebration(true)
-        setTimeout(() => setShowCelebration(false), 2800)
-      }
-
       setTimeout(() => {
         setScanActive(false)
         setPhase('result')
@@ -229,55 +238,13 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
   }, [phase, prompt, drill, onSubmit])
 
   const displayScore = finalScore !== null ? finalScore : liveScore
-  const color = scoreColor(displayScore)
+  const color = '#00d4ff'
   const totalMaxPoints = drill.successCriteria.reduce((a, c) => a + c.maxPoints, 0)
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-body)', position: 'relative', overflow: 'hidden' }}>
-
-      {/* Ambient top glow */}
-      <div style={{ position: 'fixed', top: 0, left: '20%', right: '20%', height: 1, background: `linear-gradient(90deg, transparent, ${color}44, transparent)`, transition: 'background 0.8s ease', zIndex: 0, pointerEvents: 'none' }} />
-
-      {/* Scan line during scoring */}
-      <AnimatePresence>
-        {scanActive && (
-          <motion.div
-            key="scan"
-            initial={{ top: '10%', opacity: 0 }}
-            animate={{ top: ['15%', '85%'], opacity: [0, 0.5, 0.5, 0] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9, ease: 'linear' }}
-            style={{
-              position: 'fixed', left: 0, right: 0, height: 1, zIndex: 200, pointerEvents: 'none',
-              background: `linear-gradient(90deg, transparent 0%, ${color}88 30%, ${color} 50%, ${color}88 70%, transparent 100%)`,
-              boxShadow: `0 0 12px ${color}66`,
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Precision Shot celebration */}
-      <AnimatePresence>
-        {showCelebration && (
-          <motion.div
-            initial={{ opacity: 0, y: -30, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 22 }}
-            style={{
-              position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
-              zIndex: 300, background: `${color}15`, border: `1px solid ${color}44`,
-              borderRadius: 12, padding: '12px 28px', display: 'flex', alignItems: 'center', gap: 10,
-              boxShadow: `0 0 40px ${color}22`,
-            }}
-          >
-            <span style={{ fontSize: 22 }}>🎯</span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 22, color, letterSpacing: '-0.01em' }}>Precision Shot</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ─── HEADER ────────────────────────────────────────────────────────── */}
       <div style={{
@@ -306,34 +273,19 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
 
         {/* Live score bar — center */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, maxWidth: 480, margin: '0 auto' }}>
-          <motion.span
-            key={Math.floor(displayScore / 3)}
-            initial={{ scale: 0.88, opacity: 0.5 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              fontFamily: 'var(--font-code)', fontSize: 20, lineHeight: 1,
-              color, minWidth: 34, textAlign: 'right', transition: 'color 0.5s ease',
-            }}
-          >{Math.round(displayScore)}</motion.span>
+          <span style={{ fontFamily: 'var(--font-code)', fontSize: 20, lineHeight: 1, color: '#00d4ff', minWidth: 34, textAlign: 'right' }}>
+            {Math.round(displayScore)}
+          </span>
 
           {/* Bar track */}
           <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3, position: 'relative', overflow: 'visible' }}>
             <motion.div
               animate={{ width: `${Math.min(100, displayScore)}%` }}
               transition={{ duration: 0.55, ease: [0, 0, 0.2, 1] }}
-              style={{
-                height: '100%', borderRadius: 3,
-                background: `linear-gradient(90deg, ${color}70, ${color})`,
-                boxShadow: `0 0 10px ${color}55`,
-                transition: 'background 0.5s ease, box-shadow 0.5s ease',
-              }}
+              style={{ height: '100%', borderRadius: 3, background: '#00d4ff', boxShadow: '0 0 8px rgba(0,212,255,0.4)' }}
             />
             {/* 90-point target notch */}
-            <div style={{
-              position: 'absolute', top: -4, left: '90%', width: 1, height: 11,
-              background: 'rgba(255,255,255,0.35)', borderRadius: 1,
-            }} />
+            <div style={{ position: 'absolute', top: -4, left: '90%', width: 1, height: 11, background: 'rgba(255,255,255,0.35)', borderRadius: 1 }} />
           </div>
 
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>/ 100</span>
@@ -347,7 +299,7 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
                 animate={{ opacity: [1, 0.3, 1], scale: 1 }}
                 exit={{ opacity: 0, scale: 0 }}
                 transition={{ opacity: { duration: 0.5, repeat: Infinity }, scale: { duration: 0.15 } }}
-                style={{ width: 5, height: 5, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }}
+                style={{ width: 5, height: 5, borderRadius: '50%', background: '#00d4ff', boxShadow: '0 0 6px rgba(0,212,255,0.7)' }}
               />
             )}
           </AnimatePresence>
@@ -412,8 +364,8 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
             </div>
 
             {/* Target output */}
-            <div style={{ background: `${color}08`, border: `1px solid ${color}22`, borderRadius: 14, padding: '18px 20px', marginBottom: 14, transition: 'background 0.5s, border-color 0.5s' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color, marginBottom: 10, transition: 'color 0.5s' }}>
+            <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>
                 <span>🎯</span> Target Output
               </div>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: 0 }}>{drill.targetOutput}</p>
@@ -432,9 +384,9 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
                 {drill.successCriteria.map((c) => (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                     <div style={{
-                      fontFamily: 'var(--font-code)', fontSize: 8, color, background: `${color}0d`,
-                      border: `1px solid ${color}22`, padding: '2px 6px', borderRadius: 4,
-                      whiteSpace: 'nowrap', marginTop: 2, transition: 'color 0.5s, border-color 0.5s',
+                      fontFamily: 'var(--font-code)', fontSize: 8, color: '#00d4ff', background: 'rgba(0,212,255,0.06)',
+                      border: '1px solid rgba(0,212,255,0.18)', padding: '2px 6px', borderRadius: 4,
+                      whiteSpace: 'nowrap', marginTop: 2,
                     }}>{c.maxPoints}pt</div>
                     <div>
                       <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', marginBottom: 2 }}>{c.label}</div>
@@ -470,18 +422,18 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
                       const x2 = (i / (scoreHistory.length - 1)) * 72
                       const y1 = 18 - (scoreHistory[i - 1] / 100) * 18
                       const y2 = 18 - (s / 100) * 18
-                      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={1.5} opacity={0.65} />
+                      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#00d4ff" strokeWidth={1.5} opacity={0.65} />
                     })}
                     {scoreHistory.length > 0 && (
                       <circle
                         cx={(scoreHistory.length - 1) / (scoreHistory.length - 1) * 72}
                         cy={18 - (scoreHistory[scoreHistory.length - 1] / 100) * 18}
-                        r={3} fill={color}
+                        r={3} fill="#00d4ff"
                       />
                     )}
                   </svg>
                   {scoreHistory.length >= 2 && (
-                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color, marginLeft: 4 }}>
+                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: '#00d4ff', marginLeft: 4 }}>
                       {scoreHistory[scoreHistory.length - 1] > scoreHistory[scoreHistory.length - 2] ? '↑' : scoreHistory[scoreHistory.length - 1] === scoreHistory[scoreHistory.length - 2] ? '→' : '↓'}
                     </span>
                   )}
@@ -508,31 +460,14 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
                   width: '100%',
                   minHeight: 260,
                   background: 'rgba(255,255,255,0.025)',
-                  border: `1px solid ${isScoring ? color + '55' : 'var(--border)'}`,
+                  border: isScoring ? '1px solid rgba(0,212,255,0.3)' : '1px solid var(--border)',
                   borderRadius: 14, padding: '16px 18px',
                   fontFamily: 'var(--font-code)', fontSize: 13, lineHeight: 1.8,
                   color: '#fff', resize: 'vertical', outline: 'none',
-                  transition: 'border-color 0.35s ease, box-shadow 0.35s ease',
-                  boxShadow: isScoring ? `0 0 0 3px ${color}0d` : 'none',
+                  transition: 'border-color 0.35s ease',
                   boxSizing: 'border-box',
                 }}
               />
-              {/* Animated border ring during scoring */}
-              <AnimatePresence>
-                {isScoring && (
-                  <motion.div
-                    key="ring"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: [0.6, 0, 0.6] }}
-                    exit={{ opacity: 0 }}
-                    transition={{ opacity: { duration: 0.7, repeat: Infinity } }}
-                    style={{
-                      position: 'absolute', inset: 0, borderRadius: 14,
-                      border: `1px solid ${color}66`, pointerEvents: 'none',
-                    }}
-                  />
-                )}
-              </AnimatePresence>
             </div>
 
             {/* Quick checklist */}
@@ -545,8 +480,8 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
                     <div key={h} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <div style={{
                         width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                        background: hit ? color : 'rgba(255,255,255,0.1)',
-                        boxShadow: hit ? `0 0 5px ${color}` : 'none',
+                        background: hit ? '#00d4ff' : 'rgba(255,255,255,0.1)',
+                        boxShadow: hit ? '0 0 5px rgba(0,212,255,0.7)' : 'none',
                         transition: 'all 0.3s ease',
                       }} />
                       <span style={{ fontSize: 11, color: hit ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.28)', transition: 'color 0.3s' }}>{h}</span>
@@ -605,9 +540,8 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: 108, fontWeight: 400, lineHeight: 1,
-                color, letterSpacing: '-0.04em',
-                textShadow: `0 0 80px ${color}33`,
-                transition: 'color 0.5s ease',
+                color: '#ffffff', letterSpacing: '-0.04em',
+                textShadow: '0 0 80px rgba(255,255,255,0.12)',
               }}
             >{finalScore ?? 0}</motion.div>
             <motion.div
@@ -625,19 +559,18 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
               {drill.successCriteria.map((c, idx) => {
                 const earned = criteriaScores[c.id] ?? 0
                 const pct = (earned / c.maxPoints) * 100
-                const cc = scoreColor(pct)
                 return (
                   <div key={c.id}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                       <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{c.label}</span>
-                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: cc }}>{earned}<span style={{ color: 'rgba(255,255,255,0.25)' }}>/{c.maxPoints}</span></span>
+                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: '#00d4ff' }}>{earned}<span style={{ color: 'rgba(255,255,255,0.25)' }}>/{c.maxPoints}</span></span>
                     </div>
                     <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ delay: 0.2 + idx * 0.07, duration: 0.7, ease: [0, 0, 0.2, 1] }}
-                        style={{ height: '100%', borderRadius: 2, background: cc }}
+                        style={{ height: '100%', borderRadius: 2, background: '#00d4ff' }}
                       />
                     </div>
                   </div>
@@ -648,8 +581,8 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
 
           {/* AI Feedback */}
           {feedback && (
-            <div style={{ background: `${color}07`, border: `1px solid ${color}20`, borderRadius: 14, padding: '18px 22px', marginBottom: 18 }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color, marginBottom: 10 }}>Coach Feedback</div>
+            <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 14, padding: '18px 22px', marginBottom: 18 }}>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>Coach Feedback</div>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.68)', lineHeight: 1.8, margin: 0 }}>{feedback}</p>
             </div>
           )}

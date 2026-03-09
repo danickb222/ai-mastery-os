@@ -154,7 +154,7 @@ function applyStructuralPenalty(submission: string) {
   const hierarchy = hasPriorityHierarchy(t);
   const nondet = enforcementIsNonDeterministic(t);
 
-  // HIPAA mention is a useful signal (still not sufficient), but in this drill it’s required.
+  // HIPAA mention is a useful signal (still not sufficient), but in this drill it's required.
   const mentionsHipaa = /\bHIPAA\b/i.test(t) || /\bPHI\b/i.test(t) || /\bprotected health information\b/i.test(t);
 
   // Lead-time / minimum notice signal
@@ -212,7 +212,7 @@ function applyStructuralPenalty(submission: string) {
     });
   }
 
-  // Cap total penalty so we don’t nuke everything beyond usefulness.
+  // Cap total penalty so we don't nuke everything beyond usefulness.
   const total = Math.min(
     40,
     penalties.reduce((sum, p) => sum + p.points, 0)
@@ -229,6 +229,46 @@ export async function evaluateDrill(args: EvaluateDrillArgs) {
   const drill = getDrillById(drillId);
   if (!drill) throw new Error(`Drill not found: ${drillId}`);
 
+  // ── PRE-FLIGHT COPY DETECTION ──────────────────────────────────────────────
+  // Runs BEFORE the API call. Cannot be bypassed by retry failures or Zod errors.
+  // Strategy: check for verbatim 50-char windows from the brief AND word-overlap.
+  const _briefChunks = [drill.scenario, drill.task].filter(Boolean) as string[];
+  const _briefFull = _briefChunks.join(' ');
+
+  // 1) Hard substring check: any 50-char window of the brief found in submission → copy
+  const _hasVerbatimChunk = _briefChunks.some(chunk => {
+    for (let i = 0; i + 50 <= chunk.length; i += 10) {
+      if (submission.includes(chunk.slice(i, i + 50))) return true;
+    }
+    return false;
+  });
+
+  // 2) Word-overlap check (5+ letter words)
+  const _subW = submission.toLowerCase().match(/\b\w{5,}\b/g) ?? [];
+  const _briefW = new Set(_briefFull.toLowerCase().match(/\b\w{5,}\b/g) ?? []);
+  const _overlap = _subW.length > 0 ? _subW.filter(w => _briefW.has(w)).length / _subW.length : 0;
+  const _hasDirective = /\b(write|generate|create|produce|draft|summarise|summarize|list|analyse|analyze|you are|your task|act as|using the|please)\b/i.test(submission);
+  const _wordCopy = _overlap > 0.45 || (!_hasDirective && _overlap > 0.25);
+
+  console.log(`[SCORE-TRACE] 1-PRE-FLIGHT drillId=${drillId} submission_len=${submission.length} briefChunks=${_briefChunks.length} verbatim=${_hasVerbatimChunk} overlap=${_overlap.toFixed(3)} hasDirective=${_hasDirective} wordCopy=${_wordCopy}`);
+
+  if (_hasVerbatimChunk || _wordCopy) {
+    console.log(`[SCORE-TRACE] 1-PRE-FLIGHT → COPY DETECTED, returning 12 immediately`);
+    return {
+      overallScore: 12,
+      masteryDecision: 'not_yet' as const,
+      rubricScores: drill.rubric.map(r => ({ rubricItemId: r.id, score: 0, justification: 'Submission copies the brief.', evidenceQuotes: [submission.slice(0, 60)] })),
+      strengths: [],
+      weaknesses: ['This is a description of what you want, not a prompt. A prompt must contain directive instructions addressed to an AI.'],
+      missedConstraints: ['Submission copies the brief — not a valid prompt. Use directive language (Write, Generate, Create...) addressed to an AI model.'],
+      riskFlags: [],
+      revisionInstructions: ['Rewrite as a directive prompt addressed to an AI. Start with an imperative verb: "Write...", "Generate...", "Create...", or "You are..."'],
+      improvedVersionOutline: '- Role definition\n- Task instruction (imperative verb)\n- Constraints & format',
+      structuralPenalty: { totalPenalty: 0, breakdown: [] },
+    } as any;
+  }
+  // ── END PRE-FLIGHT ──────────────────────────────────────────────────────────
+
   const injectionSignals = detectPromptInjection(submission);
   const { system, user } = buildEvaluatorPrompt({ drill, submission, injectionSignals });
 
@@ -236,39 +276,68 @@ export async function evaluateDrill(args: EvaluateDrillArgs) {
 
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      console.log(`[SCORE-TRACE] 2-API attempt=${attempt}`);
       const raw = await callOpenAIJSON(system, user);
       const parsed = coerceAndPatch(safeJsonParse(raw));
 
       const validated = EvaluationResultSchema.parse(parsed);
+      console.log(`[SCORE-TRACE] 3-AI-RESPONSE overallScore=${validated.overallScore} masteryDecision=${validated.masteryDecision} rubricScores=${JSON.stringify(validated.rubricScores.map(r => ({ id: r.rubricItemId, score: r.score })))}`);
 
       // evidence quotes must be literal substrings
       for (const r of validated.rubricScores) {
         assertEvidenceQuotesAreSubstrings(submission, r.evidenceQuotes);
       }
+      console.log(`[SCORE-TRACE] 4-EVIDENCE-QUOTES passed`);
 
       // recompute overall score from rubric
       const recomputed = computeOverallScoreFromRubric(drill, validated.rubricScores);
+      console.log(`[SCORE-TRACE] 5-RECOMPUTED recomputed=${recomputed} (AI overallScore was ${validated.overallScore})`);
 
       // deterministic structural penalty (model-independent)
       const { totalPenalty, penaltyBreakdown } = applyStructuralPenalty(submission);
       const penalizedScore = Math.max(0, recomputed - totalPenalty);
+      console.log(`[SCORE-TRACE] 6-PENALTY totalPenalty=${totalPenalty} penalizedScore=${penalizedScore} breakdown=${penaltyBreakdown.map(p => p.key).join(',')}`);
 
-      // force mastery rule deterministically (don’t trust model)
-      const criticalMisses = (validated.missedConstraints ?? []).length > 0;
-      const masteryDecision: 'not_yet' | 'mastered' =
-        penalizedScore >= 85 && !criticalMisses ? 'mastered' : 'not_yet';
+      // DETERMINISTIC ANTI-COPY OVERRIDE
+      // Runs after scoring - cannot be bypassed by the AI
+      const briefText = ((drill as any).scenario ?? '') + ' ' + ((drill as any).task ?? '');
+      const subWords = submission.toLowerCase().match(/\b\w{5,}\b/g) ?? [];
+      const briefWords = new Set(briefText.toLowerCase().match(/\b\w{5,}\b/g) ?? []);
+      const overlapRatio = subWords.length > 0
+        ? subWords.filter(w => briefWords.has(w)).length / subWords.length
+        : 0;
+      const hasDirective = /\b(write|generate|create|produce|draft|summarise|summarize|list|analyse|analyze|you are|your task|act as|using the|please)\b/i.test(submission);
 
+      const isCopied = overlapRatio > 0.45 || (!hasDirective && overlapRatio > 0.25);
+      console.log(`[SCORE-TRACE] 7-POST-LOOP-COPY overlap=${overlapRatio.toFixed(3)} hasDirective=${hasDirective} isCopied=${isCopied}`);
+      if (isCopied) {
+        console.log(`[SCORE-TRACE] 7-POST-LOOP-COPY → capping to 12`);
+      }
+      const finalScore = isCopied ? Math.min(12, penalizedScore) : penalizedScore;
+      const finalMastery: 'not_yet' | 'mastered' = isCopied ? 'not_yet' : (
+        // force mastery rule deterministically (don't trust model)
+        (() => {
+          const criticalMisses = (validated.missedConstraints ?? []).length > 0;
+          return penalizedScore >= 85 && !criticalMisses ? 'mastered' : 'not_yet';
+        })()
+      );
+      const finalMissed = isCopied
+        ? [...(validated.missedConstraints ?? []), 'Submission is not a prompt - it copies the brief. Use directive language addressed to an AI (Write, Generate, Create...).']
+        : (validated.missedConstraints ?? []);
+
+      console.log(`[SCORE-TRACE] 8-RETURN finalScore=${finalScore} masteryDecision=${finalMastery}`);
       return {
         ...validated,
-        overallScore: penalizedScore,
-        masteryDecision,
-        // Optional debug output (remove if you don’t want it in UI)
+        overallScore: finalScore,
+        masteryDecision: finalMastery,
+        missedConstraints: finalMissed,
         structuralPenalty: {
           totalPenalty,
           breakdown: penaltyBreakdown,
         },
       } as any;
     } catch (e: any) {
+      console.log(`[SCORE-TRACE] CATCH attempt=${attempt} error=${(e as any)?.message}`);
       lastErr = e;
     }
   }
