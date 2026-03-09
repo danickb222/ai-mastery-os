@@ -37,6 +37,8 @@ export default function Dashboard() {
   const [lastSession, setLastSession] = useState<LastDrillSession | null>(null);
   const [scoreDelta, setScoreDelta] = useState(0);
   const [daysSinceActive, setDaysSinceActive] = useState(0);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   useEffect(() => {
     let p = getOperatorProfile();
@@ -747,6 +749,21 @@ export default function Dashboard() {
     };
   }, []);
 
+  async function handleWaitlist(e: React.FormEvent) {
+    e.preventDefault();
+    setWaitlistStatus('loading');
+    try {
+      await fetch('https://formspree.io/f/xpwzkoqd', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ email: waitlistEmail }),
+      });
+      setWaitlistStatus('done');
+    } catch {
+      setWaitlistStatus('error');
+    }
+  }
+
   return (
     <>
       {/* Loader */}
@@ -829,15 +846,82 @@ export default function Dashboard() {
                 </span>
                 <span className="hs-l">Avg score</span>
               </div>
-              <div className="hs">
-                <span className="hs-n">$<span data-count="99">0</span></span>
-                <span className="hs-l">Per month</span>
-              </div>
             </div>
           </div>
           <div className="hero-scroll">
             <div className="scr-rod"></div>
             <span className="scr-txt">Scroll</span>
+          </div>
+        </section>
+
+        {/* Waitlist */}
+        <section id="waitlist" style={{ padding: '64px 28px', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ maxWidth: 520, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 16 }}>
+              EARLY ACCESS
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 32 }}>
+              Be first when new domains unlock.
+            </h2>
+            <AnimatePresence mode="wait">
+              {waitlistStatus === 'done' ? (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--cyan)', fontFamily: 'var(--font-body)', fontSize: 15 }}
+                >
+                  <span style={{ fontSize: 20 }}>✓</span>
+                  <span>You&apos;re on the list. We&apos;ll be in touch.</span>
+                </motion.div>
+              ) : (
+                <motion.form
+                  key="form"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  onSubmit={handleWaitlist}
+                  style={{ display: 'flex', gap: 10, maxWidth: 440, margin: '0 auto' }}
+                >
+                  <input
+                    type="email"
+                    required
+                    placeholder="your@email.com"
+                    value={waitlistEmail}
+                    onChange={e => setWaitlistEmail(e.target.value)}
+                    style={{
+                      flex: 1, padding: '12px 16px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 10, color: '#fff',
+                      fontFamily: 'var(--font-body)', fontSize: 14,
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={waitlistStatus === 'loading'}
+                    style={{
+                      padding: '12px 20px',
+                      background: waitlistStatus === 'loading' ? 'rgba(255,255,255,0.1)' : '#fff',
+                      border: 'none', borderRadius: 10,
+                      color: waitlistStatus === 'loading' ? 'rgba(255,255,255,0.4)' : '#000',
+                      fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+                      cursor: waitlistStatus === 'loading' ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {waitlistStatus === 'loading' ? '...' : 'Join Waitlist'}
+                  </button>
+                </motion.form>
+              )}
+            </AnimatePresence>
+            {waitlistStatus === 'error' && (
+              <p style={{ marginTop: 12, fontFamily: 'var(--font-code)', fontSize: 11, color: '#ef4444' }}>
+                Something went wrong. Try again.
+              </p>
+            )}
           </div>
         </section>
 
@@ -1042,33 +1126,6 @@ export default function Dashboard() {
 
         <div className="div" id="dv6"></div>
 
-        {/* Live Ticker */}
-        <div id="ticker">
-          <div className="ticker-wrap">
-            <span className="ticker-label">Live activity</span>
-            <div className="ticker-track">
-              <div className="ticker-scroll">
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">operator_mk scored</span><span className="tick-score">92/100</span><span className="tick-sep">·</span><span className="tick-text">Prompt Engineering</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">jzhang completed Multi-Agent Systems</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">sara_w scored</span><span className="tick-score">84/100</span><span className="tick-sep">·</span><span className="tick-text">Reasoning Chains</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">devkris moved to</span><span className="tick-score">Tier III</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">tomh scored</span><span className="tick-score">77/100</span><span className="tick-sep">·</span><span className="tick-text">Output Control</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">an.lee reached</span><span className="tick-score">Top 10%</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">rbenson scored</span><span className="tick-score">88/100</span><span className="tick-sep">·</span><span className="tick-text">Context Management</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">mx_op completed AI Workflows</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">operator_mk scored</span><span className="tick-score">92/100</span><span className="tick-sep">·</span><span className="tick-text">Prompt Engineering</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">jzhang completed Multi-Agent Systems</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">sara_w scored</span><span className="tick-score">84/100</span><span className="tick-sep">·</span><span className="tick-text">Reasoning Chains</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">devkris moved to</span><span className="tick-score">Tier III</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">tomh scored</span><span className="tick-score">77/100</span><span className="tick-sep">·</span><span className="tick-text">Output Control</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">an.lee reached</span><span className="tick-score">Top 10%</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">rbenson scored</span><span className="tick-score">88/100</span><span className="tick-sep">·</span><span className="tick-text">Context Management</span></div>
-                <div className="tick-item"><div className="tick-dot"></div><span className="tick-text">mx_op completed AI Workflows</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="div" id="dv7"></div>
 
         {/* CTA */}
@@ -1088,7 +1145,7 @@ export default function Dashboard() {
                 </svg>
               </a>
             </div>
-            <p className="cta-note rv d4">$99 / month after diagnostic &nbsp;·&nbsp; Cancel anytime</p>
+            <p className="cta-note rv d4">Free during beta &nbsp;·&nbsp; No account required</p>
           </div>
         </section>
 

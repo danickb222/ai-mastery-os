@@ -81,10 +81,10 @@ export default function CurriculumPage() {
           <motion.div
             key={domain.id}
             initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            whileInView={{ opacity: idx > 0 ? 0.45 : 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: idx * 0.06, duration: 0.5 }}
-            whileHover={{ scale: 1.01, y: -3 }}
+            whileHover={idx === 0 ? { scale: 1.01, y: -3 } : {}}
             style={{
               position: "relative",
               overflow: "hidden",
@@ -93,22 +93,30 @@ export default function CurriculumPage() {
               borderLeft: `3px solid ${domain.color}`,
               borderRadius: 14,
               padding: 24,
-              cursor: "pointer",
+              cursor: idx === 0 ? "pointer" : "default",
               transition: "all 240ms cubic-bezier(0.4,0,0.2,1)",
+              opacity: idx > 0 ? 0.45 : 1,
+              pointerEvents: idx > 0 ? "none" : "auto",
             }}
-            onClick={() => router.push(`/run?domain=${domain.id}`)}
+            onClick={idx === 0 ? () => router.push(`/run?domain=${domain.id}`) : () => {}}
           >
             {/* Glow orb top-right */}
             <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, background: `radial-gradient(ellipse, ${domain.color}18 0%, transparent 70%)`, pointerEvents: "none" }} />
-            
 
-            {/* Top row: name + difficulty badge */}
+            {/* Top row: name + badges */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
               <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 400, color: "var(--text-primary)", marginBottom: 10, letterSpacing: "-0.01em" }}>
                 {domain.name}
               </h3>
-              <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: "2px 10px", flexShrink: 0, marginLeft: 12 }}>
-                {domain.difficulty}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: 12 }}>
+                {idx === 0 && (
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--cyan)", textTransform: "uppercase", background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 100, padding: "2px 10px" }}>
+                    OPEN BETA
+                  </div>
+                )}
+                <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: "2px 10px" }}>
+                  {domain.difficulty}
+                </div>
               </div>
             </div>
 
@@ -143,12 +151,18 @@ export default function CurriculumPage() {
               <span style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.1em", color: "var(--text-dim)", textTransform: "uppercase" }}>
                 {domain.avgScore > 0 ? `AVG ${domain.avgScore}/100` : "NOT STARTED"}
               </span>
-              <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600, color: "var(--cyan)", cursor: "pointer", background: "none", border: "none", display: "flex", alignItems: "center", gap: 4 }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#ffffff")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--cyan)")}
-              >
-                Start →
-              </span>
+              {idx === 0 ? (
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600, color: "var(--cyan)", cursor: "pointer", background: "none", border: "none", display: "flex", alignItems: "center", gap: 4 }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#ffffff")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "var(--cyan)")}
+                >
+                  Start →
+                </span>
+              ) : (
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 4 }}>
+                  🔒 Coming soon
+                </span>
+              )}
             </div>
           </motion.div>
         ))}

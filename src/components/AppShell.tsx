@@ -61,8 +61,6 @@ function GearIcon() {
 const tabs = [
   { label: "Dashboard", href: "/", icon: <DashboardIcon /> },
   { label: "Train", href: "/curriculum", icon: <TrainIcon /> },
-  { label: "Arena", href: "/arena", icon: <ArenaIcon /> },
-  { label: "Lab", href: "/lab", icon: <LabIcon /> },
   { label: "Profile", href: "/profile", icon: <ProfileIcon /> },
 ];
 
@@ -134,6 +132,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }}
                 >
                   AI DOJO
+                  <span style={{
+                    marginLeft: 6,
+                    fontFamily: 'var(--font-code)',
+                    fontSize: 8,
+                    letterSpacing: '0.16em',
+                    color: 'var(--cyan)',
+                    background: 'rgba(0,212,255,0.1)',
+                    border: '1px solid rgba(0,212,255,0.25)',
+                    borderRadius: 4,
+                    padding: '1px 5px',
+                    verticalAlign: 'middle',
+                  }}>BETA</span>
                 </Link>
 
                 <div style={{ display: "flex", gap: 2 }}>
