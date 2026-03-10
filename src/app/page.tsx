@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import DrillPreview from "@/components/DrillPreview";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   getOperatorProfile,
   setOperatorProfile,
@@ -19,12 +16,46 @@ import {
   type LabSession,
   type LastDrillSession,
 } from "@/core/storage";
-import { DOMAINS, getDomainDrillCount } from "@/core/content/domains";
-import { getDrillsByDomain, DRILLS } from "@/core/content/drills";
+import { DOMAINS } from "@/core/content/domains";
+import { getDrillsByDomain } from "@/core/content/drills";
 import type { DrillResult } from "@/core/types/drills";
 
+const TICKER_ITEMS = [
+  { handle: 'operator_mk', action: 'scored', score: '92/100', domain: 'Prompt Engineering' },
+  { handle: 'jzhang', action: 'completed', domain: 'Multi-Agent Systems' },
+  { handle: 'sara_w', action: 'scored', score: '84/100', domain: 'Reasoning Chains' },
+  { handle: 'devkris', action: 'moved to', domain: 'Tier III' },
+  { handle: 'tomh', action: 'scored', score: '77/100', domain: 'Output Control' },
+  { handle: 'an.lee', action: 'reached', domain: 'Top 10%' },
+  { handle: 'rbenson', action: 'scored', score: '88/100', domain: 'Context Management' },
+  { handle: 'mx_op', action: 'completed', domain: 'AI Workflows' },
+];
+
+const DOMAINS_DATA = [
+  { num: '01', title: 'Prompt Engineering', desc: 'Write prompts that produce consistent, professional outputs across every model.', tier: 'FOUNDATIONAL' },
+  { num: '02', title: 'System Prompts', desc: 'Design system prompts that enforce behavior, tone, and constraints reliably.', tier: 'FOUNDATIONAL' },
+  { num: '03', title: 'Reasoning Chains', desc: 'Build chains of thought that solve complex problems step by step.', tier: 'ADVANCED' },
+  { num: '04', title: 'Output Control', desc: 'Get exactly the format, length, and structure you need every time.', tier: 'FOUNDATIONAL' },
+  { num: '05', title: 'AI Workflows', desc: "Chain AI calls into repeatable, production-grade pipelines that don't break.", tier: 'ADVANCED' },
+  { num: '06', title: 'Context Management', desc: 'Master context windows, memory, and state across long sessions.', tier: 'ADVANCED' },
+  { num: '07', title: 'Role Prompting', desc: 'Set precise personas and behavioral profiles. The difference between a toy and a specialist.', tier: 'ADVANCED' },
+  { num: '08', title: 'Data Extraction', desc: 'Pull structured data from unstructured text reliably and at scale.', tier: 'ADVANCED' },
+  { num: '09', title: 'AI Evaluation', desc: 'Score and compare AI outputs programmatically. Build evals that work.', tier: 'ADVANCED' },
+  { num: '10', title: 'Tool Ecosystem', desc: 'Integrate AI with real tools — APIs, databases, code interpreters.', tier: 'FOUNDATIONAL' },
+  { num: '11', title: 'Multi-Agent Systems', desc: "Orchestrate networks of agents that collaborate and produce results humans can't match alone.", tier: 'EXPERT' },
+  { num: '12', title: 'Ethics & Risk', desc: 'Understand where AI fails and how to operate responsibly at professional scale.', tier: 'ADVANCED' },
+];
+
+const COMP_ROWS = [
+  { feature: 'Real performance score',    dojo: 'yes', udemy: 'no',   yt: 'no'  },
+  { feature: 'AI-scored outputs',          dojo: 'yes', udemy: 'no',   yt: 'no'  },
+  { feature: 'Global percentile ranking',  dojo: 'yes', udemy: 'no',   yt: 'no'  },
+  { feature: 'Construction-based drills',  dojo: 'yes', udemy: 'quiz', yt: 'no'  },
+  { feature: 'Free diagnostic',            dojo: 'yes', udemy: 'paid', yt: 'yes' },
+  { feature: 'Updated monthly',            dojo: 'yes', udemy: 'var',  yt: 'var' },
+];
+
 export default function Dashboard() {
-  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const [profile, setProfile] = useState<OperatorProfile | null>(null);
   const [domainScores, setDomainScores] = useState<DomainScore[]>([]);
@@ -32,10 +63,13 @@ export default function Dashboard() {
   const [lastSession, setLastSession] = useState<LastDrillSession | null>(null);
   const [scoreDelta, setScoreDelta] = useState(0);
   const [daysSinceActive, setDaysSinceActive] = useState(0);
-  const [waitlistEmail, setWaitlistEmail] = useState('');
-  const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
   const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Suppress "unused" warnings for dashboard state that gets populated but
+  // isn't rendered directly on the marketing page
+  void loaded; void profile; void domainScores; void arenaState;
+  void lastSession; void scoreDelta; void daysSinceActive;
 
   useEffect(() => {
     let p = getOperatorProfile();
@@ -67,7 +101,6 @@ export default function Dashboard() {
 
       const newScore = computeOperatorScore(ds, as, ls);
       const newPercentile = Math.max(1, Math.round(100 - newScore));
-
       const oldScore = p.operatorScore;
       const delta = newScore - oldScore;
 
@@ -87,7 +120,6 @@ export default function Dashboard() {
       }
 
       setItem(STORAGE_KEYS.LAST_ACTIVE, new Date().toISOString());
-
       setDomainScores(ds);
       setArenaState(as);
       setLastSession(lastDrill);
@@ -106,7 +138,6 @@ export default function Dashboard() {
       'doers.','makers.','students.','hackers.','teachers.'
     ];
 
-    // Add cursor keyframe
     const s = document.createElement('style');
     s.textContent = '@keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}';
     document.head.appendChild(s);
@@ -143,10 +174,8 @@ export default function Dashboard() {
         'uniform float time;',
         'uniform float mouseX;',
         'uniform float mouseY;',
-
         'float random(in float x){ return fract(sin(x)*1e4); }',
         'float random(vec2 st){ return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123); }',
-
         'void main(void) {',
         '  vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);',
         '  uv += vec2(mouseX - 0.5, mouseY - 0.5) * 0.08;',
@@ -169,12 +198,7 @@ export default function Dashboard() {
         '}'
       ].join('\n');
 
-      const material = new THREE.ShaderMaterial({
-        uniforms,
-        vertexShader,
-        fragmentShader
-      });
-
+      const material = new THREE.ShaderMaterial({ uniforms, vertexShader, fragmentShader });
       const mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
 
@@ -301,9 +325,10 @@ export default function Dashboard() {
       setTimeout(() => revealId('hbtns', .75), 176);
     }
 
+    // ── Drill animation (fires on scroll, then loops) ──
     function runDrillAnimation() {
       const body = document.getElementById('code-body');
-      const cur = document.getElementById('code-cur');
+      const cur  = document.getElementById('code-cur');
       if (!body || !cur) return;
 
       const lines = [
@@ -329,11 +354,21 @@ export default function Dashboard() {
         {t:'op',      text:'...'},
       ];
 
+      // Reset
+      const res = document.getElementById('code-result');
+      if (res) { res.style.display = 'none'; res.classList.remove('show'); }
+      const badge = document.getElementById('result-badge');
+      const sub   = document.getElementById('result-sub');
+      const num   = document.getElementById('result-num');
+      if (badge) badge.textContent = '';
+      if (sub)   sub.textContent = '';
+      if (num)   num.textContent = '0';
+
       body.innerHTML = '';
       body.appendChild(cur);
+      cur.style.display = 'inline';
 
-      let lineIdx = 0;
-      let charIdx = 0;
+      let lineIdx = 0, charIdx = 0;
       let currentSpan: HTMLElement | null = null;
 
       function typeNext() {
@@ -368,10 +403,12 @@ export default function Dashboard() {
         animateNumber('result-num', 0, 88, 900);
         setTimeout(() => {
           const badge = document.getElementById('result-badge');
-          const sub = document.getElementById('result-sub');
+          const sub   = document.getElementById('result-sub');
           if (badge) badge.textContent = 'Top 12% on this drill';
-          if (sub) sub.textContent = '→ Rubric: clarity 23 · format 22 · edge_cases 21 · efficiency 22';
+          if (sub)   sub.textContent   = '→ Rubric: clarity 23 · format 22 · edge_cases 21 · efficiency 22';
         }, 400);
+        // Loop after 4s hold
+        setTimeout(runDrillAnimation, 4000);
       }));
     }
 
@@ -380,17 +417,19 @@ export default function Dashboard() {
       let down = false, sx = 0, sl = 0;
       el.addEventListener('mousedown', (e: MouseEvent) => { down = true; sx = e.pageX - el.offsetLeft; sl = el.scrollLeft; });
       el.addEventListener('mouseleave', () => down = false);
-      el.addEventListener('mouseup', () => down = false);
-      el.addEventListener('mousemove', (e: MouseEvent) => { if (!down) return; e.preventDefault(); el.scrollLeft = sl - (e.pageX - el.offsetLeft - sx); });
+      el.addEventListener('mouseup',    () => down = false);
+      el.addEventListener('mousemove',  (e: MouseEvent) => {
+        if (!down) return; e.preventDefault();
+        el.scrollLeft = sl - (e.pageX - el.offsetLeft - sx);
+      });
     }
 
-    // Load Three.js from CDN then init hero
+    // Load Three.js
     const threeScript = document.createElement('script');
     threeScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/89/three.min.js';
-    threeScript.onload = () => { /* THREE now available, initHeroCanvas called after loader */ };
+    threeScript.onload = () => {};
     document.head.appendChild(threeScript);
 
-    // Show page immediately — no loader
     const page = document.getElementById('page');
     if (page) page.classList.add('show');
     if ((window as any).THREE) {
@@ -410,7 +449,7 @@ export default function Dashboard() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Generic reveal
+    // Generic .rv reveal
     const rvEls = document.querySelectorAll('.rv');
     const rvObservers: IntersectionObserver[] = [];
     rvEls.forEach(el => {
@@ -421,7 +460,7 @@ export default function Dashboard() {
       rvObservers.push(obs);
     });
 
-    // Dividers
+    // .div sweep
     const divEls = document.querySelectorAll('.div');
     const divObservers: IntersectionObserver[] = [];
     divEls.forEach(d => {
@@ -432,7 +471,7 @@ export default function Dashboard() {
       divObservers.push(obs);
     });
 
-    // Code window
+    // Code window — fires on scroll, then loops via showResult
     const codeWindowEl = document.getElementById('code-window');
     let codeFired = false;
     let codeObs: IntersectionObserver | null = null;
@@ -450,11 +489,96 @@ export default function Dashboard() {
       codeObs.observe(codeWindowEl);
     }
 
+    // Why pillars: merge-in animation
+    const pillarsEl = document.querySelector('.why-pillars');
+    let pillarsObs: IntersectionObserver | null = null;
+    if (pillarsEl) {
+      pillarsObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            const pillars = pillarsEl.querySelectorAll('.pillar');
+            pillars.forEach((p, i) => setTimeout(() => p.classList.add('merged'), i * 90));
+            pillarsObs!.disconnect();
+          }
+        });
+      }, { threshold: .15 });
+      pillarsObs.observe(pillarsEl);
+    }
+
+    // Bento cards appear + score animation
+    const bcards = document.querySelectorAll('.bcard');
+    const bcardObs: IntersectionObserver[] = [];
+    let bentoFired = false;
+    bcards.forEach((card, i) => {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            setTimeout(() => {
+              card.classList.add('appeared');
+              if (card.classList.contains('wide') && !bentoFired) {
+                bentoFired = true;
+                animateNumber('bento-score', 0, 71, 1200);
+                const fills = card.querySelectorAll('.bc-bar-fill') as NodeListOf<HTMLElement>;
+                const vals = [88, 74, 42];
+                fills.forEach((fill, fi) => {
+                  setTimeout(() => { fill.style.width = vals[fi] + '%'; }, 400 + fi * 180);
+                });
+              }
+            }, i * 70);
+            obs.disconnect();
+          }
+        });
+      }, { threshold: .12 });
+      obs.observe(card);
+      bcardObs.push(obs);
+    });
+
+    // Feature cards appear
+    const fcards = document.querySelectorAll('.fcard');
+    const fcardObs: IntersectionObserver[] = [];
+    fcards.forEach((card, i) => {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            setTimeout(() => card.classList.add('appeared'), i * 70);
+            obs.disconnect();
+          }
+        });
+      }, { threshold: .08 });
+      obs.observe(card);
+      fcardObs.push(obs);
+    });
+
+    // Comparison rows appear + checkmark pop
+    const ctRows = document.querySelectorAll('.ct-row');
+    const ctObs: IntersectionObserver[] = [];
+    ctRows.forEach((row, i) => {
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            setTimeout(() => {
+              row.classList.add('appeared');
+              setTimeout(() => {
+                row.querySelectorAll('.ct-check').forEach(c => c.classList.add('popped'));
+              }, 220);
+            }, i * 80);
+            obs.disconnect();
+          }
+        });
+      }, { threshold: .2 });
+      obs.observe(row);
+      ctObs.push(obs);
+    });
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      rvObservers.forEach(obs => obs.disconnect());
-      divObservers.forEach(obs => obs.disconnect());
-      if (codeObs) codeObs.disconnect();
+      rvObservers.forEach(o => o.disconnect());
+      divObservers.forEach(o => o.disconnect());
+      bcardObs.forEach(o => o.disconnect());
+      fcardObs.forEach(o => o.disconnect());
+      ctObs.forEach(o => o.disconnect());
+      if (codeObs)    codeObs.disconnect();
+      if (pillarsObs) pillarsObs.disconnect();
     };
   }, []);
 
@@ -464,27 +588,22 @@ export default function Dashboard() {
     comingSoonTimer.current = setTimeout(() => setComingSoonTab(null), 2000);
   }
 
-  async function handleWaitlist(e: React.FormEvent) {
+  const scrollToCta = (e: React.MouseEvent) => {
     e.preventDefault();
-    setWaitlistStatus('loading');
-    try {
-      await fetch('https://formspree.io/f/xpwzkoqd', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: waitlistEmail }),
-      });
-      setWaitlistStatus('done');
-    } catch {
-      setWaitlistStatus('error');
-    }
-  }
+    document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Helper: tier badge class
+  const tierClass = (tier: string) =>
+    tier === 'FOUNDATIONAL' ? 'badge-foundational' :
+    tier === 'EXPERT'       ? 'badge-expert' : 'badge-advanced';
 
   return (
     <>
-      {/* Page */}
       <div id="page">
+        <div id="bar"></div>
 
-        {/* Nav — matches AppShell exactly */}
+        {/* ── Nav ── */}
         <nav style={{
           position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)",
           zIndex: 1000, background: "rgba(8,9,12,0.88)",
@@ -508,19 +627,16 @@ export default function Dashboard() {
               }}>BETA</span>
             </a>
             <div style={{ display: "flex", gap: 2 }}>
-              {/* Dashboard — active on homepage */}
               <a href="/" style={{
                 fontSize: 12.5, fontWeight: 500, color: "rgba(255,255,255,0.9)", padding: "6px 14px",
                 borderRadius: 11, background: "rgba(255,255,255,0.08)", textDecoration: "none",
                 border: "1px solid rgba(255,255,255,0.07)",
               }}>Dashboard</a>
-              {/* Train */}
               <a href="/curriculum" style={{
                 fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.28)", padding: "6px 14px",
                 borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",
                 transition: "all 150ms ease",
               }}>Train</a>
-              {/* Arena — locked */}
               <div style={{ position: "relative" }}>
                 <button onClick={() => showComingSoon('/arena')} style={{
                   fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.35)", padding: "6px 14px",
@@ -536,7 +652,6 @@ export default function Dashboard() {
                   opacity: comingSoonTab === '/arena' ? 1 : 0, transition: "opacity 0.2s ease",
                 }}>Coming soon</div>
               </div>
-              {/* Lab — locked */}
               <div style={{ position: "relative" }}>
                 <button onClick={() => showComingSoon('/lab')} style={{
                   fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.35)", padding: "6px 14px",
@@ -552,14 +667,12 @@ export default function Dashboard() {
                   opacity: comingSoonTab === '/lab' ? 1 : 0, transition: "opacity 0.2s ease",
                 }}>Coming soon</div>
               </div>
-              {/* Profile */}
               <a href="/profile" style={{
                 fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.28)", padding: "6px 14px",
                 borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",
                 transition: "all 150ms ease",
               }}>Profile</a>
             </div>
-            {/* Start Diagnostic white pill */}
             <a href="/diagnostic" style={{
               marginLeft: 8, padding: "6px 14px", background: "#fff", borderRadius: 10,
               color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
@@ -567,7 +680,7 @@ export default function Dashboard() {
           </div>
         </nav>
 
-        {/* Hero */}
+        {/* ── 1. Hero ── */}
         <section id="hero">
           <div id="hero-shader"></div>
           <div className="hero-orb"></div>
@@ -577,7 +690,7 @@ export default function Dashboard() {
           <div className="hero-in">
             <h1 className="hero-h">
               <span className="line1" id="hline1"></span>
-              <span className="line2" id="hline2" style={{opacity:0}}>
+              <span className="line2" id="hline2" style={{ opacity: 0 }}>
                 <span className="ws-wrap" id="wswrap">
                   <span className="ws-slot" id="wsA"></span>
                   <span className="ws-slot" id="wsB"></span>
@@ -596,81 +709,12 @@ export default function Dashboard() {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </a>
-              <a href="/curriculum" className="btn-line">
-                View curriculum{" "}
+              <a href="#cta" className="btn-line" onClick={scrollToCta}>
+                Join Waitlist{" "}
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </a>
-            </div>
-            <div id="waitlist" style={{ marginTop: 40, textAlign: 'center' }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 12 }}>
-                EARLY ACCESS
-              </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px, 3vw, 36px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 24 }}>
-                Join the waitlist.
-              </h2>
-              <AnimatePresence mode="wait">
-                {waitlistStatus === 'done' ? (
-                  <motion.div
-                    key="success"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    style={{ color: 'var(--cyan)', fontFamily: 'var(--font-body)', fontSize: 15 }}
-                  >
-                    You&apos;re on the list. ✓
-                  </motion.div>
-                ) : (
-                  <motion.form
-                    key="form"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    onSubmit={handleWaitlist}
-                    style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}
-                  >
-                    <input
-                      type="email"
-                      required
-                      placeholder="your@email.com"
-                      value={waitlistEmail}
-                      onChange={e => setWaitlistEmail(e.target.value)}
-                      style={{
-                        width: 260, padding: '12px 16px',
-                        background: 'var(--bg3)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 10, color: '#fff',
-                        fontFamily: 'var(--font-body)', fontSize: 14,
-                        outline: 'none',
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={waitlistStatus === 'loading'}
-                      style={{
-                        padding: '12px 24px',
-                        background: waitlistStatus === 'loading' ? 'rgba(255,255,255,0.1)' : '#fff',
-                        border: 'none', borderRadius: 10,
-                        color: waitlistStatus === 'loading' ? 'rgba(255,255,255,0.4)' : '#000',
-                        fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
-                        cursor: waitlistStatus === 'loading' ? 'not-allowed' : 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {waitlistStatus === 'loading' ? '...' : 'Join Waitlist'}
-                    </button>
-                  </motion.form>
-                )}
-              </AnimatePresence>
-              {waitlistStatus === 'error' && (
-                <p style={{ marginTop: 10, fontFamily: 'var(--font-code)', fontSize: 11, color: '#ef4444' }}>
-                  Something went wrong. Try again.
-                </p>
-              )}
-              <p style={{ marginTop: 14, fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em' }}>
-                No spam. Early access to all 12 domains.
-              </p>
             </div>
           </div>
           <div className="hero-scroll">
@@ -679,214 +723,218 @@ export default function Dashboard() {
           </div>
         </section>
 
+        <div className="div" id="dv1"></div>
+
+        {/* ── 2. Why AI Dojo ── */}
+        <section id="why">
+          <div className="sec">
+            <div className="why-layout">
+              <div>
+                <div className="tag rv">Why AI Dojo</div>
+                <h2 className="sh rv d1">Built for the gap between knowing and <em>doing.</em></h2>
+                <p className="why-lede rv d2">
+                  Most AI training teaches you to watch. We measure what you can build, debug, and deliver under real professional conditions.
+                </p>
+              </div>
+              <div className="why-pillars">
+                <div className="pillar tl">
+                  <span className="pi-n">01</span>
+                  <div className="pi-t">Construction-based drills</div>
+                  <div className="pi-d">You build real outputs. Scored against a professional rubric. No partial credit for effort.</div>
+                </div>
+                <div className="pillar tr">
+                  <span className="pi-n">02</span>
+                  <div className="pi-t">A number that doesn&apos;t lie</div>
+                  <div className="pi-d">Your score lives in a global distribution. You see exactly where you rank and what the gap is.</div>
+                </div>
+                <div className="pillar bl">
+                  <span className="pi-n">03</span>
+                  <div className="pi-t">No completion certificates</div>
+                  <div className="pi-d">The only credential AI Dojo produces is competence — measurable, verifiable, undeniable.</div>
+                </div>
+                <div className="pillar br">
+                  <span className="pi-n">04</span>
+                  <div className="pi-t">12 domains, one standard</div>
+                  <div className="pi-d">From prompt engineering to multi-agent systems. Every area a professional AI operator must command.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className="div" id="dv2"></div>
+
+        {/* ── 3. Bento / Platform ── */}
+        <section id="bento">
+          <div className="sec">
+            <div className="bento-head">
+              <div className="tag">Platform</div>
+              <h2 className="sh rv">Everything built around your <em>score.</em></h2>
+            </div>
+            <div className="bento-grid">
+
+              {/* Card 1 — wide: Performance dashboard */}
+              <div className="bcard wide">
+                <div className="bc-icon">📊</div>
+                <div className="bc-t">Performance dashboard</div>
+                <div className="bc-d">Every drill. Every score. Every gap. Your full operator profile — updated in real time.</div>
+                <div className="bc-live-score">
+                  <div className="bc-ls-top">
+                    <div className="bc-ls-num" id="bento-score">0</div>
+                    <div className="bc-ls-info">
+                      <span className="bc-ls-rank">Top 34% globally</span>
+                      <span className="bc-ls-tier">Tier II Operator</span>
+                    </div>
+                  </div>
+                  <div className="bc-ls-bars">
+                    {[
+                      { lbl: 'Prompt Engineering',  val: 88 },
+                      { lbl: 'Reasoning Chains',    val: 74 },
+                      { lbl: 'Multi-Agent Systems', val: 42 },
+                    ].map(row => (
+                      <div key={row.lbl} className="bc-bar-row">
+                        <div className="bc-bar-lbl">{row.lbl}</div>
+                        <div className="bc-bar-track">
+                          <div className="bc-bar-fill" style={{ width: 0 }}></div>
+                        </div>
+                        <div className="bc-bar-val">{row.val}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2 — 12 domains */}
+              <div className="bcard">
+                <div className="bc-icon">🗂</div>
+                <div className="bc-t">12 domains</div>
+                <div className="bc-d">62 drills across 3 tiers — new content added monthly.</div>
+                <div className="bc-domains">
+                  {['Prompts', 'Systems', 'Reasoning', 'Output', 'Agents', 'Ethics'].map(d => (
+                    <div key={d} className="bc-dp">{d}</div>
+                  ))}
+                </div>
+                <div className="bc-tiers">
+                  <span className="tbadge tb-f">Foundational</span>
+                  <span className="tbadge tb-a">Advanced</span>
+                  <span className="tbadge tb-e">Expert</span>
+                </div>
+              </div>
+
+              {/* Card 3 — amber: AI scored */}
+              <div className="bcard amber">
+                <div className="bc-icon">⚡</div>
+                <div className="bc-t">AI-scored in seconds</div>
+                <div className="bc-d">Submit your output. Real score against a professional rubric. No waiting. No humans in the loop.</div>
+              </div>
+
+              {/* Card 4 — Global leaderboard */}
+              <div className="bcard">
+                <div className="bc-icon">🌐</div>
+                <div className="bc-t">Global leaderboard</div>
+                <div className="bc-d">Every score ranked against every operator. The gap is always visible. The motivation is always real.</div>
+              </div>
+
+              {/* Card 5 — amber: No shortcuts */}
+              <div className="bcard amber">
+                <div className="bc-icon">🔒</div>
+                <div className="bc-t">No shortcuts</div>
+                <div className="bc-d">No multiple choice. No partial credit. No effort scores. Only output quality moves your number.</div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
         <div className="div" id="dv3"></div>
 
-        {/* Why AI Dojo */}
-        <section style={{ padding: '80px 28px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 48 }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 16 }}>
-                WHY AI DOJO
-              </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, margin: 0 }}>
-                A different kind of platform.
-              </h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-              {[
-                { num: '01', title: 'Performance over certificates', desc: 'Most platforms teach. AI Dojo measures. The only metric that matters is your score.' },
-                { num: '02', title: 'No passive learning', desc: 'Every session is a drill. Every drill is scored. You always know exactly where you stand.' },
-                { num: '03', title: 'Built for professionals', desc: 'Designed for operators who use AI at work, not students watching videos.' },
-                { num: '04', title: '12 domains, one standard', desc: 'From prompt engineering to multi-agent systems. Every area a professional AI operator must command.' },
-              ].map((item, i) => (
-                <div key={item.num} className="rv" style={{
-                  background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14,
-                  padding: '28px 24px', transitionDelay: `${i * 60}ms`,
-                }}>
-                  <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, letterSpacing: '0.16em', color: 'var(--cyan)', marginBottom: 14 }}>
-                    {item.num} ·
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: '#fff', marginBottom: 10, lineHeight: 1.35 }}>
-                    {item.title}
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7 }}>
-                    {item.desc}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Bento grid */}
-        <section style={{ padding: '0 28px 80px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ marginBottom: 40 }}>
-              <h2 className="rv" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, margin: 0 }}>
-                Everything you need to operate<br />at the top level.
-              </h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 16 }}>
-              {/* Card 1 — large */}
-              <div className="rv" style={{
-                gridColumn: 'span 7', background: 'var(--bg3)', border: '1px solid var(--border)',
-                borderRadius: 14, padding: '32px 28px', minHeight: 260,
-              }}>
-                <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 12 }}>
-                  OPERATOR PROFILE
-                </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, color: '#fff', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                  Your operator profile
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, marginBottom: 24, maxWidth: 340 }}>
-                  Every drill. Every score. Every gap. Your full operator profile — updated in real time.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[
-                    { label: 'Prompt Engineering', pct: 84 },
-                    { label: 'System Prompts', pct: 71 },
-                    { label: 'Reasoning Chains', pct: 58 },
-                    { label: 'Output Control', pct: 92 },
-                  ].map(row => (
-                    <div key={row.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.4)', width: 148, flexShrink: 0 }}>{row.label}</div>
-                      <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' }}>
-                        <div style={{ width: `${row.pct}%`, height: '100%', background: 'var(--cyan)', borderRadius: 2 }} />
-                      </div>
-                      <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'var(--cyan)', width: 28, textAlign: 'right' }}>{row.pct}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* Card 2 */}
-              <div className="rv" style={{
-                gridColumn: 'span 5', background: 'var(--bg3)', border: '1px solid var(--border)',
-                borderRadius: 14, padding: '32px 28px',
-              }}>
-                <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 12 }}>
-                  SCORING
-                </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, color: '#fff', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                  Live AI scoring
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, marginBottom: 24 }}>
-                  Every submission evaluated against a weighted rubric in seconds.
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 56, fontWeight: 400, color: '#fff', lineHeight: 1 }}>88</div>
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'var(--cyan)', marginBottom: 4 }}>Top 12% on this drill</div>
-                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, color: 'rgba(255,255,255,0.3)' }}>clarity · format · edges · efficiency</div>
-                  </div>
-                </div>
-              </div>
-              {/* Card 3 */}
-              <div className="rv" style={{
-                gridColumn: 'span 5', background: 'var(--bg3)', border: '1px solid var(--border)',
-                borderRadius: 14, padding: '32px 28px',
-              }}>
-                <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 12 }}>
-                  COVERAGE
-                </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, color: '#fff', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                  12 domains
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, marginBottom: 20 }}>
-                  Every area of professional AI operation, structured and scored.
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {['Prompts', 'Systems', 'Reasoning', 'Output', 'Agents', 'Ethics'].map(d => (
-                    <span key={d} style={{
-                      fontFamily: 'var(--font-code)', fontSize: 10, letterSpacing: '0.1em',
-                      color: 'var(--cyan)', background: 'rgba(0,212,255,0.08)',
-                      border: '1px solid rgba(0,212,255,0.2)', borderRadius: 6, padding: '4px 10px',
-                    }}>{d}</span>
-                  ))}
-                </div>
-              </div>
-              {/* Card 4 */}
-              <div className="rv" style={{
-                gridColumn: 'span 7', background: 'var(--bg3)', border: '1px solid var(--border)',
-                borderRadius: 14, padding: '32px 28px',
-              }}>
-                <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 12 }}>
-                  LEADERBOARD
-                </div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400, color: '#fff', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                  Global leaderboard
-                </div>
-                <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, marginBottom: 24, maxWidth: 340 }}>
-                  Every score ranked against every operator. The gap is always visible.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {[
-                    { rank: '01', name: 'operator_7x', score: 97 },
-                    { rank: '02', name: 'ml_practitioner', score: 94 },
-                    { rank: '03', name: 'you', score: 88, highlight: true },
-                    { rank: '04', name: 'prompt_master', score: 85 },
-                  ].map(row => (
-                    <div key={row.rank} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '8px 12px', borderRadius: 8,
-                      background: row.highlight ? 'rgba(0,212,255,0.08)' : 'transparent',
-                      border: row.highlight ? '1px solid rgba(0,212,255,0.18)' : '1px solid transparent',
-                    }}>
-                      <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.3)', width: 20 }}>{row.rank}</div>
-                      <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: row.highlight ? 'var(--cyan)' : 'rgba(255,255,255,0.55)', flex: 1 }}>{row.name}</div>
-                      <div style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: row.highlight ? 'var(--cyan)' : 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{row.score}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Drill Preview */}
+        {/* ── 4. Drill Preview ── */}
         <section id="codesnip">
           <div className="sec">
             <div className="code-grid">
-              <div className="rv">
-                <div className="tag">The diagnostic</div>
-                <h2 className="sh">See what a<br /><em>scored drill</em><br />actually looks like.</h2>
-                <p className="code-desc">Every drill gives you a brief, a target, and a rubric. You produce the output. AI scores it in seconds against weighted criteria — no partial credit.</p>
+              <div>
+                <div className="tag rv">The diagnostic</div>
+                <h2 className="sh rv d1">See what a <em>scored drill</em> actually looks like.</h2>
+                <p className="code-desc rv d2">Every drill gives you a brief, a target, and a rubric. You produce the output. AI scores it in seconds against weighted criteria — no partial credit.</p>
               </div>
-              <DrillPreview />
+              <div className="code-window" id="code-window">
+                <div className="cw-bar">
+                  <div className="cw-dot cw-d1"></div>
+                  <div className="cw-dot cw-d2"></div>
+                  <div className="cw-dot cw-d3"></div>
+                  <span className="cw-title">drill_01_prompt_engineering.md</span>
+                </div>
+                <div id="code-body" style={{ padding: 24, fontFamily: 'var(--font-code)', fontSize: 12.5, lineHeight: 1.8, height: 340, whiteSpace: 'pre', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                  <span id="code-cur" className="code-cursor"></span>
+                </div>
+                <div id="code-result" style={{ margin: '0 24px 24px', padding: '16px 20px', background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 10, display: 'none', opacity: 0, transform: 'translateY(8px)', transition: 'opacity .5s, transform .5s' }}>
+                  <div className="cr-score">
+                    <span id="result-num">0</span>/100
+                    <span className="cr-badge" id="result-badge"></span>
+                  </div>
+                  <div className="cr-sub" id="result-sub"></div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Gap section */}
-        <section id="gap" style={{ padding: '80px 28px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 64, alignItems: 'center' }}>
-            {/* Left: heading */}
-            <div className="rv">
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 16 }}>
-                The method
-              </div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 24 }}>
-                Built for the gap between knowing and <em>doing.</em>
-              </h2>
-              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, maxWidth: 420 }}>
-                You can read about prompt engineering for weeks. Or you can build 50 prompts, get scored on every one, and know exactly where you stand.
-              </p>
+        <div className="div" id="dv4"></div>
+
+        {/* ── 5. Horizontal scroll / domains ── */}
+        <section id="features">
+          <div className="feat-head">
+            <div className="tag rv">Drills</div>
+            <h2 className="sh rv d1">What you actually train <em>inside.</em></h2>
+          </div>
+          <div className="feat-scroll-wrap">
+            <div className="feat-scroll" id="featscroll">
+              {DOMAINS_DATA.map(d => (
+                <div key={d.num} className="fcard">
+                  <span className="fc-num">DOMAIN {d.num}</span>
+                  <div className="fc-t">{d.title}</div>
+                  <div className="fc-d">{d.desc}</div>
+                  <span className={`fc-tag badge ${tierClass(d.tier)}`}>{d.tier}</span>
+                </div>
+              ))}
             </div>
-            {/* Right: feature cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {[
-                { label: 'Live AI scoring', desc: 'Every submission is evaluated against a weighted rubric in seconds — no partial credit, no ambiguity.' },
-                { label: 'Precision feedback', desc: 'See exactly which criteria you hit or missed, with a score on every dimension of your output.' },
-                { label: 'Adaptive difficulty', desc: 'The system routes you to your weakest areas. Harder drills unlock as you improve.' },
-              ].map((item, i) => (
-                <div key={item.label} className="rv" style={{
-                  background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 12, padding: '18px 22px',
-                  display: 'flex', gap: 16, alignItems: 'flex-start',
-                  transitionDelay: `${i * 80}ms`,
-                }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--cyan)', marginTop: 6, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 5 }}>{item.label}</div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65 }}>{item.desc}</div>
+          </div>
+        </section>
+
+        <div className="div" id="dv5"></div>
+
+        {/* ── 6. Comparison table ── */}
+        <section id="comparison">
+          <div className="sec">
+            <div className="tag rv">Comparison</div>
+            <h2 className="sh rv d1">Why not just <em>take a course?</em></h2>
+            <div className="comp-table">
+              <div className="ct-head">
+                <div className="ct-h">Feature</div>
+                <div className="ct-h hl">AI Dojo</div>
+                <div className="ct-h">Udemy / Coursera</div>
+                <div className="ct-h">YouTube / Free</div>
+              </div>
+              {COMP_ROWS.map(row => (
+                <div key={row.feature} className="ct-row">
+                  <div className="ct-cell feature">{row.feature}</div>
+                  {/* AI Dojo */}
+                  <div className="ct-cell hl">
+                    <span className="ct-check yes">✓</span>
+                  </div>
+                  {/* Udemy */}
+                  <div className="ct-cell">
+                    {row.udemy === 'no'   && <span className="ct-check no">✗</span>}
+                    {row.udemy === 'yes'  && <span className="ct-check yes">✓</span>}
+                    {row.udemy === 'quiz' && <span className="ct-partial">Quiz only</span>}
+                    {row.udemy === 'paid' && <span className="ct-partial">Paid</span>}
+                    {row.udemy === 'var'  && <span className="ct-partial">Varies</span>}
+                  </div>
+                  {/* YouTube */}
+                  <div className="ct-cell">
+                    {row.yt === 'no'  && <span className="ct-check no">✗</span>}
+                    {row.yt === 'yes' && <span className="ct-check yes">✓</span>}
+                    {row.yt === 'var' && <span className="ct-partial">Varies</span>}
                   </div>
                 </div>
               ))}
@@ -894,69 +942,48 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* 12 Domains grid */}
-        <section style={{ padding: '80px 28px' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 56 }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)', marginBottom: 16 }}>
-                THE CURRICULUM
-              </div>
-              <h2 className="rv" style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, margin: '0 0 16px' }}>
-                12 domains. One complete skill set.
-              </h2>
-              <p className="rv" style={{ fontFamily: 'var(--font-body)', fontSize: 15, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
-                Master every area of professional AI operation.
-              </p>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-              {[
-                { num: '01', title: 'Prompt Engineering', desc: 'Write prompts that produce consistent, professional outputs across every model.', tier: 'FOUNDATIONAL' },
-                { num: '02', title: 'System Prompts', desc: 'Design system prompts that enforce behavior, tone, and constraints reliably.', tier: 'FOUNDATIONAL' },
-                { num: '03', title: 'Reasoning Chains', desc: 'Build chains of thought that solve complex problems step by step.', tier: 'ADVANCED' },
-                { num: '04', title: 'Output Control', desc: 'Get exactly the format, length, and structure you need every time.', tier: 'FOUNDATIONAL' },
-                { num: '05', title: 'AI Workflows', desc: 'Chain AI calls into repeatable, production-grade pipelines that don\'t break.', tier: 'ADVANCED' },
-                { num: '06', title: 'Context Management', desc: 'Master context windows, memory, and state across long sessions.', tier: 'ADVANCED' },
-                { num: '07', title: 'Role Prompting', desc: 'Set precise personas and behavioral profiles.', tier: 'ADVANCED' },
-                { num: '08', title: 'Data Extraction', desc: 'Pull structured data from unstructured text reliably and at scale.', tier: 'ADVANCED' },
-                { num: '09', title: 'AI Evaluation', desc: 'Score and compare AI outputs programmatically. Build evals that work.', tier: 'ADVANCED' },
-                { num: '10', title: 'Tool Ecosystem', desc: 'Integrate AI with real tools — APIs, databases, code interpreters.', tier: 'FOUNDATIONAL' },
-                { num: '11', title: 'Multi-Agent Systems', desc: 'Orchestrate networks of AI agents that collaborate on complex tasks.', tier: 'EXPERT' },
-                { num: '12', title: 'Ethics & Risk', desc: 'Identify, mitigate, and manage risk in production AI systems.', tier: 'EXPERT' },
-              ].map((domain, i) => {
-                const tierStyle: React.CSSProperties = domain.tier === 'FOUNDATIONAL'
-                  ? { color: 'var(--cyan)', background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.25)' }
-                  : domain.tier === 'ADVANCED'
-                  ? { color: '#fb923c', background: 'rgba(251,146,60,0.08)', border: '1px solid rgba(251,146,60,0.25)' }
-                  : { color: '#a78bfa', background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.25)' };
-                return (
-                  <div key={domain.num} className="rv" style={{
-                    background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14,
-                    padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 10,
-                    transitionDelay: `${i * 40}ms`,
-                  }}>
-                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, letterSpacing: '0.16em', color: 'var(--cyan)' }}>
-                      DOMAIN {domain.num}
-                    </div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.3 }}>
-                      {domain.title}
-                    </div>
-                    <div style={{ fontFamily: 'var(--font-body)', fontSize: 13, color: 'rgba(255,255,255,0.45)', lineHeight: 1.65, flex: 1 }}>
-                      {domain.desc}
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                      <span style={{
-                        fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.14em',
-                        padding: '3px 8px', borderRadius: 5, ...tierStyle,
-                      }}>{domain.tier}</span>
-                    </div>
+        {/* ── 7. Live ticker ── */}
+        <div id="ticker">
+          <div className="ticker-wrap">
+            <span className="ticker-label">Live activity</span>
+            <div className="ticker-track">
+              <div className="ticker-scroll">
+                {/* Duplicate items once for seamless loop */}
+                {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+                  <div key={i} className="tick-item">
+                    <div className="tick-dot"></div>
+                    <span className="tick-text">
+                      <strong style={{ color: 'rgba(255,255,255,0.55)' }}>{item.handle}</strong>
+                      {' '}{item.action}{' '}
+                      {item.score && <span className="tick-score">{item.score}</span>}
+                      {item.score && ' · '}
+                      {item.domain}
+                    </span>
+                    <span className="tick-sep">·</span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── 8. CTA ── */}
+        <section id="cta">
+          <div className="cta-in">
+            <div className="cta-tag rv">Step one</div>
+            <h2 className="cta-h rv d1">Find out where you <em>actually</em> stand.</h2>
+            <p className="cta-sub rv d2">5 drills. 8 minutes. No account required. Your score tells you exactly where to start.</p>
+            <a href="/diagnostic" className="btn-solid rv d3">
+              Begin Diagnostic{" "}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </a>
+            <div className="cta-note rv d4">Free to start · No account required</div>
           </div>
         </section>
 
-        {/* Footer */}
+        {/* ── Footer ── */}
         <footer style={{ padding: '32px 28px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', margin: 0 }}>
             © 2025 AI Dojo · Built by Daniel Brocato
