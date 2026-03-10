@@ -13,11 +13,13 @@ interface DrillSessionProps {
   drill: AnyDrill;
   onComplete: (result: DrillResult) => void;
   onExit: () => void;
+  drillIndex?: number;
+  totalDrills?: number;
 }
 
 type SessionPhase = 'active' | 'feedback' | 'complete';
 
-export function DrillSession({ drill, onComplete, onExit }: DrillSessionProps) {
+export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrills }: DrillSessionProps) {
   const [phase, setPhase] = useState<SessionPhase>('active');
   const [result, setResult] = useState<DrillResult | null>(null);
   const startTimeRef = useRef(Date.now());
@@ -49,6 +51,8 @@ export function DrillSession({ drill, onComplete, onExit }: DrillSessionProps) {
       {drill.type === 'prompt_construction' && drill.domain === 'prompt_engineering' && (
         <SniperDrill
           drill={drill as PromptConstructionDrillType}
+          drillIndex={drillIndex}
+          totalDrills={totalDrills}
           onSubmit={({ userInput, score = 0 }) => {
             const d = drill as PromptConstructionDrillType;
             handleSubmit({

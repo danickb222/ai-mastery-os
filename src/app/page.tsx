@@ -20,16 +20,6 @@ import { DOMAINS } from "@/core/content/domains";
 import { getDrillsByDomain } from "@/core/content/drills";
 import type { DrillResult } from "@/core/types/drills";
 
-const TICKER_ITEMS = [
-  { handle: 'operator_mk', action: 'scored', score: '92/100', domain: 'Prompt Engineering' },
-  { handle: 'jzhang', action: 'completed', domain: 'Multi-Agent Systems' },
-  { handle: 'sara_w', action: 'scored', score: '84/100', domain: 'Reasoning Chains' },
-  { handle: 'devkris', action: 'moved to', domain: 'Tier III' },
-  { handle: 'tomh', action: 'scored', score: '77/100', domain: 'Output Control' },
-  { handle: 'an.lee', action: 'reached', domain: 'Top 10%' },
-  { handle: 'rbenson', action: 'scored', score: '88/100', domain: 'Context Management' },
-  { handle: 'mx_op', action: 'completed', domain: 'AI Workflows' },
-];
 
 const DOMAINS_DATA = [
   { num: '01', title: 'Prompt Engineering', desc: 'Write prompts that produce consistent, professional outputs across every model.', tier: 'FOUNDATIONAL' },
@@ -47,12 +37,12 @@ const DOMAINS_DATA = [
 ];
 
 const COMP_ROWS = [
-  { feature: 'Real performance score',    dojo: 'yes', udemy: 'no',   yt: 'no'  },
-  { feature: 'AI-scored outputs',          dojo: 'yes', udemy: 'no',   yt: 'no'  },
-  { feature: 'Global percentile ranking',  dojo: 'yes', udemy: 'no',   yt: 'no'  },
-  { feature: 'Construction-based drills',  dojo: 'yes', udemy: 'quiz', yt: 'no'  },
-  { feature: 'Free diagnostic',            dojo: 'yes', udemy: 'paid', yt: 'yes' },
-  { feature: 'Updated monthly',            dojo: 'yes', udemy: 'var',  yt: 'var' },
+  { feature: 'You can measure your actual skill',     dojo: 'yes', udemy: 'no',   yt: 'no'  },
+  { feature: 'AI scores your real output',            dojo: 'yes', udemy: 'no',   yt: 'no'  },
+  { feature: 'You know your global rank',             dojo: 'yes', udemy: 'no',   yt: 'no'  },
+  { feature: 'You practice by building, not clicking',dojo: 'yes', udemy: 'quiz', yt: 'no'  },
+  { feature: 'You can start for free today',          dojo: 'yes', udemy: 'paid', yt: 'yes' },
+  { feature: 'You get fresh content every month',     dojo: 'yes', udemy: 'var',  yt: 'var' },
 ];
 
 export default function Dashboard() {
@@ -65,6 +55,9 @@ export default function Dashboard() {
   const [daysSinceActive, setDaysSinceActive] = useState(0);
   const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
   const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
   // Suppress "unused" warnings for dashboard state that gets populated but
   // isn't rendered directly on the marketing page
@@ -273,20 +266,20 @@ export default function Dashboard() {
       active.textContent      = shuffled[0];
       active.style.transform  = 'translateY(0px)';
       active.style.opacity    = '1';
-      standby.style.transform = `translateY(${clipH}px)`;
+      standby.style.transform = `translateY(-${clipH}px)`;
       standby.style.opacity   = '0';
 
       setInterval(() => {
         idx = (idx + 1) % shuffled.length;
         standby.textContent = shuffled[idx];
         standby.style.transition = 'none';
-        standby.style.transform  = `translateY(${clipH}px)`;
+        standby.style.transform  = `translateY(-${clipH}px)`;
         standby.style.opacity    = '0';
 
         requestAnimationFrame(() => requestAnimationFrame(() => {
           const ease = '.52s cubic-bezier(.4,0,.2,1)';
           active.style.transition  = `transform ${ease},opacity ${ease}`;
-          active.style.transform   = `translateY(-${clipH}px)`;
+          active.style.transform   = `translateY(${clipH}px)`;
           active.style.opacity     = '0';
           standby.style.transition = `transform ${ease},opacity ${ease}`;
           standby.style.transform  = 'translateY(0px)';
@@ -325,36 +318,12 @@ export default function Dashboard() {
       setTimeout(() => revealId('hbtns', .75), 176);
     }
 
-    // ── Drill animation (fires on scroll, then loops) ──
+    // ── Drill animation — 5 phases: broken → typing → click → score → loop ──
     function runDrillAnimation() {
       const body = document.getElementById('code-body');
       const cur  = document.getElementById('code-cur');
       if (!body || !cur) return;
 
-      const lines = [
-        {t:'comment', text:'# DRILL 01 — Prompt Engineering\n'},
-        {t:'comment', text:'# Domain: Foundational  |  Max score: 100\n\n'},
-        {t:'key',     text:'BRIEF'},
-        {t:'op',      text:':\n'},
-        {t:'plain',   text:'  Write a prompt that extracts\n'},
-        {t:'plain',   text:'  all named entities from a\n'},
-        {t:'plain',   text:'  document and returns JSON.\n\n'},
-        {t:'key',     text:'RUBRIC'},
-        {t:'op',      text:':\n'},
-        {t:'fn',      text:'  clarity       '},
-        {t:'num',     text:'25pts\n'},
-        {t:'fn',      text:'  output_format '},
-        {t:'num',     text:'25pts\n'},
-        {t:'fn',      text:'  edge_cases    '},
-        {t:'num',     text:'25pts\n'},
-        {t:'fn',      text:'  efficiency    '},
-        {t:'num',     text:'25pts\n\n'},
-        {t:'PAUSE',   text:''},
-        {t:'key',     text:'SUBMITTING'},
-        {t:'op',      text:'...'},
-      ];
-
-      // Reset
       const res = document.getElementById('code-result');
       if (res) { res.style.display = 'none'; res.classList.remove('show'); }
       const badge = document.getElementById('result-badge');
@@ -368,28 +337,75 @@ export default function Dashboard() {
       body.appendChild(cur);
       cur.style.display = 'inline';
 
-      let lineIdx = 0, charIdx = 0;
-      let currentSpan: HTMLElement | null = null;
+      // Phase 1 — show broken prompt in red, 900ms hold
+      const brokenLines = [
+        {t:'comment', text:'# ⚠ BROKEN PROMPT\n'},
+        {t:'err',     text:'"Write me something about AI"\n\n'},
+      ];
 
-      function typeNext() {
-        if (lineIdx >= lines.length) { setTimeout(showResult, 400); return; }
-        const line = lines[lineIdx];
-        if (line.t === 'PAUSE') { lineIdx++; setTimeout(typeNext, 800); return; }
-        if (charIdx === 0) {
-          currentSpan = document.createElement('span');
-          currentSpan.className = 'tok-' + line.t;
-          body!.insertBefore(currentSpan, cur);
+      // Phase 2 — improved prompt typing
+      const goodLines = [
+        {t:'comment', text:'# ✓ IMPROVED PROMPT\n'},
+        {t:'key',     text:'TASK'},
+        {t:'op',      text:': '},
+        {t:'plain',   text:'Extract all named entities\n'},
+        {t:'plain',   text:'       from the document below.\n\n'},
+        {t:'key',     text:'FORMAT'},
+        {t:'op',      text:':\n'},
+        {t:'fn',      text:'  Return JSON array: '},
+        {t:'num',     text:'{name, type}\n\n'},
+        {t:'key',     text:'CONSTRAINTS'},
+        {t:'op',      text:':\n'},
+        {t:'plain',   text:'  - Only PERSON, ORG, LOC\n'},
+        {t:'plain',   text:'  - Max 50 entities\n\n'},
+        {t:'PAUSE',   text:''},
+        {t:'key',     text:'▶ SUBMITTING'},
+        {t:'op',      text:'...'},
+      ];
+
+      function typeLines(lines: {t:string,text:string}[], onDone: () => void) {
+        let lineIdx = 0, charIdx = 0;
+        let currentSpan: HTMLElement | null = null;
+        function typeNext() {
+          if (lineIdx >= lines.length) { onDone(); return; }
+          const line = lines[lineIdx];
+          if (line.t === 'PAUSE') { lineIdx++; setTimeout(typeNext, 700); return; }
+          if (charIdx === 0) {
+            currentSpan = document.createElement('span');
+            currentSpan.className = 'tok-' + line.t;
+            body!.insertBefore(currentSpan, cur);
+          }
+          if (charIdx < line.text.length) {
+            currentSpan!.textContent += line.text[charIdx];
+            charIdx++;
+            setTimeout(typeNext, line.t === 'comment' ? 20 : 26);
+          } else { charIdx = 0; lineIdx++; setTimeout(typeNext, 12); }
         }
-        if (charIdx < line.text.length) {
-          currentSpan!.textContent += line.text[charIdx];
-          charIdx++;
-          setTimeout(typeNext, line.t === 'comment' ? 22 : 28);
-        } else {
-          charIdx = 0; lineIdx++;
-          setTimeout(typeNext, 14);
-        }
+        typeNext();
       }
-      typeNext();
+
+      // Phase 1: type broken prompt
+      typeLines(brokenLines, () => {
+        // Hold 900ms so viewer sees it, then clear and type good prompt
+        setTimeout(() => {
+          body!.innerHTML = '';
+          body!.appendChild(cur);
+          cur.style.display = 'inline';
+          // Phase 2: type improved prompt
+          typeLines(goodLines, () => {
+            // Phase 3: cursor click effect (flash the last span)
+            const spans = body!.querySelectorAll('span:not(#code-cur)');
+            const last = spans[spans.length - 1] as HTMLElement | null;
+            if (last) {
+              last.style.transition = 'opacity 0.15s';
+              last.style.opacity = '0.3';
+              setTimeout(() => { last.style.opacity = '1'; showResult(); }, 200);
+            } else {
+              showResult();
+            }
+          });
+        }, 900);
+      });
     }
 
     function showResult() {
@@ -400,6 +416,7 @@ export default function Dashboard() {
       res.style.display = 'block';
       requestAnimationFrame(() => requestAnimationFrame(() => {
         res.classList.add('show');
+        // Phase 4: animate score
         animateNumber('result-num', 0, 88, 900);
         setTimeout(() => {
           const badge = document.getElementById('result-badge');
@@ -407,7 +424,7 @@ export default function Dashboard() {
           if (badge) badge.textContent = 'Top 12% on this drill';
           if (sub)   sub.textContent   = '→ Rubric: clarity 23 · format 22 · edge_cases 21 · efficiency 22';
         }, 400);
-        // Loop after 4s hold
+        // Phase 5: loop
         setTimeout(runDrillAnimation, 4000);
       }));
     }
@@ -517,11 +534,11 @@ export default function Dashboard() {
               card.classList.add('appeared');
               if (card.classList.contains('wide') && !bentoFired) {
                 bentoFired = true;
-                animateNumber('bento-score', 0, 71, 1200);
+                animateNumber('bento-score', 0, 71, 2800);
                 const fills = card.querySelectorAll('.bc-bar-fill') as NodeListOf<HTMLElement>;
                 const vals = [88, 74, 42];
                 fills.forEach((fill, fi) => {
-                  setTimeout(() => { fill.style.width = vals[fi] + '%'; }, 400 + fi * 180);
+                  setTimeout(() => { fill.style.width = vals[fi] + '%'; }, 400 + fi * 600);
                 });
               }
             }, i * 70);
@@ -549,9 +566,10 @@ export default function Dashboard() {
       fcardObs.push(obs);
     });
 
-    // Comparison rows appear + checkmark pop
+    // Comparison rows appear + checkmark pop + win counter
     const ctRows = document.querySelectorAll('.ct-row');
     const ctObs: IntersectionObserver[] = [];
+    let winsFired = false;
     ctRows.forEach((row, i) => {
       const obs = new IntersectionObserver(entries => {
         entries.forEach(e => {
@@ -562,6 +580,22 @@ export default function Dashboard() {
                 row.querySelectorAll('.ct-check').forEach(c => c.classList.add('popped'));
               }, 220);
             }, i * 80);
+            // Animate win counter after all rows have appeared
+            if (!winsFired && i === ctRows.length - 1) {
+              winsFired = true;
+              setTimeout(() => {
+                animateNumber('ct-wins', 0, 6, 900);
+                const counter = document.getElementById('ct-wins-wrap');
+                if (counter) {
+                  counter.style.transition = 'opacity 0.4s ease';
+                  counter.style.opacity = '1';
+                }
+                setTimeout(() => {
+                  const counter2 = document.getElementById('ct-wins-wrap');
+                  if (counter2) counter2.style.boxShadow = '0 0 20px rgba(0,212,255,0.25)';
+                }, 950);
+              }, (ctRows.length) * 80 + 400);
+            }
             obs.disconnect();
           }
         });
@@ -569,6 +603,70 @@ export default function Dashboard() {
       obs.observe(row);
       ctObs.push(obs);
     });
+
+    // ── Lamp canvas animation ──
+    let lampRaf = 0;
+    function initLampCanvas() {
+      const canvas = document.getElementById('lamp-canvas') as HTMLCanvasElement | null;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      function resize() {
+        const rect = canvas!.getBoundingClientRect();
+        canvas!.width  = rect.width  * window.devicePixelRatio;
+        canvas!.height = rect.height * window.devicePixelRatio;
+        ctx!.scale(window.devicePixelRatio, window.devicePixelRatio);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      const t0 = performance.now();
+      function drawLamp(now: number) {
+        const rect = canvas!.getBoundingClientRect();
+        const W = rect.width, H = rect.height;
+        ctx!.clearRect(0, 0, W, H);
+        const t = (now - t0) / 1000;
+        const angle = (Math.PI / 12) * Math.sin(t * 0.55); // ±15°
+        const cx = W / 2;
+        const beamLen = H * 1.1;
+        const ex = cx + Math.sin(angle) * beamLen;
+        const ey = H + Math.cos(angle) * beamLen * 0.1;
+        const grad = ctx!.createRadialGradient(cx, -20, 0, cx, -20, beamLen);
+        grad.addColorStop(0,   'rgba(0,212,255,0.18)');
+        grad.addColorStop(0.4, 'rgba(0,212,255,0.06)');
+        grad.addColorStop(1,   'rgba(0,212,255,0)');
+        ctx!.beginPath();
+        ctx!.moveTo(cx - 30, 0);
+        ctx!.lineTo(cx + 30, 0);
+        ctx!.lineTo(ex + 80, ey);
+        ctx!.lineTo(ex - 80, ey);
+        ctx!.closePath();
+        ctx!.fillStyle = grad;
+        ctx!.fill();
+        // Pulsing source glow
+        const pulse = 0.6 + 0.4 * Math.sin(t * 1.8);
+        const glow = ctx!.createRadialGradient(cx, 0, 0, cx, 0, 60);
+        glow.addColorStop(0,   `rgba(0,212,255,${0.25 * pulse})`);
+        glow.addColorStop(1,   'rgba(0,212,255,0)');
+        ctx!.beginPath();
+        ctx!.arc(cx, 0, 60, 0, Math.PI * 2);
+        ctx!.fillStyle = glow;
+        ctx!.fill();
+        lampRaf = requestAnimationFrame(drawLamp);
+      }
+      lampRaf = requestAnimationFrame(drawLamp);
+    }
+
+    // Init lamp when CTA section comes into view
+    const ctaSect = document.getElementById('cta');
+    let lampObs: IntersectionObserver | null = null;
+    if (ctaSect) {
+      lampObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) { initLampCanvas(); lampObs!.disconnect(); }
+        });
+      }, { threshold: 0.1 });
+      lampObs.observe(ctaSect);
+    }
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -579,6 +677,8 @@ export default function Dashboard() {
       ctObs.forEach(o => o.disconnect());
       if (codeObs)    codeObs.disconnect();
       if (pillarsObs) pillarsObs.disconnect();
+      if (lampObs)    lampObs.disconnect();
+      if (lampRaf)    cancelAnimationFrame(lampRaf);
     };
   }, []);
 
@@ -591,6 +691,21 @@ export default function Dashboard() {
   const scrollToCta = (e: React.MouseEvent) => {
     e.preventDefault();
     document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const submitWaitlist = async () => {
+    if (!waitlistEmail.trim()) return;
+    setWaitlistStatus('loading');
+    try {
+      const res = await fetch('https://formspree.io/f/xkoqjewl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ email: waitlistEmail, source: 'hero' }),
+      });
+      setWaitlistStatus(res.ok ? 'success' : 'error');
+    } catch {
+      setWaitlistStatus('error');
+    }
   };
 
   // Helper: tier badge class
@@ -709,12 +824,71 @@ export default function Dashboard() {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </a>
-              <a href="#cta" className="btn-line" onClick={scrollToCta}>
-                Join Waitlist{" "}
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </a>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <button
+                  className="btn-line"
+                  onClick={() => { setWaitlistOpen(o => !o); setWaitlistStatus('idle'); setWaitlistEmail(''); }}
+                  style={{ cursor: 'pointer', background: 'transparent', fontFamily: 'inherit' }}
+                >
+                  Join Waitlist{" "}
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </button>
+                {waitlistOpen && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
+                    background: 'rgba(12,13,18,0.97)', border: '1px solid rgba(255,255,255,0.14)',
+                    borderRadius: 14, padding: '16px 18px', minWidth: 300, zIndex: 200,
+                    boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
+                  }}>
+                    {waitlistStatus === 'success' ? (
+                      <div style={{ textAlign: 'center', fontFamily: 'var(--font-code)', fontSize: 12, color: '#22c55e', letterSpacing: '0.06em', padding: '4px 0' }}>
+                        ✓ You&apos;re on the list!
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>
+                          Get early access
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <input
+                            type="email"
+                            autoFocus
+                            value={waitlistEmail}
+                            onChange={e => setWaitlistEmail(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && submitWaitlist()}
+                            placeholder="your@email.com"
+                            style={{
+                              flex: 1, padding: '9px 12px',
+                              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: 8, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13,
+                              outline: 'none',
+                            }}
+                          />
+                          <button
+                            onClick={submitWaitlist}
+                            disabled={waitlistStatus === 'loading'}
+                            style={{
+                              padding: '9px 16px', background: '#00d4ff', border: 'none', borderRadius: 8,
+                              color: '#000', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+                              cursor: 'pointer', whiteSpace: 'nowrap',
+                              opacity: waitlistStatus === 'loading' ? 0.6 : 1,
+                            }}
+                          >
+                            {waitlistStatus === 'loading' ? '...' : '→'}
+                          </button>
+                        </div>
+                        {waitlistStatus === 'error' && (
+                          <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: '#f97316', marginTop: 6 }}>
+                            Something went wrong — try again.
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="hero-scroll">
@@ -908,9 +1082,21 @@ export default function Dashboard() {
           <div className="sec">
             <div className="tag rv">Comparison</div>
             <h2 className="sh rv d1">Why not just <em>take a course?</em></h2>
+
+            {/* Win counter */}
+            <div id="ct-wins-wrap" style={{
+              display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28,
+              background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)',
+              borderRadius: 14, padding: '14px 22px', opacity: 0,
+              transition: 'box-shadow 0.6s ease',
+            }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 400, color: '#00d4ff', lineHeight: 1 }} id="ct-wins">0</span>
+              <span style={{ fontFamily: 'var(--font-code)', fontSize: 9, color: '#00d4ff', letterSpacing: '0.16em', textTransform: 'uppercase' }}>/6 outcomes<br />AI Dojo wins</span>
+            </div>
+
             <div className="comp-table">
               <div className="ct-head">
-                <div className="ct-h">Feature</div>
+                <div className="ct-h">What you actually get</div>
                 <div className="ct-h hl">AI Dojo</div>
                 <div className="ct-h">Udemy / Coursera</div>
                 <div className="ct-h">YouTube / Free</div>
@@ -942,37 +1128,13 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* ── 7. Live ticker ── */}
-        <div id="ticker">
-          <div className="ticker-wrap">
-            <span className="ticker-label">Live activity</span>
-            <div className="ticker-track">
-              <div className="ticker-scroll">
-                {/* Duplicate items once for seamless loop */}
-                {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-                  <div key={i} className="tick-item">
-                    <div className="tick-dot"></div>
-                    <span className="tick-text">
-                      <strong style={{ color: 'rgba(255,255,255,0.55)' }}>{item.handle}</strong>
-                      {' '}{item.action}{' '}
-                      {item.score && <span className="tick-score">{item.score}</span>}
-                      {item.score && ' · '}
-                      {item.domain}
-                    </span>
-                    <span className="tick-sep">·</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 8. CTA ── */}
-        <section id="cta">
-          <div className="cta-in">
+        {/* ── 7. CTA ── */}
+        <section id="cta" style={{ position: 'relative', overflow: 'hidden' }}>
+          <canvas id="lamp-canvas" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.55 }} />
+          <div className="cta-in" style={{ position: 'relative', zIndex: 1 }}>
             <div className="cta-tag rv">Step one</div>
             <h2 className="cta-h rv d1">Find out where you <em>actually</em> stand.</h2>
-            <p className="cta-sub rv d2">5 drills. 8 minutes. No account required. Your score tells you exactly where to start.</p>
+            <p className="cta-sub rv d2">3 drills. 8 minutes. No account required. Your score tells you exactly where to start.</p>
             <a href="/diagnostic" className="btn-solid rv d3">
               Begin Diagnostic{" "}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

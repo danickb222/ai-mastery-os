@@ -56,6 +56,8 @@ interface SniperDrillProps {
   drill: Drill
   onSubmit: (result: { userInput: string; score?: number }) => void
   onExit: () => void
+  drillIndex?: number
+  totalDrills?: number
 }
 
 // ─── Score colour helper ──────────────────────────────────────────────────────
@@ -126,7 +128,7 @@ function heuristicScore(text: string, drill: Drill): number {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProps) {
+export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, totalDrills }: SniperDrillProps) {
   const [prompt, setPrompt] = useState('')
   const [liveScore, setLiveScore] = useState(0)
   const [isScoring, setIsScoring] = useState(false)
@@ -257,6 +259,12 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
 
         {/* Domain + difficulty badges */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {totalDrills != null && drillIndex != null && (
+            <span style={{
+              fontFamily: 'var(--font-code)', fontSize: 11, letterSpacing: '0.08em',
+              color: 'rgba(255,255,255,0.55)', marginRight: 2,
+            }}>Drill {drillIndex + 1} of {totalDrills}</span>
+          )}
           <span style={{
             fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
             color: 'var(--cyan)', background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
@@ -278,14 +286,14 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
           </span>
 
           {/* Bar track */}
-          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 3, position: 'relative', overflow: 'visible' }}>
+          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, position: 'relative', overflow: 'visible' }}>
             <motion.div
               animate={{ width: `${Math.min(100, displayScore)}%` }}
               transition={{ duration: 0.55, ease: [0, 0, 0.2, 1] }}
-              style={{ height: '100%', borderRadius: 3, background: '#00d4ff', boxShadow: '0 0 8px rgba(0,212,255,0.4)' }}
+              style={{ height: '100%', borderRadius: 4, background: '#00d4ff', boxShadow: '0 0 8px rgba(0,212,255,0.4)' }}
             />
             {/* 90-point target notch */}
-            <div style={{ position: 'absolute', top: -4, left: '90%', width: 1, height: 11, background: 'rgba(255,255,255,0.35)', borderRadius: 1 }} />
+            <div style={{ position: 'absolute', top: -4, left: '90%', width: 1, height: 12, background: 'rgba(255,255,255,0.35)', borderRadius: 1 }} />
           </div>
 
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>/ 100</span>
@@ -530,25 +538,47 @@ export default function SniperDrill({ drill, onSubmit, onExit }: SniperDrillProp
           transition={{ duration: 0.5 }}
           style={{ maxWidth: 760, margin: '40px auto', padding: '0 28px 80px' }}
         >
-          {/* Big score */}
-          <div style={{ textAlign: 'center', marginBottom: 52 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>Final Score</div>
-            <motion.div
-              initial={{ scale: 0.55, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.15, type: 'spring', stiffness: 220, damping: 18 }}
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 108, fontWeight: 400, lineHeight: 1,
-                color: '#ffffff', letterSpacing: '-0.04em',
-                textShadow: '0 0 80px rgba(255,255,255,0.12)',
-              }}
-            >{finalScore ?? 0}</motion.div>
+          {/* Score circle */}
+          <div style={{ textAlign: 'center', marginBottom: 44 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>Final Score</div>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              {(() => {
+                const sc = finalScore ?? 0
+                const r = 56
+                const circ = 2 * Math.PI * r
+                const pct = sc / 100
+                const col = scoreColor(sc)
+                return (
+                  <svg width={140} height={140} style={{ overflow: 'visible' }}>
+                    <circle cx={70} cy={70} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={7} />
+                    <motion.circle
+                      cx={70} cy={70} r={r} fill="none" stroke={col} strokeWidth={7}
+                      strokeLinecap="round"
+                      strokeDasharray={circ}
+                      initial={{ strokeDashoffset: circ }}
+                      animate={{ strokeDashoffset: circ * (1 - pct) }}
+                      transition={{ delay: 0.15, duration: 0.9, ease: [0, 0, 0.2, 1] }}
+                      transform="rotate(-90 70 70)"
+                    />
+                    <motion.text
+                      x="70" y="65" textAnchor="middle" fontSize="32" fill="#fff"
+                      fontFamily="var(--font-display)" fontWeight={400}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+                    >{sc}</motion.text>
+                    <motion.text
+                      x="70" y="84" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.3)"
+                      fontFamily="var(--font-code)"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+                    >/ 100</motion.text>
+                  </svg>
+                )
+              })()}
+            </div>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 10 }}
+              transition={{ delay: 0.55 }}
+              style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: scoreColor(finalScore ?? 0), letterSpacing: '0.16em', textTransform: 'uppercase', marginTop: 14 }}
             >{scoreLabel(finalScore ?? 0)}</motion.div>
           </div>
 
