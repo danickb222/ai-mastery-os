@@ -401,3 +401,35 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 72px}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* ── SNIPER DRILL RESPONSIVE ── */
+.sniper-header{position:sticky;top:56px;z-index:50;background:rgba(6,7,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:16px}
+.sniper-badges{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.sniper-score-bar{flex:1;display:flex;align-items:center;gap:10px;max-width:480px;margin:0 auto}
+.sniper-timer{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.sniper-main-grid{max-width:1360px;margin:0 auto;padding:28px 28px 60px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.sniper-checklist{display:grid;grid-template-columns:1fr 1fr;gap:5px 14px}
+.sniper-cta-row{display:flex;gap:12px}
+.sniper-result{max-width:760px;margin:40px auto;padding:0 28px 80px}
+
+@media(max-width:1024px){
+  .sniper-main-grid{grid-template-columns:1fr 1fr;gap:16px;padding:20px 20px 48px}
+}
+@media(max-width:768px){
+  .sniper-header{flex-wrap:wrap;padding:10px 16px;gap:10px;top:0}
+  .sniper-badges{order:1;width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .sniper-badges::-webkit-scrollbar{display:none}
+  .sniper-score-bar{order:3;width:100%;max-width:none;flex:unset;margin:0}
+  .sniper-timer{order:2;margin-left:auto}
+  .sniper-main-grid{grid-template-columns:1fr;gap:20px;padding:20px 16px 48px}
+  .sniper-checklist{grid-template-columns:1fr 1fr;gap:4px 10px}
+  .sniper-result{margin:24px auto;padding:0 16px 60px}
+}
+@media(max-width:480px){
+  .sniper-header{padding:8px 12px;gap:8px}
+  .sniper-score-bar{gap:8px}
+  .sniper-main-grid{padding:16px 12px 40px;gap:16px}
+  .sniper-checklist{grid-template-columns:1fr;gap:4px}
+  .sniper-cta-row{flex-direction:column;gap:10px}
+  .sniper-result{padding:0 12px 48px}
+}

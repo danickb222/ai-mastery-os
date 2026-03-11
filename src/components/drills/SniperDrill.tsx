@@ -253,16 +253,10 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
     <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-body)', position: 'relative', overflow: 'hidden' }}>
 
       {/* ─── HEADER ────────────────────────────────────────────────────────── */}
-      <div style={{
-        position: 'sticky', top: 56, zIndex: 50,
-        background: 'rgba(6,7,10,0.92)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--border)',
-        padding: '10px 28px',
-        display: 'flex', alignItems: 'center', gap: 16,
-      }}>
+      <div className="sniper-header">
 
         {/* Domain + difficulty badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <div className="sniper-badges">
           {totalDrills != null && drillIndex != null && (
             <span style={{
               fontFamily: 'var(--font-code)', fontSize: 11, letterSpacing: '0.08em',
@@ -284,7 +278,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         </div>
 
         {/* Live score bar — center */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, maxWidth: 480, margin: '0 auto' }}>
+        <div className="sniper-score-bar">
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 20, lineHeight: 1, color: '#00d4ff', minWidth: 34, textAlign: 'right' }}>
             {Math.round(displayScore)}
           </span>
@@ -318,7 +312,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         </div>
 
         {/* Timer + exit — right */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+        <div className="sniper-timer">
           <div style={{ textAlign: 'right' }}>
             <div style={{
               fontFamily: 'var(--font-code)', fontSize: 18, letterSpacing: '-0.03em', lineHeight: 1,
@@ -343,13 +337,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
 
       {phase !== 'result' ? (
         // ── WRITE PHASE ──────────────────────────────────────────────────────
-        <div style={{
-          maxWidth: 1360, margin: '0 auto',
-          padding: '28px 28px 60px',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 20,
-        }}>
+        <div className="sniper-main-grid">
 
           {/* LEFT: Mission brief */}
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
@@ -485,7 +473,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             {/* Quick checklist */}
             <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>Precision Checklist</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 14px' }}>
+              <div className="sniper-checklist">
                 {['Define your audience', 'Set a word / char limit', 'Name the exact format', 'Specify tone & voice', 'Enumerate each section', 'Add specificity — no vague words'].map(h => {
                   const hit = prompt.length > 30 && h.split(' ').some(w => w.length > 4 && prompt.toLowerCase().includes(w.toLowerCase()))
                   return (
@@ -540,7 +528,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          style={{ maxWidth: 760, margin: '40px auto', padding: '0 28px 80px' }}
+          className="sniper-result"
         >
           {/* Score circle */}
           <div style={{ textAlign: 'center', marginBottom: 44 }}>
@@ -644,7 +632,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           )}
 
           {/* CTA buttons */}
-          <div style={{ display: 'flex', gap: 12 }}>
+          <div className="sniper-cta-row">
             <button
               onClick={() => {
                 serverScoreRef.current = false
