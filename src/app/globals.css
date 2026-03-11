@@ -403,7 +403,7 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 72px}
 @keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 
 /* ── SNIPER DRILL RESPONSIVE ── */
-.sniper-header{position:sticky;top:56px;z-index:50;background:rgba(6,7,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:16px}
+.sniper-header{position:relative;z-index:10;background:rgba(6,7,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:16px}
 .sniper-badges{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .sniper-score-bar{flex:1;display:flex;align-items:center;gap:10px;max-width:480px;margin:0 auto}
 .sniper-timer{display:flex;align-items:center;gap:14px;flex-shrink:0}
@@ -417,7 +417,7 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 72px}
   .sniper-main-grid{grid-template-columns:1fr 1fr;gap:16px;padding:20px 20px 48px}
 }
 @media(max-width:768px){
-  .sniper-header{flex-wrap:wrap;padding:10px 16px;gap:10px;top:0}
+  .sniper-header{flex-wrap:wrap;padding:10px 16px;gap:10px}
   .sniper-badges{order:1;width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .sniper-badges::-webkit-scrollbar{display:none}
   .sniper-score-bar{order:3;width:100%;max-width:none;flex:unset;margin:0}

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AnyDrill, DrillResult, PromptConstructionDrill as PromptConstructionDrillType } from '@/core/types/drills';
 import { PromptConstructionDrill } from './PromptConstructionDrill';
 import { PromptDebugDrill } from './PromptDebugDrill';
@@ -23,6 +23,12 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
   const [phase, setPhase] = useState<SessionPhase>('active');
   const [result, setResult] = useState<DrillResult | null>(null);
   const startTimeRef = useRef(Date.now());
+
+  // Hide AppShell nav during drill exercises
+  useEffect(() => {
+    window.dispatchEvent(new Event('drill-session-start'));
+    return () => { window.dispatchEvent(new Event('drill-session-end')); };
+  }, []);
 
   const handleSubmit = (drillResult: DrillResult) => {
     setResult(drillResult);

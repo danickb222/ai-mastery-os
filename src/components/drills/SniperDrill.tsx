@@ -250,7 +250,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-body)', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-body)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'auto' }}>
 
       {/* ─── HEADER ────────────────────────────────────────────────────────── */}
       <div className="sniper-header">
