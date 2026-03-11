@@ -82,7 +82,6 @@ export default function DiagnosticPage() {
   // Waitlist + share
   const [waitlistEmail, setWaitlistEmail] = useState('')
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [shareCopied, setShareCopied] = useState(false)
 
   // ── Score Computation ──────────────────────────────────────────────────────
 
@@ -718,15 +717,22 @@ export default function DiagnosticPage() {
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#f97316', marginBottom: 12 }}>
                 Calibration Check
               </div>
-              {calibrationInsights.filter(ci => ci.gap !== 'Well-calibrated').slice(0, 2).map((ci, i) => (
-                <p key={i} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, margin: i > 0 ? '10px 0 0' : 0 }}>
-                  <strong style={{ color: '#fff' }}>{ci.label}:</strong>{' '}
-                  {ci.gap === 'Overconfident'
-                    ? `You rated yourself ${ci.selfScore}% but scored ${ci.actualScore}% \u2014 this is your biggest blind spot.`
-                    : `You rated yourself ${ci.selfScore}% but scored ${ci.actualScore}% \u2014 you\u2019re better than you think.`
-                  }
-                </p>
-              ))}
+              {calibrationInsights.filter(ci => ci.gap !== 'Well-calibrated').slice(0, 2).map((ci, i) => {
+                const overconfidentPhrases = [
+                  `You rated yourself ${ci.selfScore}% but scored ${ci.actualScore}% — there's a gap worth closing here.`,
+                  `Self-rated ${ci.selfScore}%, actual ${ci.actualScore}% — this area needs more focused practice.`,
+                ]
+                const underPhrases = [
+                  `You rated yourself ${ci.selfScore}% but scored ${ci.actualScore}% — you're stronger here than you realize.`,
+                  `Self-rated ${ci.selfScore}%, actual ${ci.actualScore}% — give yourself more credit in this area.`,
+                ]
+                const msg = ci.gap === 'Overconfident' ? overconfidentPhrases[i % overconfidentPhrases.length] : underPhrases[i % underPhrases.length]
+                return (
+                  <p key={i} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, margin: i > 0 ? '10px 0 0' : 0 }}>
+                    <strong style={{ color: '#fff' }}>{ci.label}:</strong>{' '}{msg}
+                  </p>
+                )
+              })}
             </div>
           )}
 
@@ -751,14 +757,16 @@ export default function DiagnosticPage() {
                     </div>
                     {i === 0 && (
                       <button
-                        onClick={() => router.push(cluster.recommendedPath)}
+                        onClick={() => router.push('/curriculum')}
                         style={{
                           padding: '8px 16px', background: '#fff', border: 'none', borderRadius: 10,
                           color: '#000', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700,
                           cursor: 'pointer', whiteSpace: 'nowrap',
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
                         }}
                       >
-                        Start \u2192
+                        Start
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                       </button>
                     )}
                   </div>
@@ -766,28 +774,6 @@ export default function DiagnosticPage() {
               })}
             </div>
           </div>
-
-          {/* Share */}
-          <button
-            onClick={async () => {
-              const text = `I scored ${overall}/100 on the AI Dojo diagnostic \u2014 a ${level.label} operator.\n\nWeakest area: ${weakestCluster?.label}. Strongest: ${recommendedPath[recommendedPath.length - 1]?.label}.\n\nTry it free: ${typeof window !== 'undefined' ? window.location.origin : ''}/diagnostic`
-              try {
-                await navigator.clipboard.writeText(text)
-                setShareCopied(true)
-                setTimeout(() => setShareCopied(false), 2500)
-              } catch { /* clipboard not available */ }
-            }}
-            style={{
-              width: '100%', padding: '13px 20px', marginBottom: 18,
-              background: shareCopied ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.06)',
-              border: shareCopied ? '1px solid rgba(34,197,94,0.3)' : '1px solid var(--border)',
-              borderRadius: 12, color: shareCopied ? '#22c55e' : 'rgba(255,255,255,0.6)',
-              fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', transition: 'all 0.2s ease',
-            }}
-          >
-            {shareCopied ? '\u2713 Copied to clipboard' : 'Share your score'}
-          </button>
 
           {/* Waitlist */}
           <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 14, padding: '22px 24px', textAlign: 'center' }}>
@@ -912,9 +898,6 @@ export default function DiagnosticPage() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
-          <p style={{ marginTop: 14, fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.06em' }}>
-            {totalSteps} challenges \u00b7 ~9 min \u00b7 no account required
-          </p>
         </motion.div>
       </AnimatePresence>
     </div>

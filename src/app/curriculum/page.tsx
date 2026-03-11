@@ -36,6 +36,10 @@ export default function CurriculumPage() {
     );
   }
 
+  // Difficulty-level color palette
+  const difficultyColor = (d: string) =>
+    d === 'foundational' ? '#22c55e' : d === 'advanced' ? '#f59e0b' : '#ef4444';
+
   const domainData = DOMAINS.map((domain) => {
     const drills = getMVPDrillsByDomain(domain.id);
     const completedDrills = drillHistory.filter(h => {
@@ -93,7 +97,7 @@ export default function CurriculumPage() {
               overflow: "hidden",
               background: "var(--bg3)",
               border: "1px solid var(--border)",
-              borderLeft: `3px solid ${domain.color}`,
+              borderLeft: `3px solid ${difficultyColor(domain.difficulty)}`,
               borderRadius: 14,
               padding: 24,
               cursor: domain.isOpen ? "pointer" : "default",
@@ -119,7 +123,7 @@ export default function CurriculumPage() {
                     COMING SOON
                   </div>
                 )}
-                <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: "2px 10px" }}>
+                <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: difficultyColor(domain.difficulty), textTransform: "uppercase", background: `${difficultyColor(domain.difficulty)}12`, border: `1px solid ${difficultyColor(domain.difficulty)}35`, borderRadius: 100, padding: "2px 10px" }}>
                   {domain.difficulty}
                 </div>
               </div>
