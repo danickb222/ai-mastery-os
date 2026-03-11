@@ -74,7 +74,7 @@ export default function ProfilePage() {
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 52, fontWeight: 400, color: "var(--text-primary)", letterSpacing: "-0.03em", lineHeight: 0.92 }}>Your profile awaits.</h2>
         <p style={{ fontSize: 14, color: "var(--text-muted)", maxWidth: 360, lineHeight: 1.7 }}>Complete the diagnostic to generate your operator score.</p>
         <a
-          href="/run?mode=diagnostic"
+          href="/diagnostic"
           className="btn btn-primary"
           style={{ marginTop: 16 }}
         >
@@ -85,7 +85,7 @@ export default function ProfilePage() {
   }
 
   const handleCopy = async () => {
-    const text = `AI Mastery OS · Operator Score: ${profile.operatorScore}/100 · ${profile.rankLabel} · Top ${profile.rankPercentile}% globally · ${profile.streakDays} day streak`;
+    const text = `AI Dojo · Operator Score: ${profile.operatorScore}/100 · ${profile.rankLabel} · ${profile.streakDays} day streak`;
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -213,7 +213,7 @@ export default function ProfilePage() {
           <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 20, padding: 32 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
               <div className="flex items-start justify-between">
-                <span style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.2em", color: "var(--text-dim)", textTransform: "uppercase" }}>AI MASTERY OS</span>
+                <span style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.2em", color: "var(--text-dim)", textTransform: "uppercase" }}>AI DOJO</span>
               </div>
 
               <div className="text-center">
@@ -237,13 +237,13 @@ export default function ProfilePage() {
                   <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Drills</div>
                 </div>
                 <div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{bestArenaScore}</div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Arena</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{profile.operatorScore}</div>
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Score</div>
                 </div>
               </div>
 
               <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", textAlign: "right" }}>
-                <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Verified Operator</div>
+                <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Beta Operator</div>
               </div>
             </div>
           </div>
@@ -258,30 +258,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Certification Section */}
-      <div style={{ background: "var(--bg3)", border: "1px dashed var(--border)", borderRadius: 14, padding: 24 }}>
-        <p className="t-tag" style={{ marginBottom: 12 }}>Certification</p>
-        <p style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16, lineHeight: 1.7 }}>
-          Certification exams open quarterly to operators who complete all core domains and achieve an Operator Score above 75.
-        </p>
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex-1">
-            <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 8 }}>
-              {domainsWithScores.length}/{DOMAINS.length} domains complete
-            </div>
-            <ProgressBar 
-              value={(domainsWithScores.length / DOMAINS.length) * 100}
-              size="sm"
-            />
-          </div>
-        </div>
-        <button
-          className="btn btn-secondary"
-          disabled={!certificationEligible}
-        >
-          {certificationEligible ? "Apply for Certification" : "Not Yet Eligible"}
-        </button>
-      </div>
     </div>
   );
 }

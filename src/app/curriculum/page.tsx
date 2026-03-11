@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { DOMAINS } from "@/core/content/domains";
-import { getDrillsByDomain } from "@/core/content/drills";
+import { getMVPDrillsByDomain } from "@/core/content/drills";
 import type { DrillResult } from "@/core/types/drills";
 import {
   getItem,
@@ -37,7 +37,7 @@ export default function CurriculumPage() {
   }
 
   const domainData = DOMAINS.map((domain) => {
-    const drills = getDrillsByDomain(domain.id);
+    const drills = getMVPDrillsByDomain(domain.id);
     const completedDrills = drillHistory.filter(h => {
       const drill = drills.find(d => d.id === h.drillId);
       return drill !== undefined;
@@ -47,11 +47,14 @@ export default function CurriculumPage() {
       ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
       : 0;
 
+    const isOpen = domain.id === 'prompt_engineering';
+
     return {
       ...domain,
       totalDrills: drills.length,
       completedDrills: completedDrills.length,
       avgScore,
+      isOpen,
     };
   });
 
@@ -71,7 +74,7 @@ export default function CurriculumPage() {
         </h1>
 
         <p style={{ fontSize: 15, color: "var(--text-muted)", lineHeight: 1.75, maxWidth: 520 }}>
-          12 professional domains. Performance-scored drills. Master the complete operator skill set.
+          Performance-scored drills. New domains launching monthly.
         </p>
       </motion.div>
 
@@ -81,10 +84,10 @@ export default function CurriculumPage() {
           <motion.div
             key={domain.id}
             initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: idx > 0 ? 0.4 : 1, y: 0 }}
+            whileInView={{ opacity: domain.isOpen ? 1 : 0.5, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: idx * 0.06, duration: 0.5 }}
-            whileHover={idx === 0 ? { scale: 1.01, y: -3 } : { opacity: 0.55 }}
+            whileHover={domain.isOpen ? { scale: 1.01, y: -3 } : { opacity: 0.6 }}
             style={{
               position: "relative",
               overflow: "hidden",
@@ -93,11 +96,10 @@ export default function CurriculumPage() {
               borderLeft: `3px solid ${domain.color}`,
               borderRadius: 14,
               padding: 24,
-              cursor: "pointer",
+              cursor: domain.isOpen ? "pointer" : "default",
               transition: "all 240ms cubic-bezier(0.4,0,0.2,1)",
-              opacity: idx > 0 ? 0.4 : 1,
             }}
-            onClick={idx === 0 ? () => router.push(`/run?domain=${domain.id}`) : () => router.push('/#waitlist')}
+            onClick={domain.isOpen ? () => router.push(`/run?domain=${domain.id}`) : undefined}
           >
             {/* Glow orb top-right */}
             <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, background: `radial-gradient(ellipse, ${domain.color}18 0%, transparent 70%)`, pointerEvents: "none" }} />
@@ -108,9 +110,13 @@ export default function CurriculumPage() {
                 {domain.name}
               </h3>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: 12 }}>
-                {idx === 0 && (
+                {domain.isOpen ? (
                   <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--cyan)", textTransform: "uppercase", background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 100, padding: "2px 10px" }}>
                     OPEN BETA
+                  </div>
+                ) : (
+                  <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "rgba(255,255,255,0.3)", textTransform: "uppercase", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 100, padding: "2px 10px" }}>
+                    COMING SOON
                   </div>
                 )}
                 <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 100, padding: "2px 10px" }}>
@@ -125,32 +131,36 @@ export default function CurriculumPage() {
             </p>
 
             {/* Stats */}
-            <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", display: "flex", gap: 16, marginBottom: 12 }}>
-              <span>{domain.completedDrills}/{domain.totalDrills} drills</span>
-              <span>~{domain.estimatedMinutes}m</span>
-            </div>
+            {domain.isOpen && (
+              <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.14em", color: "var(--text-dim)", textTransform: "uppercase", display: "flex", gap: 16, marginBottom: 12 }}>
+                <span>{domain.completedDrills}/{domain.totalDrills} drills</span>
+                <span>~{domain.estimatedMinutes}m</span>
+              </div>
+            )}
 
-            {/* Progress bar */}
-            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginBottom: 16 }}>
-              <motion.div
-                initial={{ width: 0 }}
-                whileInView={{ width: `${domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}%` }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.06 + 0.1, duration: 1.0, ease: "easeOut" }}
-                style={{
-                  height: "100%",
-                  background: "rgba(255,255,255,0.45)",
-                  boxShadow: "0 0 6px rgba(255,255,255,0.25)",
-                }}
-              />
-            </div>
+            {/* Progress bar (only for open domains) */}
+            {domain.isOpen && (
+              <div style={{ height: 1, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginBottom: 16 }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  whileInView={{ width: `${domain.totalDrills > 0 ? (domain.completedDrills / domain.totalDrills) * 100 : 0}%` }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.06 + 0.1, duration: 1.0, ease: "easeOut" }}
+                  style={{
+                    height: "100%",
+                    background: "rgba(255,255,255,0.45)",
+                    boxShadow: "0 0 6px rgba(255,255,255,0.25)",
+                  }}
+                />
+              </div>
+            )}
 
             {/* Bottom row */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <span style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.1em", color: "var(--text-dim)", textTransform: "uppercase" }}>
-                {domain.avgScore > 0 ? `AVG ${domain.avgScore}/100` : "NOT STARTED"}
+                {domain.isOpen ? (domain.avgScore > 0 ? `AVG ${domain.avgScore}/100` : "NOT STARTED") : domain.difficulty}
               </span>
-              {idx === 0 ? (
+              {domain.isOpen ? (
                 <span style={{ fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600, color: "var(--cyan)", cursor: "pointer", background: "none", border: "none", display: "flex", alignItems: "center", gap: 4 }}
                   onMouseEnter={e => (e.currentTarget.style.color = "#ffffff")}
                   onMouseLeave={e => (e.currentTarget.style.color = "var(--cyan)")}
@@ -158,14 +168,15 @@ export default function CurriculumPage() {
                   Start →
                 </span>
               ) : (
-                <span style={{ fontFamily: "var(--font-code)", fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", display: "flex", alignItems: "center", gap: 6 }}>
-                  🔒 Coming soon
+                <span style={{ fontFamily: "var(--font-code)", fontSize: 10, letterSpacing: "0.1em", color: "rgba(255,255,255,0.25)" }}>
+                  Launching soon
                 </span>
               )}
             </div>
           </motion.div>
         ))}
       </div>
+
     </div>
   );
 }

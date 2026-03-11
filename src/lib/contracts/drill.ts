@@ -4,7 +4,7 @@ export const RubricItemSchema = z.object({
   id: z.string().min(1, 'Rubric item id must be non-empty'),
   label: z.string().min(1, 'Rubric item label must be non-empty'),
   description: z.string().min(1, 'Rubric item description must be non-empty'),
-  maxPoints: z.number().int().min(1).max(10),
+  maxPoints: z.number().int().min(1).max(100),
   failureSignals: z.array(z.string().min(1)).min(1, 'At least one failure signal required'),
   scoringSignals: z.array(z.string().min(1)).min(1, 'At least one scoring signal required'),
 });
@@ -24,7 +24,7 @@ export const DrillSpecSchema = z.object({
   deliverableFormat: z.string().min(1, 'Deliverable format must be non-empty'),
   constraints: z.array(z.string().min(1)).min(1, 'At least one constraint required'),
   rubric: z.array(RubricItemSchema).min(3).max(8),
-  timeEstimateMinutes: z.number().int().min(5).max(60),
+  timeEstimateMinutes: z.number().int().min(1).max(60),
   starterInput: z.string().optional(),
 }).refine(
   (data) => {

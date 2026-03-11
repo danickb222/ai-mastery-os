@@ -38,11 +38,45 @@ function generateLeaderboard() {
 
 export default function ArenaPage() {
   const router = useRouter();
+
+  // Beta gate: Arena is not yet available
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 28px' }}>
+      <div style={{ maxWidth: 440, width: '100%', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 20 }}>
+          Coming Soon
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,4vw,40px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 16 }}>
+          Arena
+        </h1>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, marginBottom: 32, fontFamily: 'var(--font-body)' }}>
+          Timed challenges, global leaderboards, and ranked competition are coming in the next update. Build your skills in the Curriculum first.
+        </p>
+        <button
+          onClick={() => router.push('/curriculum')}
+          style={{
+            padding: '13px 28px', background: '#fff', border: 'none', borderRadius: 12,
+            color: '#000', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          Go to Curriculum
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  // eslint-disable-next-line no-unreachable
   const [mounted, setMounted] = useState(false);
   const [selectedMode, setSelectedMode] = useState<ChallengeMode>("standard");
   const [isRanked, setIsRanked] = useState(true);
   const [showCountdown, setShowCountdown] = useState(false);
-  const [arenaState, setArenaState] = useState<ArenaState | null>(null);
+  const [arenaState, setArenaState] = useState<ArenaState>({
+    seasonNumber: 1, seasonEndDate: "", totalParticipants: 0,
+    userRank: 0, bestScore: 0, sessionsCompleted: 0,
+    lastSessionScore: null,
+  });
 
   useEffect(() => {
     const state = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
@@ -140,8 +174,8 @@ export default function ArenaPage() {
       >
           <div className="grid grid-cols-3 divide-x divide-[rgba(255,255,255,0.06)]">
             <div className="stat-block">
-                {arenaState && arenaState.userRank > 0 ? (
-                  <ScoreCounter target={arenaState.userRank} className="stat-num" />
+                {arenaState!.userRank > 0 ? (
+                  <ScoreCounter target={arenaState!.userRank} className="stat-num" />
                 ) : (
                   <span className="stat-num">—</span>
                 )}
@@ -157,7 +191,7 @@ export default function ArenaPage() {
             </div>
           </div>
           <div className="mt-4 text-center">
-            {arenaState && arenaState.userRank > 0 ? (
+            {arenaState?.userRank && arenaState?.userRank > 0 ? (
               <span style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.12em", color: "var(--cyan)", textTransform: "uppercase", padding: "4px 10px", background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.2)", borderRadius: 6, display: "inline-block" }}>
                 RANKED
               </span>
@@ -200,7 +234,7 @@ export default function ArenaPage() {
               </div>
             ))}
 
-            {arenaState && arenaState.userRank > 10 && arenaState.bestScore > 0 && (
+            {arenaState!.userRank > 10 && arenaState!.bestScore > 0 && (
               <>
                 <div className="text-center py-2" style={{ color: "rgba(255,255,255,0.55)" }}>···</div>
                 <div
@@ -210,12 +244,12 @@ export default function ArenaPage() {
                     borderLeft: "2px solid var(--cyan)"
                   }}
                 >
-                  <span className="lb-rank">{arenaState.userRank}</span>
+                  <span className="lb-rank">{arenaState?.userRank}</span>
                   <span className="lb-name">
                     <span className="badge badge-foundational" style={{ marginRight: 8 }}>YOU</span>
                     you
                   </span>
-                  <span className="lb-score">{arenaState.bestScore}</span>
+                  <span className="lb-score">{arenaState?.bestScore}</span>
                   <span className="lb-domain">—</span>
                   <span className="text-sm">—</span>
                 </div>

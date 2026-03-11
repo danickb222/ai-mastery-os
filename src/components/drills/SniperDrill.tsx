@@ -235,7 +235,11 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         cs[c.id] = Math.round((score / 100) * c.maxPoints)
       }
       setCriteriaScores(cs)
-      setTimeout(() => { setScanActive(false); setPhase('result') }, 900)
+      setTimeout(() => {
+        setScanActive(false)
+        setPhase('result')
+        onSubmit({ userInput: prompt, score })
+      }, 900)
     }
   }, [phase, prompt, drill, onSubmit])
 
@@ -622,6 +626,22 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>Your Submission</div>
             <pre style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{prompt}</pre>
           </div>
+
+          {/* Reference prompt — the learning moment */}
+          {drill.referencePrompt && (
+            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#22c55e', marginBottom: 10 }}>Expert Reference Prompt</div>
+              <pre style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{drill.referencePrompt}</pre>
+            </div>
+          )}
+
+          {/* Key insight */}
+          {drill.explanation && (
+            <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>Key Insight</div>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.8, margin: 0 }}>{drill.explanation}</p>
+            </div>
+          )}
 
           {/* CTA buttons */}
           <div style={{ display: 'flex', gap: 12 }}>

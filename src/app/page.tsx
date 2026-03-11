@@ -1,24 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  getOperatorProfile,
-  setOperatorProfile,
-  getItem,
-  setItem,
-  updateStreak,
-  computeOperatorScore,
-  getRankLabel,
-  STORAGE_KEYS,
-  type OperatorProfile,
-  type DomainScore,
-  type ArenaState,
-  type LabSession,
-  type LastDrillSession,
-} from "@/core/storage";
-import { DOMAINS } from "@/core/content/domains";
-import { getDrillsByDomain } from "@/core/content/drills";
-import type { DrillResult } from "@/core/types/drills";
 
 
 const DOMAINS_DATA = [
@@ -36,91 +18,23 @@ const DOMAINS_DATA = [
   { num: '12', title: 'Ethics & Risk', desc: 'Understand where AI fails and how to operate responsibly at professional scale.', tier: 'ADVANCED' },
 ];
 
-const COMP_ROWS = [
-  { feature: 'You can measure your actual skill',     dojo: 'yes', udemy: 'no',   yt: 'no'  },
-  { feature: 'AI scores your real output',            dojo: 'yes', udemy: 'no',   yt: 'no'  },
-  { feature: 'You know your global rank',             dojo: 'yes', udemy: 'no',   yt: 'no'  },
-  { feature: 'You practice by building, not clicking',dojo: 'yes', udemy: 'quiz', yt: 'no'  },
-  { feature: 'You can start for free today',          dojo: 'yes', udemy: 'paid', yt: 'yes' },
-  { feature: 'You get fresh content every month',     dojo: 'yes', udemy: 'var',  yt: 'var' },
+const COMP_ROWS: { feature: string; dojo: 'yes'; udemy: 'yes'|'no'|'partial'; udemyNote?: string; yt: 'yes'|'no'|'partial'; ytNote?: string }[] = [
+  { feature: 'Hands-on scored drills',          dojo: 'yes', udemy: 'no',                            yt: 'no' },
+  { feature: 'AI-graded rubric feedback',       dojo: 'yes', udemy: 'no',                            yt: 'no' },
+  { feature: 'Measurable skill score',          dojo: 'yes', udemy: 'partial', udemyNote: 'Quiz %',  yt: 'no' },
+  { feature: 'Weakness & gap analysis',         dojo: 'yes', udemy: 'no',                            yt: 'no' },
+  { feature: 'Adaptive difficulty',             dojo: 'yes', udemy: 'no',                            yt: 'no' },
+  { feature: 'Deliberate practice loops',       dojo: 'yes', udemy: 'partial', udemyNote: 'Quizzes', yt: 'no' },
+  { feature: 'Proof of real ability',           dojo: 'yes', udemy: 'partial', udemyNote: 'Certificate', yt: 'no' },
+  { feature: 'Results in under 10 minutes',     dojo: 'yes', udemy: 'no',                            yt: 'no' },
 ];
 
 export default function Dashboard() {
-  const [loaded, setLoaded] = useState(false);
-  const [profile, setProfile] = useState<OperatorProfile | null>(null);
-  const [domainScores, setDomainScores] = useState<DomainScore[]>([]);
-  const [arenaState, setArenaState] = useState<ArenaState | null>(null);
-  const [lastSession, setLastSession] = useState<LastDrillSession | null>(null);
-  const [scoreDelta, setScoreDelta] = useState(0);
-  const [daysSinceActive, setDaysSinceActive] = useState(0);
   const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
   const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
-  // Suppress "unused" warnings for dashboard state that gets populated but
-  // isn't rendered directly on the marketing page
-  void loaded; void profile; void domainScores; void arenaState;
-  void lastSession; void scoreDelta; void daysSinceActive;
-
-  useEffect(() => {
-    let p = getOperatorProfile();
-    if (p) {
-      p = updateStreak(p);
-
-      const drillHistory = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || [];
-      const as = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
-      const ls = getItem<LabSession[]>(STORAGE_KEYS.LAB_SESSIONS) || [];
-      const lastDrill = getItem<LastDrillSession>(STORAGE_KEYS.LAST_DRILL_SESSION);
-
-      const ds: DomainScore[] = DOMAINS.map(domain => {
-        const domainDrills = getDrillsByDomain(domain.id);
-        const completedDrills = drillHistory.filter(h =>
-          domainDrills.some(d => d.id === h.drillId)
-        );
-        const avgScore = completedDrills.length > 0
-          ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
-          : 0;
-
-        return {
-          domainId: domain.id,
-          score: avgScore,
-          drillsCompleted: completedDrills.length,
-          drillsTotal: domainDrills.length,
-          lastAttempted: completedDrills.length > 0 ? completedDrills[completedDrills.length - 1].submittedAt : ""
-        };
-      });
-
-      const newScore = computeOperatorScore(ds, as, ls);
-      const newPercentile = Math.max(1, Math.round(100 - newScore));
-      const oldScore = p.operatorScore;
-      const delta = newScore - oldScore;
-
-      p = {
-        ...p,
-        operatorScore: newScore,
-        rankPercentile: newPercentile,
-        rankLabel: getRankLabel(newPercentile),
-        lastActive: new Date().toISOString(),
-      };
-      setOperatorProfile(p);
-
-      const lastActive = getItem<string>(STORAGE_KEYS.LAST_ACTIVE);
-      if (lastActive) {
-        const diff = Math.floor((Date.now() - new Date(lastActive).getTime()) / 86400000);
-        setDaysSinceActive(diff);
-      }
-
-      setItem(STORAGE_KEYS.LAST_ACTIVE, new Date().toISOString());
-      setDomainScores(ds);
-      setArenaState(as);
-      setLastSession(lastDrill);
-      setScoreDelta(delta);
-    }
-    setProfile(p);
-    setLoaded(true);
-  }, []);
 
   // ── All landing page JS behaviors ──
   useEffect(() => {
@@ -128,7 +42,7 @@ export default function Dashboard() {
       'founders.','builders.','students.','starters.','creators.',
       'dreamers.','pioneers.','hustlers.','strivers.','explorers.',
       'learners.','seekers.','achievers.','tinkerers.','operators.',
-      'doers.','makers.','students.','hackers.','teachers.'
+      'doers.','makers.','students.','teachers.'
     ];
 
     const s = document.createElement('style');
@@ -318,54 +232,70 @@ export default function Dashboard() {
       setTimeout(() => revealId('hbtns', .75), 176);
     }
 
-    // ── Drill animation — 5 phases: broken → typing → click → score → loop ──
+    // ── Drill animation — 6 phases: broken → fade → improved → cursor → click → score → loop ──
     function runDrillAnimation() {
       const body = document.getElementById('code-body');
       const cur  = document.getElementById('code-cur');
       if (!body || !cur) return;
 
       const res = document.getElementById('code-result');
-      if (res) { res.style.display = 'none'; res.classList.remove('show'); }
+      if (res) { res.style.display = 'none'; res.style.opacity = '0'; }
       const badge = document.getElementById('result-badge');
-      const sub   = document.getElementById('result-sub');
       const num   = document.getElementById('result-num');
-      if (badge) badge.textContent = '';
-      if (sub)   sub.textContent = '';
+      const submitBtn = document.getElementById('code-submit');
+      const cursorDot = document.getElementById('cursor-dot');
+      if (badge) { badge.textContent = ''; badge.style.opacity = '0'; }
       if (num)   num.textContent = '0';
+      if (submitBtn) { submitBtn.style.display = 'none'; submitBtn.classList.remove('clicked'); }
+      if (cursorDot) { cursorDot.style.display = 'none'; cursorDot.style.opacity = '0'; }
 
       body.innerHTML = '';
       body.appendChild(cur);
       cur.style.display = 'inline';
 
-      // Phase 1 — show broken prompt in red, 900ms hold
+      // Phase 1 — realistic broken prompt (vague, no structure, common beginner mistakes)
       const brokenLines = [
-        {t:'comment', text:'# ⚠ BROKEN PROMPT\n'},
-        {t:'err',     text:'"Write me something about AI"\n\n'},
+        {t:'comment', text:'# Draft prompt\n\n'},
+        {t:'err',     text:'Hey can you help me write a\n'},
+        {t:'err',     text:'good email to my team about\n'},
+        {t:'err',     text:'the AI project? Make it sound\n'},
+        {t:'err',     text:'professional and also mention\n'},
+        {t:'err',     text:'the budget stuff and timeline\n'},
+        {t:'err',     text:'and everything else thats\n'},
+        {t:'err',     text:'important. Thanks!\n'},
       ];
 
-      // Phase 2 — improved prompt typing
+      // Phase 2 — realistic improved prompt (structured, constrained, professional)
       const goodLines = [
-        {t:'comment', text:'# ✓ IMPROVED PROMPT\n'},
+        {t:'key',     text:'ROLE'},
+        {t:'op',      text:': '},
+        {t:'plain',   text:'Senior program manager\n\n'},
         {t:'key',     text:'TASK'},
         {t:'op',      text:': '},
-        {t:'plain',   text:'Extract all named entities\n'},
-        {t:'plain',   text:'       from the document below.\n\n'},
+        {t:'plain',   text:'Write a project update email\n'},
+        {t:'plain',   text:'  to the engineering team.\n\n'},
+        {t:'key',     text:'CONTEXT'},
+        {t:'op',      text:':\n'},
+        {t:'fn',      text:'  Project: '},
+        {t:'plain',   text:'Internal AI assistant\n'},
+        {t:'fn',      text:'  Budget:  '},
+        {t:'num',     text:'$140k / $200k spent\n'},
+        {t:'fn',      text:'  Status:  '},
+        {t:'plain',   text:'On track, 2 weeks ahead\n\n'},
         {t:'key',     text:'FORMAT'},
         {t:'op',      text:':\n'},
-        {t:'fn',      text:'  Return JSON array: '},
-        {t:'num',     text:'{name, type}\n\n'},
-        {t:'key',     text:'CONSTRAINTS'},
-        {t:'op',      text:':\n'},
-        {t:'plain',   text:'  - Only PERSON, ORG, LOC\n'},
-        {t:'plain',   text:'  - Max 50 entities\n\n'},
-        {t:'PAUSE',   text:''},
-        {t:'key',     text:'▶ SUBMITTING'},
-        {t:'op',      text:'...'},
+        {t:'plain',   text:'  - Subject line + 3 paragraphs\n'},
+        {t:'plain',   text:'  - Bullet list for milestones\n'},
+        {t:'plain',   text:'  - Max 180 words\n\n'},
+        {t:'key',     text:'TONE'},
+        {t:'op',      text:': '},
+        {t:'plain',   text:'Direct, confident, no jargon\n'},
       ];
 
-      function typeLines(lines: {t:string,text:string}[], onDone: () => void) {
+      function typeLines(lines: {t:string,text:string}[], onDone: () => void, speed?: number) {
         let lineIdx = 0, charIdx = 0;
         let currentSpan: HTMLElement | null = null;
+        const baseSpeed = speed || 22;
         function typeNext() {
           if (lineIdx >= lines.length) { onDone(); return; }
           const line = lines[lineIdx];
@@ -378,67 +308,223 @@ export default function Dashboard() {
           if (charIdx < line.text.length) {
             currentSpan!.textContent += line.text[charIdx];
             charIdx++;
-            setTimeout(typeNext, line.t === 'comment' ? 20 : 26);
-          } else { charIdx = 0; lineIdx++; setTimeout(typeNext, 12); }
+            const delay = line.text[charIdx - 1] === '\n' ? baseSpeed + 8 : baseSpeed;
+            setTimeout(typeNext, delay);
+          } else { charIdx = 0; lineIdx++; setTimeout(typeNext, 6); }
         }
         typeNext();
       }
 
-      // Phase 1: type broken prompt
+      // Phase 1: type broken prompt fast
       typeLines(brokenLines, () => {
-        // Hold 900ms so viewer sees it, then clear and type good prompt
+        // Hold 1.4s so viewer reads the bad prompt
         setTimeout(() => {
-          body!.innerHTML = '';
-          body!.appendChild(cur);
-          cur.style.display = 'inline';
-          // Phase 2: type improved prompt
-          typeLines(goodLines, () => {
-            // Phase 3: cursor click effect (flash the last span)
-            const spans = body!.querySelectorAll('span:not(#code-cur)');
-            const last = spans[spans.length - 1] as HTMLElement | null;
-            if (last) {
-              last.style.transition = 'opacity 0.15s';
-              last.style.opacity = '0.3';
-              setTimeout(() => { last.style.opacity = '1'; showResult(); }, 200);
-            } else {
-              showResult();
-            }
-          });
-        }, 900);
-      });
+          // Fade out broken prompt
+          body!.style.transition = 'opacity 0.35s ease';
+          body!.style.opacity = '0';
+          setTimeout(() => {
+            body!.innerHTML = '';
+            body!.appendChild(cur);
+            cur.style.display = 'inline';
+            body!.style.opacity = '1';
+            // Phase 2: type improved prompt
+            typeLines(goodLines, () => {
+              cur.style.display = 'none';
+              // Phase 3: show submit button
+              if (submitBtn) {
+                submitBtn.style.display = 'inline-flex';
+                submitBtn.style.opacity = '0';
+                submitBtn.style.transform = 'translateY(6px)';
+                requestAnimationFrame(() => {
+                  submitBtn.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                  submitBtn.style.opacity = '1';
+                  submitBtn.style.transform = 'translateY(0)';
+                });
+              }
+              // Phase 4: animate cursor toward button using real coordinates
+              setTimeout(() => {
+                const codeWin = document.getElementById('code-window');
+                if (cursorDot && submitBtn && codeWin) {
+                  const winRect = codeWin.getBoundingClientRect();
+                  const btnRect = submitBtn.getBoundingClientRect();
+                  // Start cursor: center of code body
+                  const startX = (winRect.width * 0.55);
+                  const startY = (btnRect.top - winRect.top - 40);
+                  // End cursor: center of button
+                  const endX = (btnRect.left - winRect.left + btnRect.width / 2 + 8);
+                  const endY = (btnRect.top - winRect.top + btnRect.height / 2 + 2);
+
+                  cursorDot.style.display = 'block';
+                  cursorDot.style.opacity = '0';
+                  cursorDot.style.left = startX + 'px';
+                  cursorDot.style.top = startY + 'px';
+                  cursorDot.style.transform = 'scale(1)';
+                  cursorDot.style.transition = 'none';
+
+                  requestAnimationFrame(() => {
+                    cursorDot.style.transition = 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), top 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease';
+                    cursorDot.style.opacity = '1';
+                    cursorDot.style.left = endX + 'px';
+                    cursorDot.style.top = endY + 'px';
+                  });
+
+                  // Phase 5: click effect after cursor arrives at button
+                  setTimeout(() => {
+                    // Click pulse on cursor
+                    cursorDot.style.transition = 'transform 0.1s ease';
+                    cursorDot.style.transform = 'scale(0.65)';
+                    setTimeout(() => {
+                      cursorDot.style.transform = 'scale(1)';
+                    }, 110);
+                    // Button click visual feedback
+                    submitBtn.classList.add('clicked');
+                    submitBtn.style.transform = 'scale(0.95)';
+                    setTimeout(() => { submitBtn.style.transform = 'scale(1)'; }, 140);
+                    // After click: fade out cursor + button, then show result
+                    setTimeout(() => {
+                      cursorDot.style.transition = 'opacity 0.25s ease';
+                      cursorDot.style.opacity = '0';
+                      submitBtn.style.transition = 'opacity 0.25s ease';
+                      submitBtn.style.opacity = '0';
+                      setTimeout(() => {
+                        submitBtn.style.display = 'none';
+                        cursorDot.style.display = 'none';
+                        showResult();
+                      }, 280);
+                    }, 300);
+                  }, 900);
+                } else {
+                  setTimeout(showResult, 400);
+                }
+              }, 650);
+            }, 18);
+          }, 380);
+        }, 1400);
+      }, 16);
     }
 
     function showResult() {
-      const cur = document.getElementById('code-cur');
-      if (cur) cur.style.display = 'none';
       const res = document.getElementById('code-result');
       if (!res) return;
-      res.style.display = 'block';
+      // Reset state
+      res.style.display = 'flex';
+      res.style.opacity = '0';
+      res.style.transform = 'translateY(10px)';
+      const bar = document.getElementById('result-bar');
+      if (bar) bar.style.width = '0%';
+      const badge = document.getElementById('result-badge');
+      if (badge) { badge.textContent = ''; badge.style.opacity = '0'; }
+      const rubric = document.getElementById('result-rubric');
+      if (rubric) rubric.style.opacity = '0';
+      const feedback = document.getElementById('result-feedback');
+      if (feedback) feedback.style.opacity = '0';
+      // Reset rubric fills
+      res.querySelectorAll('.cr-rubric-fill').forEach((el) => {
+        (el as HTMLElement).style.width = '0%';
+        (el as HTMLElement).style.transition = 'none';
+      });
+      res.querySelectorAll('.cr-rubric-val').forEach((el) => {
+        (el as HTMLElement).style.opacity = '0';
+      });
+
       requestAnimationFrame(() => requestAnimationFrame(() => {
-        res.classList.add('show');
-        // Phase 4: animate score
-        animateNumber('result-num', 0, 88, 900);
+        // Fade in panel
+        res.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        res.style.opacity = '1';
+        res.style.transform = 'translateY(0)';
+
+        // Animate score number 0 → 92
+        animateNumber('result-num', 0, 92, 1000);
+
+        // Animate main score bar
         setTimeout(() => {
-          const badge = document.getElementById('result-badge');
-          const sub   = document.getElementById('result-sub');
-          if (badge) badge.textContent = 'Top 12% on this drill';
-          if (sub)   sub.textContent   = '→ Rubric: clarity 23 · format 22 · edge_cases 21 · efficiency 22';
-        }, 400);
-        // Phase 5: loop
-        setTimeout(runDrillAnimation, 4000);
+          if (bar) {
+            bar.style.transition = 'width 1s cubic-bezier(0.4, 0, 0.2, 1)';
+            bar.style.width = '92%';
+          }
+        }, 150);
+
+        // Show badge after score fills
+        setTimeout(() => {
+          if (badge) {
+            badge.textContent = 'Top 8%';
+            badge.style.transition = 'opacity 0.4s ease';
+            badge.style.opacity = '1';
+          }
+        }, 700);
+
+        // Show rubric rows with stagger
+        setTimeout(() => {
+          if (rubric) {
+            rubric.style.transition = 'opacity 0.4s ease';
+            rubric.style.opacity = '1';
+          }
+          res.querySelectorAll('.cr-rubric-fill').forEach((el, i) => {
+            const target = (el as HTMLElement).getAttribute('data-target') || '0';
+            setTimeout(() => {
+              (el as HTMLElement).style.transition = 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+              (el as HTMLElement).style.width = target + '%';
+            }, i * 120);
+          });
+          res.querySelectorAll('.cr-rubric-val').forEach((el, i) => {
+            setTimeout(() => {
+              (el as HTMLElement).style.transition = 'opacity 0.3s ease';
+              (el as HTMLElement).style.opacity = '1';
+            }, i * 120 + 400);
+          });
+        }, 900);
+
+        // Show feedback last
+        setTimeout(() => {
+          if (feedback) {
+            feedback.style.transition = 'opacity 0.5s ease';
+            feedback.style.opacity = '1';
+          }
+        }, 1600);
+
+        // Loop back
+        setTimeout(runDrillAnimation, 5500);
       }));
     }
 
-    function initDragScroll() {
-      const el = document.getElementById('featscroll'); if (!el) return;
-      let down = false, sx = 0, sl = 0;
-      el.addEventListener('mousedown', (e: MouseEvent) => { down = true; sx = e.pageX - el.offsetLeft; sl = el.scrollLeft; });
-      el.addEventListener('mouseleave', () => down = false);
-      el.addEventListener('mouseup',    () => down = false);
-      el.addEventListener('mousemove',  (e: MouseEvent) => {
-        if (!down) return; e.preventDefault();
-        el.scrollLeft = sl - (e.pageX - el.offsetLeft - sx);
-      });
+    function initAutoScroll() {
+      const _el = document.getElementById('featscroll'); if (!_el) return;
+      const el = _el;
+      let paused = false;
+      let pauseTimer: ReturnType<typeof setTimeout> | null = null;
+      let rafId = 0;
+      const speed = 0.8; // px per frame (~48px/s at 60fps)
+
+      function step() {
+        if (!paused) {
+          el.scrollLeft += speed;
+          // Infinite loop: when past halfway (duplicate set), jump back
+          const half = el.scrollWidth / 2;
+          if (el.scrollLeft >= half) {
+            el.scrollLeft -= half;
+          }
+        }
+        rafId = requestAnimationFrame(step);
+      }
+      rafId = requestAnimationFrame(step);
+
+      const pauseScroll = () => {
+        paused = true;
+        if (pauseTimer) clearTimeout(pauseTimer);
+        pauseTimer = setTimeout(() => { paused = false; }, 3000);
+      };
+
+      // Pause on any user interaction
+      el.addEventListener('wheel', pauseScroll, { passive: true });
+      el.addEventListener('touchstart', pauseScroll, { passive: true });
+      el.addEventListener('mousedown', pauseScroll);
+      el.addEventListener('pointerdown', pauseScroll);
+
+      // Store cleanup ref
+      (el as any)._autoScrollCleanup = () => {
+        cancelAnimationFrame(rafId);
+        if (pauseTimer) clearTimeout(pauseTimer);
+      };
     }
 
     // Load Three.js
@@ -456,7 +542,7 @@ export default function Dashboard() {
         if ((window as any).THREE) { clearInterval(tCheck); initHeroCanvas(); }
       }, 50);
     }
-    initDragScroll();
+    initAutoScroll();
     startHero();
 
     // Scroll progress bar
@@ -566,40 +652,18 @@ export default function Dashboard() {
       fcardObs.push(obs);
     });
 
-    // Comparison rows appear + checkmark pop + win counter
+    // Comparison table rows stagger reveal
     const ctRows = document.querySelectorAll('.ct-row');
     const ctObs: IntersectionObserver[] = [];
-    let winsFired = false;
     ctRows.forEach((row, i) => {
       const obs = new IntersectionObserver(entries => {
         entries.forEach(e => {
           if (e.isIntersecting) {
-            setTimeout(() => {
-              row.classList.add('appeared');
-              setTimeout(() => {
-                row.querySelectorAll('.ct-check').forEach(c => c.classList.add('popped'));
-              }, 220);
-            }, i * 80);
-            // Animate win counter after all rows have appeared
-            if (!winsFired && i === ctRows.length - 1) {
-              winsFired = true;
-              setTimeout(() => {
-                animateNumber('ct-wins', 0, 6, 900);
-                const counter = document.getElementById('ct-wins-wrap');
-                if (counter) {
-                  counter.style.transition = 'opacity 0.4s ease';
-                  counter.style.opacity = '1';
-                }
-                setTimeout(() => {
-                  const counter2 = document.getElementById('ct-wins-wrap');
-                  if (counter2) counter2.style.boxShadow = '0 0 20px rgba(0,212,255,0.25)';
-                }, 950);
-              }, (ctRows.length) * 80 + 400);
-            }
+            setTimeout(() => row.classList.add('vis'), i * 70);
             obs.disconnect();
           }
         });
-      }, { threshold: .2 });
+      }, { threshold: .1 });
       obs.observe(row);
       ctObs.push(obs);
     });
@@ -679,6 +743,8 @@ export default function Dashboard() {
       if (pillarsObs) pillarsObs.disconnect();
       if (lampObs)    lampObs.disconnect();
       if (lampRaf)    cancelAnimationFrame(lampRaf);
+      const scrollEl = document.getElementById('featscroll');
+      if (scrollEl && (scrollEl as any)._autoScrollCleanup) (scrollEl as any)._autoScrollCleanup();
     };
   }, []);
 
@@ -919,7 +985,7 @@ export default function Dashboard() {
                 <div className="pillar tr">
                   <span className="pi-n">02</span>
                   <div className="pi-t">A number that doesn&apos;t lie</div>
-                  <div className="pi-d">Your score lives in a global distribution. You see exactly where you rank and what the gap is.</div>
+                  <div className="pi-d">Your score is earned, not given. You see exactly what you can do and where the gap is.</div>
                 </div>
                 <div className="pillar bl">
                   <span className="pi-n">03</span>
@@ -956,8 +1022,8 @@ export default function Dashboard() {
                   <div className="bc-ls-top">
                     <div className="bc-ls-num" id="bento-score">0</div>
                     <div className="bc-ls-info">
-                      <span className="bc-ls-rank">Top 34% globally</span>
-                      <span className="bc-ls-tier">Tier II Operator</span>
+                      <span className="bc-ls-rank">Proficient</span>
+                      <span className="bc-ls-tier">Prompt Engineering</span>
                     </div>
                   </div>
                   <div className="bc-ls-bars">
@@ -982,7 +1048,7 @@ export default function Dashboard() {
               <div className="bcard">
                 <div className="bc-icon">🗂</div>
                 <div className="bc-t">12 domains</div>
-                <div className="bc-d">62 drills across 3 tiers — new content added monthly.</div>
+                <div className="bc-d">Drills across 3 tiers — new domains launching monthly.</div>
                 <div className="bc-domains">
                   {['Prompts', 'Systems', 'Reasoning', 'Output', 'Agents', 'Ethics'].map(d => (
                     <div key={d} className="bc-dp">{d}</div>
@@ -1002,11 +1068,11 @@ export default function Dashboard() {
                 <div className="bc-d">Submit your output. Real score against a professional rubric. No waiting. No humans in the loop.</div>
               </div>
 
-              {/* Card 4 — Global leaderboard */}
+              {/* Card 4 — Progress tracking */}
               <div className="bcard">
-                <div className="bc-icon">🌐</div>
-                <div className="bc-t">Global leaderboard</div>
-                <div className="bc-d">Every score ranked against every operator. The gap is always visible. The motivation is always real.</div>
+                <div className="bc-icon">📈</div>
+                <div className="bc-t">Track your growth</div>
+                <div className="bc-d">Every drill scored, every improvement tracked. See exactly how your skills develop over time.</div>
               </div>
 
               {/* Card 5 — amber: No shortcuts */}
@@ -1031,22 +1097,85 @@ export default function Dashboard() {
                 <h2 className="sh rv d1">See what a <em>scored drill</em> actually looks like.</h2>
                 <p className="code-desc rv d2">Every drill gives you a brief, a target, and a rubric. You produce the output. AI scores it in seconds against weighted criteria — no partial credit.</p>
               </div>
-              <div className="code-window" id="code-window">
+              <div className="code-window" id="code-window" style={{ position: 'relative' }}>
                 <div className="cw-bar">
                   <div className="cw-dot cw-d1"></div>
                   <div className="cw-dot cw-d2"></div>
                   <div className="cw-dot cw-d3"></div>
                   <span className="cw-title">drill_01_prompt_engineering.md</span>
                 </div>
-                <div id="code-body" style={{ padding: 24, fontFamily: 'var(--font-code)', fontSize: 12.5, lineHeight: 1.8, height: 340, whiteSpace: 'pre', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                <div id="code-body" style={{ padding: 24, fontFamily: 'var(--font-code)', fontSize: 12.5, lineHeight: 1.8, minHeight: 300, whiteSpace: 'pre', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
                   <span id="code-cur" className="code-cursor"></span>
                 </div>
-                <div id="code-result" style={{ margin: '0 24px 24px', padding: '16px 20px', background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 10, display: 'none', opacity: 0, transform: 'translateY(8px)', transition: 'opacity .5s, transform .5s' }}>
-                  <div className="cr-score">
-                    <span id="result-num">0</span>/100
+                {/* Submit button (animated in by JS) */}
+                <div id="code-submit" style={{
+                  display: 'none', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  margin: '16px 24px 20px', padding: '11px 24px',
+                  background: '#fff', color: '#000', borderRadius: 10,
+                  fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+                  cursor: 'default', width: 'fit-content',
+                  transition: 'transform 0.15s ease, opacity 0.3s ease, background 0.15s ease',
+                }}>
+                  Submit Prompt
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </div>
+                {/* Animated cursor dot */}
+                <div id="cursor-dot" style={{
+                  display: 'none', position: 'absolute', width: 18, height: 18,
+                  pointerEvents: 'none', zIndex: 10, opacity: 0,
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 3l14 8-8 3-3 8z" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.3)" strokeWidth="1"/>
+                  </svg>
+                </div>
+                <div id="code-result" className="cr-panel">
+                  {/* Score header */}
+                  <div className="cr-header">
+                    <div className="cr-score-wrap">
+                      <span className="cr-label">Score</span>
+                      <span className="cr-score-num" id="result-num">0</span>
+                      <span className="cr-score-max">/100</span>
+                    </div>
                     <span className="cr-badge" id="result-badge"></span>
                   </div>
-                  <div className="cr-sub" id="result-sub"></div>
+                  {/* Score bar */}
+                  <div className="cr-bar-track">
+                    <div className="cr-bar-fill" id="result-bar"></div>
+                  </div>
+                  {/* Rubric breakdown */}
+                  <div className="cr-rubric" id="result-rubric">
+                    <div className="cr-rubric-row">
+                      <span className="cr-rubric-label">Clarity</span>
+                      <div className="cr-rubric-track"><div className="cr-rubric-fill" style={{ width: 0 }} data-target="96"></div></div>
+                      <span className="cr-rubric-val">96</span>
+                    </div>
+                    <div className="cr-rubric-row">
+                      <span className="cr-rubric-label">Structure</span>
+                      <div className="cr-rubric-track"><div className="cr-rubric-fill" style={{ width: 0 }} data-target="91"></div></div>
+                      <span className="cr-rubric-val">91</span>
+                    </div>
+                    <div className="cr-rubric-row">
+                      <span className="cr-rubric-label">Constraints</span>
+                      <div className="cr-rubric-track"><div className="cr-rubric-fill" style={{ width: 0 }} data-target="88"></div></div>
+                      <span className="cr-rubric-val">88</span>
+                    </div>
+                    <div className="cr-rubric-row">
+                      <span className="cr-rubric-label">Tone</span>
+                      <div className="cr-rubric-track"><div className="cr-rubric-fill" style={{ width: 0 }} data-target="94"></div></div>
+                      <span className="cr-rubric-val">94</span>
+                    </div>
+                  </div>
+                  {/* Feedback */}
+                  <div className="cr-feedback" id="result-feedback">
+                    <div className="cr-fb-good">
+                      <span className="cr-fb-icon">✓</span>
+                      <span>Strong role definition and explicit format constraints</span>
+                    </div>
+                    <div className="cr-fb-fix">
+                      <span className="cr-fb-icon">△</span>
+                      <span>Add a success criteria section to define what a good output looks like</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1062,9 +1191,19 @@ export default function Dashboard() {
             <h2 className="sh rv d1">What you actually train <em>inside.</em></h2>
           </div>
           <div className="feat-scroll-wrap">
-            <div className="feat-scroll" id="featscroll">
+            <div className="feat-scroll feat-autoscroll" id="featscroll">
+              {/* Original set */}
               {DOMAINS_DATA.map(d => (
-                <div key={d.num} className="fcard">
+                <div key={d.num} className="fcard appeared">
+                  <span className="fc-num">DOMAIN {d.num}</span>
+                  <div className="fc-t">{d.title}</div>
+                  <div className="fc-d">{d.desc}</div>
+                  <span className={`fc-tag badge ${tierClass(d.tier)}`}>{d.tier}</span>
+                </div>
+              ))}
+              {/* Duplicate set for seamless loop */}
+              {DOMAINS_DATA.map(d => (
+                <div key={d.num + '-dup'} className="fcard appeared" aria-hidden="true">
                   <span className="fc-num">DOMAIN {d.num}</span>
                   <div className="fc-t">{d.title}</div>
                   <div className="fc-d">{d.desc}</div>
@@ -1077,54 +1216,45 @@ export default function Dashboard() {
 
         <div className="div" id="dv5"></div>
 
-        {/* ── 6. Comparison table ── */}
+        {/* ── 6. Comparison ── */}
         <section id="comparison">
           <div className="sec">
-            <div className="tag rv">Comparison</div>
-            <h2 className="sh rv d1">Why not just <em>take a course?</em></h2>
-
-            {/* Win counter */}
-            <div id="ct-wins-wrap" style={{
-              display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28,
-              background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)',
-              borderRadius: 14, padding: '14px 22px', opacity: 0,
-              transition: 'box-shadow 0.6s ease',
-            }}>
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: 38, fontWeight: 400, color: '#00d4ff', lineHeight: 1 }} id="ct-wins">0</span>
-              <span style={{ fontFamily: 'var(--font-code)', fontSize: 9, color: '#00d4ff', letterSpacing: '0.16em', textTransform: 'uppercase' }}>/6 outcomes<br />AI Dojo wins</span>
+            <div className="comp-header">
+              <div className="tag rv">Comparison</div>
+              <h2 className="sh rv d1">Why not just <em>take a course?</em></h2>
+              <p className="comp-lead rv d2">
+                Most AI education rewards watching. AI Dojo rewards building. Here&apos;s what that actually means.
+              </p>
             </div>
 
+            {/* ── Comparison Table ── */}
             <div className="comp-table">
               <div className="ct-head">
-                <div className="ct-h">What you actually get</div>
-                <div className="ct-h hl">AI Dojo</div>
+                <div className="ct-h ct-feature-h">What matters</div>
+                <div className="ct-h ct-hl">AI Dojo</div>
                 <div className="ct-h">Udemy / Coursera</div>
                 <div className="ct-h">YouTube / Free</div>
               </div>
-              {COMP_ROWS.map(row => (
-                <div key={row.feature} className="ct-row">
-                  <div className="ct-cell feature">{row.feature}</div>
-                  {/* AI Dojo */}
-                  <div className="ct-cell hl">
-                    <span className="ct-check yes">✓</span>
+              <div className="ct-body">
+                {COMP_ROWS.map((row, i) => (
+                  <div key={row.feature} className="ct-row" style={{ transitionDelay: `${i * 0.07}s` }}>
+                    <div className="ct-cell ct-feature">{row.feature}</div>
+                    <div className="ct-cell ct-dojo"><span className="ct-check ct-yes">✓</span></div>
+                    <div className="ct-cell ct-other">
+                      {row.udemy === 'yes' && <span className="ct-check ct-yes">✓</span>}
+                      {row.udemy === 'no' && <span className="ct-check ct-no">✗</span>}
+                      {row.udemy === 'partial' && <span className="ct-partial">{row.udemyNote}</span>}
+                    </div>
+                    <div className="ct-cell ct-other">
+                      {row.yt === 'yes' && <span className="ct-check ct-yes">✓</span>}
+                      {row.yt === 'no' && <span className="ct-check ct-no">✗</span>}
+                      {row.yt === 'partial' && <span className="ct-partial">{row.ytNote}</span>}
+                    </div>
                   </div>
-                  {/* Udemy */}
-                  <div className="ct-cell">
-                    {row.udemy === 'no'   && <span className="ct-check no">✗</span>}
-                    {row.udemy === 'yes'  && <span className="ct-check yes">✓</span>}
-                    {row.udemy === 'quiz' && <span className="ct-partial">Quiz only</span>}
-                    {row.udemy === 'paid' && <span className="ct-partial">Paid</span>}
-                    {row.udemy === 'var'  && <span className="ct-partial">Varies</span>}
-                  </div>
-                  {/* YouTube */}
-                  <div className="ct-cell">
-                    {row.yt === 'no'  && <span className="ct-check no">✗</span>}
-                    {row.yt === 'yes' && <span className="ct-check yes">✓</span>}
-                    {row.yt === 'var' && <span className="ct-partial">Varies</span>}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
           </div>
         </section>
 

@@ -231,6 +231,25 @@ export function AppShell({ children }: { children: ReactNode }) {
                 >
                   Start Diagnostic
                 </Link>
+
+                <Link
+                  href="/settings"
+                  aria-label="Settings"
+                  style={{
+                    marginLeft: 6,
+                    padding: "6px 8px",
+                    borderRadius: 10,
+                    color: pathname === "/settings" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.3)",
+                    background: pathname === "/settings" ? "rgba(255,255,255,0.08)" : "transparent",
+                    textDecoration: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    transition: "all 150ms ease",
+                    border: pathname === "/settings" ? "1px solid rgba(255,255,255,0.07)" : "1px solid transparent",
+                  }}
+                >
+                  <GearIcon />
+                </Link>
               </div>
             </nav>
 

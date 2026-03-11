@@ -1618,6 +1618,11 @@ export function getDrillsByDomain(domain: DrillDomain): AnyDrill[] {
   return DRILLS.filter((d) => d.domain === domain);
 }
 
+/** MVP filter: only prompt_construction drills ship with SniperDrill UI */
+export function getMVPDrillsByDomain(domain: DrillDomain): AnyDrill[] {
+  return DRILLS.filter((d) => d.domain === domain && d.type === 'prompt_construction');
+}
+
 export function getDrillsByType(type: DrillType): AnyDrill[] {
   return DRILLS.filter((d) => d.type === type);
 }

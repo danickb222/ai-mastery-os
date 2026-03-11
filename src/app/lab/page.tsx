@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { DOMAINS } from "@/core/content/domains";
 import type { DrillDomain } from "@/core/types/drills";
 import { scorePromptConstruction } from "@/core/scoring/engine";
@@ -767,6 +768,37 @@ Low: Multiple missing owners or deadlines`,
 ];
 
 export default function LabPage() {
+  const router = useRouter();
+
+  // Beta gate: Lab is not yet available
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 28px' }}>
+      <div style={{ maxWidth: 440, width: '100%', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 20 }}>
+          Coming Soon
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,4vw,40px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 16 }}>
+          Prompt Lab
+        </h1>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', lineHeight: 1.7, marginBottom: 32, fontFamily: 'var(--font-body)' }}>
+          A free-form prompt experimentation workspace is coming soon. Train with structured drills in the Curriculum while you wait.
+        </p>
+        <button
+          onClick={() => router.push('/curriculum')}
+          style={{
+            padding: '13px 28px', background: '#fff', border: 'none', borderRadius: 12,
+            color: '#000', fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}
+        >
+          Go to Curriculum
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+
+  // eslint-disable-next-line no-unreachable
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("workspace");
   const [editorTab, setEditorTab] = useState<EditorTab>("system");

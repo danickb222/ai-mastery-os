@@ -262,7 +262,7 @@ export function exportMasteryData(): string {
 
 export function exportMasteryMarkdown(): string {
   const state = getMasteryState();
-  const lines: string[] = ["# AI Mastery OS — Portfolio Export\n"];
+  const lines: string[] = ["# AI Dojo — Portfolio Export\n"];
 
   for (const artifact of state.artifacts) {
     lines.push(`## ${artifact.title}`);

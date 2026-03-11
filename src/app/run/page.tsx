@@ -3,7 +3,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import type { DrillDomain, AnyDrill, DrillResult } from "@/core/types/drills";
-import { getDrillsByDomain, getDrillById } from "@/core/content/drills";
+import { getMVPDrillsByDomain, getDrillById } from "@/core/content/drills";
 import { DOMAINS } from "@/core/content/domains";
 import { DrillSession } from "@/components/drills/DrillSession";
 import {
@@ -110,7 +110,7 @@ function RunPageInner() {
       const drill = getDrillById(drillId);
       if (drill) {
         setCurrentDrill(drill);
-        const domainDrills = getDrillsByDomain(drill.domain);
+        const domainDrills = getMVPDrillsByDomain(drill.domain);
         const idx = domainDrills.findIndex(d => d.id === drillId);
         setDrillIndex(idx >= 0 ? idx : 0);
         setTotalDrills(domainDrills.length);
@@ -118,7 +118,7 @@ function RunPageInner() {
         router.push("/curriculum");
       }
     } else if (domain) {
-      const drills = getDrillsByDomain(domain);
+      const drills = getMVPDrillsByDomain(domain);
       if (drills.length > 0) {
         setCurrentDrill(drills[0]);
         setDrillIndex(0);
@@ -143,7 +143,7 @@ function RunPageInner() {
 
     completedScoresRef.current = [...completedScoresRef.current, result.score];
 
-    const domainDrills = getDrillsByDomain(currentDrill.domain);
+    const domainDrills = getMVPDrillsByDomain(currentDrill.domain);
     const currentIndex = domainDrills.findIndex(d => d.id === currentDrill.id);
 
     if (currentIndex < domainDrills.length - 1) {

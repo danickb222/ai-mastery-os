@@ -169,7 +169,7 @@ export default function SettingsPage() {
         <div className="p-6 space-y-4">
           <h2 className="t-heading">About</h2>
           <p className="t-body">
-            AI Mastery OS · MVP · Local-first. No account required. All data stored in your browser.
+            AI Dojo · Beta · Local-first. No account required. All data stored in your browser.
           </p>
           
           <div className="pt-4 border-t border-[var(--border-default)]">
