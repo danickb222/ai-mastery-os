@@ -341,6 +341,12 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           {/* LEFT: Mission brief */}
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
 
+            {/* Title */}
+            <h2 style={{
+              fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400,
+              color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 16px',
+            }}>{drill.title}</h2>
+
             {/* Broken prompt */}
             <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt to Fix</div>
