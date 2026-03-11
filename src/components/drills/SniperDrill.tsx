@@ -273,7 +273,6 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
             padding: '3px 8px', borderRadius: 4,
           }}>{drill.difficulty}</span>
-          <span style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>·</span>
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{drill.points}pts</span>
         </div>
 
@@ -357,6 +356,12 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
               }}>{drill.title}</h1>
             </div>
 
+            {/* Broken prompt */}
+            <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt to Fix</div>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 13, color: 'rgba(239,68,68,0.65)', fontStyle: 'italic', lineHeight: 1.75 }}>&ldquo;{drill.brokenPrompt}&rdquo;</div>
+            </div>
+
             {/* Situation */}
             <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>Situation</div>
@@ -364,37 +369,11 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             </div>
 
             {/* Target output */}
-            <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+            <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 14, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>
                 <span>🎯</span> Target Output
               </div>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: 0 }}>{drill.targetOutput}</p>
-            </div>
-
-            {/* Broken prompt */}
-            <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 12, padding: '14px 18px', marginBottom: 20 }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt to Fix</div>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: 'rgba(239,68,68,0.65)', fontStyle: 'italic' }}>&ldquo;{drill.brokenPrompt}&rdquo;</div>
-            </div>
-
-            {/* Scoring rubric */}
-            <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px' }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 14 }}>Scoring Criteria</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {drill.successCriteria.map((c) => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                    <div style={{
-                      fontFamily: 'var(--font-code)', fontSize: 8, color: '#00d4ff', background: 'rgba(0,212,255,0.06)',
-                      border: '1px solid rgba(0,212,255,0.18)', padding: '2px 6px', borderRadius: 4,
-                      whiteSpace: 'nowrap', marginTop: 2,
-                    }}>{c.maxPoints}pt</div>
-                    <div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', marginBottom: 2 }}>{c.label}</div>
-                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>{c.description}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           </motion.div>
 
@@ -403,7 +382,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.45, delay: 0.08 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 14, alignSelf: 'stretch' }}
           >
 
             {/* Sparkline trend */}
@@ -442,7 +421,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             </AnimatePresence>
 
             {/* Textarea */}
-            <div style={{ position: 'relative', flex: 1 }}>
+            <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
@@ -458,7 +437,8 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
                 placeholder="Fix the broken prompt above. Define the audience, specify the format, set constraints on length and tone, name exact sections..."
                 style={{
                   width: '100%',
-                  minHeight: 260,
+                  flex: 1,
+                  minHeight: 220,
                   background: 'rgba(255,255,255,0.025)',
                   border: isScoring ? '1px solid rgba(0,212,255,0.3)' : '1px solid var(--border)',
                   borderRadius: 14, padding: '16px 18px',
