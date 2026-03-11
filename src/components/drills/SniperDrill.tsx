@@ -250,7 +250,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', fontFamily: 'var(--font-body)', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, overflow: 'auto' }}>
+    <div className="sniper-root">
 
       {/* ─── HEADER ────────────────────────────────────────────────────────── */}
       <div className="sniper-header">
@@ -336,11 +336,10 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
 
       {phase !== 'result' ? (
         // ── WRITE PHASE ──────────────────────────────────────────────────────
-        <div className="sniper-write-phase">
-        <h1 style={{
-          fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400,
-          color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, margin: 0,
-        }}>{drill.title}</h1>
+        <>
+        <div className="sniper-title">
+          <h1>{drill.title}</h1>
+        </div>
         <div className="sniper-main-grid">
 
           {/* LEFT: Mission brief */}
@@ -372,7 +371,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             initial={{ opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.45, delay: 0.08 }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 14, alignSelf: 'stretch' }}
+            className="sniper-right-col"
           >
 
             {/* Sparkline trend */}
@@ -470,7 +469,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             </motion.button>
           </motion.div>
         </div>
-        </div>
+        </>
 
       ) : (
         // ── RESULT PHASE ──────────────────────────────────────────────────────
