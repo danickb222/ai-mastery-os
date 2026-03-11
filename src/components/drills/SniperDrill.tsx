@@ -341,21 +341,6 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           {/* LEFT: Mission brief */}
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
 
-            {/* Title */}
-            <div style={{ marginBottom: 22 }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10,
-                fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--cyan)',
-              }}>
-                <div style={{ width: 16, height: 1, background: 'var(--cyan)', boxShadow: '0 0 4px var(--cyan)' }} />
-                Mission Brief
-              </div>
-              <h1 style={{
-                fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 400,
-                color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, margin: 0,
-              }}>{drill.title}</h1>
-            </div>
-
             {/* Broken prompt */}
             <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt to Fix</div>
@@ -448,27 +433,6 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
                   boxSizing: 'border-box',
                 }}
               />
-            </div>
-
-            {/* Quick checklist */}
-            <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px' }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>Precision Checklist</div>
-              <div className="sniper-checklist">
-                {['Define your audience', 'Set a word / char limit', 'Name the exact format', 'Specify tone & voice', 'Enumerate each section', 'Add specificity — no vague words'].map(h => {
-                  const hit = prompt.length > 30 && h.split(' ').some(w => w.length > 4 && prompt.toLowerCase().includes(w.toLowerCase()))
-                  return (
-                    <div key={h} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                      <div style={{
-                        width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                        background: hit ? '#00d4ff' : 'rgba(255,255,255,0.1)',
-                        boxShadow: hit ? '0 0 5px rgba(0,212,255,0.7)' : 'none',
-                        transition: 'all 0.3s ease',
-                      }} />
-                      <span style={{ fontSize: 11, color: hit ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.28)', transition: 'color 0.3s' }}>{h}</span>
-                    </div>
-                  )
-                })}
-              </div>
             </div>
 
             {/* Submit */}
