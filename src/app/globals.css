@@ -402,64 +402,121 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 72px}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
 
-/* ── SNIPER DRILL LAYOUT ── */
+/* ═══════════════════════════════════════
+   SNIPER DRILL — Full-viewport Layout
+   ═══════════════════════════════════════ */
 
-/* Root: fullscreen overlay, flex column */
-.sniper-root{position:fixed;inset:0;z-index:100;background:var(--bg);font-family:var(--font-body);display:flex;flex-direction:column;overflow:hidden}
+/* Root: fullscreen fixed overlay, flex column */
+.sniper-root{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);font-family:var(--font-body);
+  display:flex;flex-direction:column;overflow:hidden;
+}
 
-/* Header: fixed height strip */
-.sniper-header{flex-shrink:0;z-index:10;background:rgba(6,7,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;gap:16px}
+/* Header bar: fixed-height strip at top */
+.sniper-header{
+  flex-shrink:0;z-index:10;
+  background:rgba(6,7,10,0.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:10px 32px;display:flex;align-items:center;gap:16px;
+}
 .sniper-badges{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .sniper-score-bar{flex:1;display:flex;align-items:center;gap:10px;max-width:480px;margin:0 auto}
 .sniper-timer{display:flex;align-items:center;gap:14px;flex-shrink:0}
 
-/* Title row: fixed height */
-.sniper-title{flex-shrink:0;padding:18px 28px 0}
-.sniper-title h1{font-family:var(--font-display);font-size:28px;font-weight:400;color:#fff;letter-spacing:-0.02em;line-height:1.15;margin:0}
+/* Title: large, dominant visual anchor */
+.sniper-title{
+  flex-shrink:0;
+  padding:28px 32px 0;
+}
+.sniper-title h1{
+  font-family:var(--font-display);
+  font-size:clamp(32px, 4vw, 52px);
+  font-weight:700;
+  color:#fff;
+  letter-spacing:-0.025em;
+  line-height:1.1;
+  margin:0;
+}
 
-/* Grid: fills ALL remaining vertical space */
-.sniper-main-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:16px 28px 28px;min-height:0;align-items:stretch}
+/* Grid: fills ALL remaining vertical space, two equal columns */
+.sniper-main-grid{
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:32px;
+  padding:24px 32px 32px;
+  min-height:0;
+  align-items:stretch;
+}
 .sniper-main-grid>*{min-width:0;min-height:0}
 
-/* Left column: scrollable if content overflows */
-.sniper-main-grid>:first-child{overflow-y:auto;padding-right:4px}
+/* Left column: flex column with equal-gap boxes, last box fills remaining */
+.sniper-left-col{
+  display:flex;flex-direction:column;gap:16px;
+  height:100%;overflow-y:auto;
+}
+.sniper-left-col .sniper-box{
+  border-radius:14px;padding:20px 24px;flex-shrink:0;
+}
+.sniper-left-col .sniper-box:last-child{
+  flex:1;
+}
 
 /* Right column: flex column, textarea fills space */
-.sniper-right-col{display:flex;flex-direction:column;gap:14px;min-height:0}
-
-/* Result + CTA */
-.sniper-cta-row{display:flex;gap:12px}
-.sniper-result{flex:1;max-width:760px;margin:0 auto;padding:40px 28px 80px;overflow-y:auto;width:100%}
-
-/* ── RESPONSIVE ── */
-@media(max-width:1024px){
-  .sniper-main-grid{gap:16px;padding:14px 20px 20px}
-  .sniper-title{padding:14px 20px 0}
+.sniper-right-col{
+  display:flex;flex-direction:column;gap:16px;
+  height:100%;min-height:0;
 }
+
+/* Result phase */
+.sniper-cta-row{display:flex;gap:12px}
+.sniper-result{
+  flex:1;max-width:760px;width:100%;
+  margin:0 auto;padding:40px 32px 80px;overflow-y:auto;
+}
+
+/* ── Responsive: Tablet ── */
+@media(max-width:1024px){
+  .sniper-header{padding:10px 20px}
+  .sniper-title{padding:20px 20px 0}
+  .sniper-main-grid{gap:24px;padding:20px 20px 24px}
+}
+
+/* ── Responsive: Mobile ── */
 @media(max-width:768px){
   .sniper-header{flex-wrap:wrap;padding:10px 16px;gap:10px}
   .sniper-badges{order:1;width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .sniper-badges::-webkit-scrollbar{display:none}
   .sniper-score-bar{order:3;width:100%;max-width:none;flex:unset;margin:0}
   .sniper-timer{order:2;margin-left:auto}
-  .sniper-title{padding:14px 16px 0}
-  .sniper-title h1{font-size:22px}
-  /* Stack columns on mobile — switch to scrollable layout */
-  .sniper-root.sniper-root{overflow:auto}
-  .sniper-main-grid{grid-template-columns:1fr;gap:20px;padding:14px 16px 48px;flex:unset;min-height:unset}
-  .sniper-main-grid>:first-child{overflow-y:visible;padding-right:0}
-  .sniper-right-col{min-height:400px}
-  .sniper-result{margin:24px auto;padding:0 16px 60px}
+  .sniper-title{padding:16px 16px 0}
+  .sniper-title h1{font-size:28px}
+  /* Stack to single column — allow scroll */
+  .sniper-root.sniper-root{overflow-y:auto}
+  .sniper-main-grid{
+    grid-template-columns:1fr;gap:24px;
+    padding:16px 16px 48px;
+    flex:unset;min-height:unset;
+  }
+  .sniper-left-col{height:auto;overflow-y:visible}
+  .sniper-left-col .sniper-box:last-child{flex:unset}
+  .sniper-right-col{min-height:400px;height:auto}
+  .sniper-result{padding:24px 16px 60px}
 }
+
+/* ── Responsive: Small ── */
 @media(max-width:480px){
   .sniper-header{padding:8px 12px;gap:8px}
   .sniper-score-bar{gap:8px}
-  .sniper-title{padding:12px 12px 0}
-  .sniper-title h1{font-size:20px}
+  .sniper-title{padding:14px 12px 0}
+  .sniper-title h1{font-size:24px}
   .sniper-main-grid{gap:16px;padding:12px 12px 40px}
-  .sniper-right-col{min-height:350px}
+  .sniper-left-col{gap:12px}
+  .sniper-left-col .sniper-box{padding:16px 18px}
+  .sniper-right-col{min-height:320px;gap:12px}
   .sniper-cta-row{flex-direction:column;gap:10px}
-  .sniper-result{padding:0 12px 48px}
+  .sniper-result{padding:16px 12px 48px}
 }
 
 /* ══════════════════════════════════════════

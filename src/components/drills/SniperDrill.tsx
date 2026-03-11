@@ -343,22 +343,22 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         <div className="sniper-main-grid">
 
           {/* LEFT: Mission brief */}
-          <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
+          <motion.div className="sniper-left-col" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
 
             {/* Broken prompt */}
-            <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+            <div className="sniper-box" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)' }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt to Fix</div>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 13, color: 'rgba(239,68,68,0.65)', fontStyle: 'italic', lineHeight: 1.75 }}>&ldquo;{drill.brokenPrompt}&rdquo;</div>
             </div>
 
             {/* Situation */}
-            <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
+            <div className="sniper-box" style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>Situation</div>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)', lineHeight: 1.75, margin: 0 }}>{drill.context}</p>
             </div>
 
             {/* Target output */}
-            <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 14, padding: '18px 20px' }}>
+            <div className="sniper-box" style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>
                 <span>🎯</span> Target Output
               </div>
@@ -410,11 +410,11 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             </AnimatePresence>
 
             {/* Textarea */}
-            <div style={{ position: 'relative', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.28)', marginBottom: 8,
+                color: 'rgba(255,255,255,0.28)', marginBottom: 8, flexShrink: 0,
               }}>
                 <span>Your Improved Prompt</span>
                 <span>{prompt.length} chars</span>
@@ -427,12 +427,12 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
                 style={{
                   width: '100%',
                   flex: 1,
-                  minHeight: 220,
+                  minHeight: 0,
                   background: 'rgba(255,255,255,0.025)',
                   border: isScoring ? '1px solid rgba(0,212,255,0.3)' : '1px solid var(--border)',
-                  borderRadius: 14, padding: '16px 18px',
+                  borderRadius: 14, padding: '16px 20px',
                   fontFamily: 'var(--font-code)', fontSize: 13, lineHeight: 1.8,
-                  color: '#fff', resize: 'vertical', outline: 'none',
+                  color: '#fff', resize: 'none', outline: 'none',
                   transition: 'border-color 0.35s ease',
                   boxSizing: 'border-box',
                 }}
