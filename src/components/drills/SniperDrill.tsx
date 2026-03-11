@@ -336,16 +336,15 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
 
       {phase !== 'result' ? (
         // ── WRITE PHASE ──────────────────────────────────────────────────────
+        <div className="sniper-write-phase">
+        <h1 style={{
+          fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400,
+          color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, margin: 0,
+        }}>{drill.title}</h1>
         <div className="sniper-main-grid">
 
           {/* LEFT: Mission brief */}
           <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
-
-            {/* Title */}
-            <h2 style={{
-              fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 400,
-              color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 16px',
-            }}>{drill.title}</h2>
 
             {/* Broken prompt */}
             <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 14, padding: '18px 20px', marginBottom: 14 }}>
@@ -470,6 +469,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
               ) : '🎯 Fire'}
             </motion.button>
           </motion.div>
+        </div>
         </div>
 
       ) : (
