@@ -785,7 +785,7 @@ export default function Dashboard() {
         <div id="bar"></div>
 
         {/* ── Nav ── */}
-        <nav style={{
+        <nav className="landing-nav" style={{
           position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)",
           zIndex: 1000, background: "rgba(8,9,12,0.88)",
           backdropFilter: "blur(32px) saturate(220%)", WebkitBackdropFilter: "blur(32px) saturate(220%)",
@@ -807,7 +807,7 @@ export default function Dashboard() {
                 background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.25)", borderRadius: 4, padding: "1px 5px",
               }}>BETA</span>
             </a>
-            <div style={{ display: "flex", gap: 2 }}>
+            <div className="nav-tabs" style={{ display: "flex", gap: 2 }}>
               <a href="/" style={{
                 fontSize: 12.5, fontWeight: 500, color: "rgba(255,255,255,0.9)", padding: "6px 14px",
                 borderRadius: 11, background: "rgba(255,255,255,0.08)", textDecoration: "none",
@@ -854,10 +854,14 @@ export default function Dashboard() {
                 transition: "all 150ms ease",
               }}>Profile</a>
             </div>
-            <a href="/diagnostic" style={{
+            <a href="/diagnostic" className="nav-cta-text" style={{
               marginLeft: 8, padding: "6px 14px", background: "#fff", borderRadius: 10,
               color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
             }}>Start Diagnostic</a>
+            <a href="/diagnostic" className="nav-cta-short" style={{
+              marginLeft: 8, padding: "6px 14px", background: "#fff", borderRadius: 10,
+              color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "none",
+            }}>Diagnose</a>
           </div>
         </nav>
 
@@ -905,7 +909,7 @@ export default function Dashboard() {
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
                     background: 'rgba(12,13,18,0.97)', border: '1px solid rgba(255,255,255,0.14)',
-                    borderRadius: 14, padding: '16px 18px', minWidth: 300, zIndex: 200,
+                    borderRadius: 14, padding: '16px 18px', minWidth: 280, width: 'max-content', maxWidth: 'calc(100vw - 32px)', zIndex: 200,
                     boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
                   }}>
                     {waitlistStatus === 'success' ? (
@@ -1255,6 +1259,36 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* ── Comparison Cards (mobile only) ── */}
+            <div className="comparison-cards" style={{ display: 'none' }}>
+              {COMP_ROWS.map((row) => (
+                <div key={row.feature} style={{
+                  background: 'var(--bg3)', border: '1px solid rgba(255,255,255,0.07)',
+                  borderRadius: 14, padding: '18px 20px', marginBottom: 12,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', marginBottom: 14 }}>{row.feature}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--cyan)' }}>AI Dojo</span>
+                      <span className="ct-check ct-yes">✓</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>Udemy</span>
+                      {row.udemy === 'yes' && <span className="ct-check ct-yes">✓</span>}
+                      {row.udemy === 'no' && <span className="ct-check ct-no">✗</span>}
+                      {row.udemy === 'partial' && <span className="ct-partial">{row.udemyNote}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.28)' }}>YouTube</span>
+                      {row.yt === 'yes' && <span className="ct-check ct-yes">✓</span>}
+                      {row.yt === 'no' && <span className="ct-check ct-no">✗</span>}
+                      {row.yt === 'partial' && <span className="ct-partial">{row.ytNote}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
           </div>
         </section>
 
@@ -1265,12 +1299,14 @@ export default function Dashboard() {
             <div className="cta-tag rv">Step one</div>
             <h2 className="cta-h rv d1">Find out where you <em>actually</em> stand.</h2>
             <p className="cta-sub rv d2">3 drills. 8 minutes. No account required. Your score tells you exactly where to start.</p>
-            <a href="/diagnostic" className="btn-solid rv d3">
-              Begin Diagnostic{" "}
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </a>
+            <div className="cta-btns-wrap rv d3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <a href="/diagnostic" className="btn-solid">
+                Begin Diagnostic{" "}
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </a>
+            </div>
             <div className="cta-note rv d4">Free to start · No account required</div>
           </div>
         </section>

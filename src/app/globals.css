@@ -433,3 +433,142 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 72px}
   .sniper-cta-row{flex-direction:column;gap:10px}
   .sniper-result{padding:0 12px 48px}
 }
+
+/* ══════════════════════════════════════════
+   RESPONSIVE — Mobile First Overrides
+   ══════════════════════════════════════════ */
+
+/* ── Global section padding ── */
+@media (max-width: 767px) {
+  .sec { padding: 64px 16px; }
+  .feat-head { padding: 64px 16px 32px; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sec { padding: 80px 32px; }
+  .feat-head { padding: 80px 32px 40px; }
+}
+
+/* ── Nav (landing page) — mobile ── */
+@media (max-width: 767px) {
+  nav.landing-nav {
+    left: 16px !important;
+    right: 16px !important;
+    transform: none !important;
+    width: calc(100% - 32px) !important;
+    padding: 0 6px !important;
+  }
+  nav.landing-nav .nav-tabs { display: none !important; }
+  nav.landing-nav .nav-cta-text { display: none !important; }
+  nav.landing-nav .nav-cta-short { display: inline-flex !important; }
+}
+@media (min-width: 768px) {
+  nav.landing-nav .nav-cta-short { display: none !important; }
+}
+
+/* ── Hero ── */
+@media (max-width: 767px) {
+  .hero-h { font-size: clamp(40px, 10vw, 96px) !important; }
+  .hero-in { padding: 0 16px !important; padding-top: 80px !important; }
+  .hero-sub { font-size: clamp(14px, 4vw, 18px) !important; line-height: 1.6 !important; margin: 24px auto 32px !important; }
+  .hero-btns { flex-direction: column !important; align-items: stretch !important; width: 100% !important; }
+  .hero-btns .btn-solid, .hero-btns .btn-line { width: 100% !important; justify-content: center !important; }
+  .hero-note { white-space: normal !important; text-align: center !important; }
+  .hero-stats { flex-direction: column !important; width: 100% !important; }
+  .hs { width: 100% !important; }
+  .hs + .hs::before { top: 0 !important; bottom: auto !important; left: 10% !important; width: 80% !important; height: 1px !important; }
+}
+
+/* ── Why AI Dojo ── */
+@media (max-width: 767px) {
+  .why-layout { grid-template-columns: 1fr !important; gap: 40px !important; }
+  .why-pillars { grid-template-columns: 1fr !important; }
+  .pillar { padding: 20px !important; }
+  .pillar.tl, .pillar.tr, .pillar.bl, .pillar.br { transform: translateY(20px) scale(0.97) !important; }
+  .pillar.merged { transform: translateY(0) scale(1) !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .why-layout { gap: 40px !important; }
+}
+
+/* ── Bento / Platform ── */
+@media (max-width: 767px) {
+  .bento-grid { grid-template-columns: 1fr !important; }
+  .bcard.wide { grid-column: span 1 !important; }
+  .bc-bar-lbl { width: 80px !important; }
+  .bc-domains { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bento-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .bcard.wide { grid-column: span 2 !important; }
+}
+
+/* ── Section headings clamp ── */
+@media (max-width: 767px) {
+  .sh { font-size: clamp(32px, 8vw, 64px) !important; }
+  .cta-h { font-size: clamp(32px, 9vw, 72px) !important; }
+}
+
+/* ── Drill Preview (code window) ── */
+@media (max-width: 767px) {
+  .code-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .code-window { min-height: auto !important; }
+  #code-body { font-size: 11px !important; white-space: pre-wrap !important; overflow-x: hidden !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .code-grid { gap: 40px !important; }
+}
+
+/* ── Horizontal scroll / domain cards ── */
+.feat-scroll {
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+}
+.feat-scroll::-webkit-scrollbar { display: none !important; }
+@media (max-width: 767px) {
+  .fcard { min-width: 260px !important; max-width: 260px !important; padding: 20px !important; }
+  .feat-scroll { padding: 0 16px 48px !important; }
+  .feat-scroll-wrap::before { width: 16px !important; }
+  .feat-scroll-wrap::after { width: 40px !important; }
+}
+
+/* ── Comparison table → card stack on mobile ── */
+@media (max-width: 767px) {
+  .comp-table { display: none !important; }
+  .comparison-cards { display: block !important; }
+}
+@media (min-width: 768px) {
+  .comparison-cards { display: none !important; }
+}
+
+/* ── CTA ── */
+@media (max-width: 767px) {
+  .cta-in { padding: 80px 16px !important; }
+  .cta-btns-wrap { flex-direction: column !important; align-items: stretch !important; }
+  .cta-btns-wrap .btn-solid { width: 100% !important; justify-content: center !important; }
+}
+
+/* ── Ticker ── */
+@media (max-width: 767px) {
+  .ticker-wrap { padding: 0 16px !important; }
+  .ticker-label { padding: 16px 20px 16px 0 !important; }
+  .ticker-track { padding: 16px 0 16px 20px !important; }
+}
+
+/* ── Footer ── */
+@media (max-width: 767px) {
+  footer { padding: 40px 16px !important; }
+  .foot-top { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+  .foot-bot { flex-direction: column !important; gap: 12px !important; text-align: center !important; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  footer { padding: 40px 32px !important; }
+  .foot-top { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
+}
+
+/* ── AppShell inner content ── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .md-nav { font-size: 11px !important; }
+}
+@media (max-width: 1180px) {
+  .app-main-inner { padding: 40px 16px !important; }
+}

@@ -362,7 +362,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         }}
         className={navVisible ? "has-nav" : ""}
       >
-        <div style={{ maxWidth: 1320, margin: "0 auto", padding: "40px 28px" }}>
+        <div className="app-main-inner" style={{ maxWidth: 1320, margin: "0 auto", padding: "40px 28px" }}>
           {children}
         </div>
       </main>
@@ -372,6 +372,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           .md-nav { display: flex !important; }
           .mobile-nav { display: none !important; }
           main.has-nav { padding-bottom: 0 !important; }
+        }
+        @media (max-width: 1023px) and (min-width: 768px) {
+          .md-nav { font-size: 11px !important; }
+        }
+        @media (max-width: 1180px) {
+          .app-main-inner { padding: 40px 16px !important; }
         }
         .md-nav a:hover { color: rgba(255,255,255,0.65) !important; background: rgba(255,255,255,0.04) !important; }
         nav a:hover { color: rgba(255,255,255,0.65) !important; }

@@ -79,7 +79,7 @@ export default function CurriculumPage() {
       </motion.div>
 
       {/* Domain grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12, marginTop: 48 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: 12, marginTop: 48 }}>
         {domainData.map((domain, idx) => (
           <motion.div
             key={domain.id}
