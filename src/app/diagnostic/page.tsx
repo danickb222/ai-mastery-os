@@ -121,14 +121,15 @@ export default function DiagnosticPage() {
     if (scenarioFeedback) return
     setScenarioAnswers(prev => ({ ...prev, [questionId]: answerId }))
     setScenarioFeedback(true)
-    setTimeout(() => {
-      setScenarioFeedback(false)
-      if (scenarioIdx < SCENARIO_QUESTIONS.length - 1) {
-        setScenarioIdx(prev => prev + 1)
-      } else {
-        transitionTo('spotfix', '02', 'Spot & Fix', 'Identify flaws in real prompts and systems.')
-      }
-    }, 1600)
+  }
+
+  function advanceScenario() {
+    setScenarioFeedback(false)
+    if (scenarioIdx < SCENARIO_QUESTIONS.length - 1) {
+      setScenarioIdx(prev => prev + 1)
+    } else {
+      transitionTo('spotfix', '02', 'Spot & Fix', 'Identify flaws in real prompts and systems.')
+    }
   }
 
   // ── Phase 2 Handlers ──────────────────────────────────────────────────────
@@ -137,18 +138,19 @@ export default function DiagnosticPage() {
     if (spotFixFeedback) return
     setSpotFixAnswers(prev => ({ ...prev, [exerciseId]: answerId }))
     setSpotFixFeedback(true)
-    setTimeout(() => {
-      setSpotFixFeedback(false)
-      if (spotFixIdx < SPOT_FIX_EXERCISES.length - 1) {
-        setSpotFixIdx(prev => prev + 1)
-      } else {
-        const scores = computeDomainScores()
-        const weakest = getWeakestCluster(scores)
-        const drillId = CLUSTER_DRILL_MAP[weakest.id] || 'pe_004'
-        setBuildDrillId(drillId)
-        transitionTo('build', '03', 'Build Challenge', `Let's test your skills in ${weakest.label}. Write a real prompt — AI scores your output.`)
-      }
-    }, 1600)
+  }
+
+  function advanceSpotFix() {
+    setSpotFixFeedback(false)
+    if (spotFixIdx < SPOT_FIX_EXERCISES.length - 1) {
+      setSpotFixIdx(prev => prev + 1)
+    } else {
+      const scores = computeDomainScores()
+      const weakest = getWeakestCluster(scores)
+      const drillId = CLUSTER_DRILL_MAP[weakest.id] || 'pe_004'
+      setBuildDrillId(drillId)
+      transitionTo('build', '03', 'Build Challenge', `Let's test your skills in ${weakest.label}. Write a real prompt — AI scores your output.`)
+    }
   }
 
   // ── Phase 3 Handler ────────────────────────────────────────────────────────
@@ -360,6 +362,28 @@ export default function DiagnosticPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Next button */}
+            {scenarioFeedback && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}
+              >
+                <button
+                  onClick={advanceScenario}
+                  style={{
+                    padding: '10px 22px', background: '#fff', border: 'none', borderRadius: 10,
+                    color: '#000', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
+                  }}
+                >
+                  {scenarioIdx < SCENARIO_QUESTIONS.length - 1 ? 'Next' : 'Continue'}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -482,6 +506,28 @@ export default function DiagnosticPage() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Next button */}
+            {spotFixFeedback && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}
+              >
+                <button
+                  onClick={advanceSpotFix}
+                  style={{
+                    padding: '10px 22px', background: '#fff', border: 'none', borderRadius: 10,
+                    color: '#000', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
+                  }}
+                >
+                  {spotFixIdx < SPOT_FIX_EXERCISES.length - 1 ? 'Next' : 'Continue'}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         </AnimatePresence>
       </div>

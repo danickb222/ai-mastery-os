@@ -894,7 +894,7 @@ export default function Dashboard() {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </a>
-              <div style={{ position: 'relative', display: 'inline-block' }}>
+              <div style={{ position: 'relative', display: 'inline-block', zIndex: 300 }}>
                 <button
                   className="btn-line"
                   onClick={() => { setWaitlistOpen(o => !o); setWaitlistStatus('idle'); setWaitlistEmail(''); }}
@@ -909,7 +909,7 @@ export default function Dashboard() {
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
                     background: 'rgba(12,13,18,0.97)', border: '1px solid rgba(255,255,255,0.14)',
-                    borderRadius: 14, padding: '16px 18px', minWidth: 280, width: 'max-content', maxWidth: 'calc(100vw - 32px)', zIndex: 200,
+                    borderRadius: 14, padding: '16px 18px', width: 300, maxWidth: 'calc(100vw - 32px)', zIndex: 300,
                     boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
                   }}>
                     {waitlistStatus === 'success' ? (
