@@ -106,7 +106,7 @@ export default function CurriculumPage() {
             onClick={domain.isOpen ? () => router.push(`/run?domain=${domain.id}`) : undefined}
           >
             {/* Glow orb top-right */}
-            <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, background: `radial-gradient(ellipse, ${domain.color}18 0%, transparent 70%)`, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", top: -40, right: -40, width: 120, height: 120, borderRadius: 60, background: `radial-gradient(ellipse, ${difficultyColor(domain.difficulty)}18 0%, transparent 70%)`, pointerEvents: "none" }} />
 
             {/* Top row: name + badges */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>

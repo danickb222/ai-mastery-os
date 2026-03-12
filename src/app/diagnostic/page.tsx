@@ -17,6 +17,8 @@ import {
   getOverallScore,
   getRecommendedPath,
   operatorLevel,
+  computeIndividualDomainScores,
+  getRecommendedDomainPath,
   type DomainScores,
 } from '@/core/content/diagnosticQuestions'
 
@@ -622,6 +624,9 @@ export default function DiagnosticPage() {
     const clusterScores = computeClusterScores(domainScores)
     const recommendedPath = getRecommendedPath(domainScores)
     const weakestCluster = recommendedPath[0]
+    const individualDomainScores = computeIndividualDomainScores(domainScores)
+    const testedDomains = individualDomainScores.filter(d => d.total > 0)
+    const recommendedDomains = getRecommendedDomainPath(domainScores, overall)
 
     // Calibration comparison
     const calibrationInsights: { label: string; selfScore: number; actualScore: number; gap: string }[] = []
@@ -629,7 +634,7 @@ export default function DiagnosticPage() {
       const selfRaw = confidenceScores[item.id] ?? 3
       const selfScore = Math.round((selfRaw / 5) * 100)
       const cluster = clusterScores.find(c => item.clusterIds.includes(c.clusterId))
-      const actualScore = cluster?.score ?? 50
+      const actualScore = cluster?.score ?? 0
       const diff = selfScore - actualScore
       let gap = 'Well-calibrated'
       if (diff > 25) gap = 'Overconfident'
@@ -686,24 +691,29 @@ export default function DiagnosticPage() {
             </div>
           </div>
 
-          {/* Domain Cluster Bars */}
+          {/* Per-Domain Score Breakdown */}
           <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 26px', marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>
-              Skill Map
+              Domain Breakdown — {testedDomains.length} domain{testedDomains.length !== 1 ? 's' : ''} tested
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {clusterScores.map((cs, i) => (
-                <div key={cs.clusterId}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{cs.label}</span>
-                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: cs.color }}>{cs.score}%</span>
+              {testedDomains.map((ds, i) => (
+                <div key={ds.domainId}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{ds.name}</span>
+                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: ds.color }}>
+                      {ds.score}%
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginLeft: 6 }}>
+                        {ds.correct}/{ds.total}
+                      </span>
+                    </span>
                   </div>
                   <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
                     <motion.div
                       initial={{ width: 0 }}
-                      animate={{ width: `${cs.score}%` }}
-                      transition={{ delay: 0.3 + i * 0.08, duration: 0.7, ease: [0, 0, 0.2, 1] }}
-                      style={{ height: '100%', borderRadius: 2, background: cs.color }}
+                      animate={{ width: `${ds.score}%` }}
+                      transition={{ delay: 0.3 + i * 0.06, duration: 0.7, ease: [0, 0, 0.2, 1] }}
+                      style={{ height: '100%', borderRadius: 2, background: ds.color }}
                     />
                   </div>
                 </div>
@@ -738,40 +748,55 @@ export default function DiagnosticPage() {
 
           {/* Recommended Path */}
           <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 6 }}>
               Your Recommended Path
             </div>
+            {overall < 35 && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
+                Start with Prompt Engineering — it&apos;s the foundation every other domain builds on.
+              </p>
+            )}
+            {overall >= 35 && overall < 65 && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
+                Focus on your weakest domains first — closing gaps here will have the biggest impact.
+              </p>
+            )}
+            {overall >= 65 && (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
+                Strong foundation. Sharpen the areas below to reach professional-grade.
+              </p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {recommendedPath.slice(0, 3).map((cluster, i) => {
-                const cs = clusterScores.find(c => c.clusterId === cluster.id)
-                return (
-                  <div key={cluster.id} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 18, color: i === 0 ? '#00d4ff' : 'rgba(255,255,255,0.2)', fontWeight: 300, width: 28, textAlign: 'center' }}>
-                      {i + 1}
-                    </span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.5)', fontWeight: i === 0 ? 600 : 400 }}>{cluster.label}</div>
-                      <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
-                        {cs ? `${cs.score}% \u2014 ${cs.score < 40 ? 'needs work' : cs.score < 70 ? 'room to grow' : 'strong'}` : ''}
-                      </div>
+              {recommendedDomains.slice(0, 4).map((domain, i) => (
+                <div key={domain.domainId} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <span style={{ fontFamily: 'var(--font-code)', fontSize: 18, color: i === 0 ? domain.color : 'rgba(255,255,255,0.2)', fontWeight: 300, width: 28, textAlign: 'center' }}>
+                    {i + 1}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 14, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.5)', fontWeight: i === 0 ? 600 : 400 }}>{domain.name}</span>
+                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: domain.color, opacity: 0.7 }}>{domain.difficulty}</span>
                     </div>
-                    {i === 0 && (
-                      <button
-                        onClick={() => router.push('/curriculum')}
-                        style={{
-                          padding: '8px 16px', background: '#fff', border: 'none', borderRadius: 10,
-                          color: '#000', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700,
-                          cursor: 'pointer', whiteSpace: 'nowrap',
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                        }}
-                      >
-                        Start
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                      </button>
-                    )}
+                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
+                      {domain.total > 0 ? `${domain.score}% — ${domain.score === 0 ? 'needs work' : domain.score < 40 ? 'needs work' : domain.score < 70 ? 'room to grow' : 'solid'}` : 'not yet tested'}
+                    </div>
                   </div>
-                )
-              })}
+                  {i === 0 && (
+                    <button
+                      onClick={() => router.push(`/run?domain=${domain.domainId}`)}
+                      style={{
+                        padding: '8px 16px', background: '#fff', border: 'none', borderRadius: 10,
+                        color: '#000', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700,
+                        cursor: 'pointer', whiteSpace: 'nowrap',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}
+                    >
+                      Start
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 

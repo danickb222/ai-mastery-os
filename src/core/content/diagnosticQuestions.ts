@@ -349,7 +349,7 @@ export function computeClusterScores(
         totalQuestions += ds.total;
       }
     }
-    const score = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 50;
+    const score = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
     return { clusterId: cluster.id, score, label: cluster.label, color: cluster.color };
   });
 }
@@ -385,4 +385,66 @@ export function getRecommendedPath(domainScores: DomainScores): DomainCluster[] 
   const clusterScores = computeClusterScores(domainScores);
   const sorted = [...clusterScores].sort((a, b) => a.score - b.score);
   return sorted.map(cs => DOMAIN_CLUSTERS.find(c => c.id === cs.clusterId)!);
+}
+
+// ─── Per-Domain Scoring (individual domains, not clusters) ──────────────────
+
+export interface DomainResult {
+  domainId: DrillDomain;
+  name: string;
+  score: number; // 0-100 percentage
+  correct: number;
+  total: number;
+  color: string;
+  difficulty: 'foundational' | 'advanced' | 'expert';
+}
+
+const DOMAIN_META: Record<DrillDomain, { name: string; color: string; difficulty: 'foundational' | 'advanced' | 'expert'; order: number }> = {
+  prompt_engineering:  { name: 'Prompt Engineering',          color: '#4f6ef7', difficulty: 'foundational', order: 1 },
+  system_prompts:     { name: 'System Prompts',              color: '#8b5cf6', difficulty: 'foundational', order: 2 },
+  reasoning_chains:   { name: 'Reasoning Chains',            color: '#10b981', difficulty: 'advanced',     order: 3 },
+  output_control:     { name: 'Output Control',              color: '#f59e0b', difficulty: 'foundational', order: 4 },
+  ai_workflows:       { name: 'AI Workflows',                color: '#f97316', difficulty: 'advanced',     order: 5 },
+  context_management: { name: 'Context Management',          color: '#06b6d4', difficulty: 'advanced',     order: 6 },
+  role_prompting:     { name: 'Role Prompting',              color: '#ec4899', difficulty: 'advanced',     order: 7 },
+  data_extraction:    { name: 'Data Extraction',             color: '#84cc16', difficulty: 'advanced',     order: 8 },
+  ai_evaluation:      { name: 'AI Evaluation',               color: '#ef4444', difficulty: 'advanced',     order: 9 },
+  workflow_automation: { name: 'Workflow Automation',         color: '#f97316', difficulty: 'advanced',     order: 10 },
+  tool_ecosystem:     { name: 'AI Tool Ecosystem',           color: '#3b82f6', difficulty: 'foundational', order: 11 },
+  multi_agent_systems: { name: 'Multi-Agent Systems',        color: '#a855f7', difficulty: 'expert',       order: 12 },
+  professional_ethics: { name: 'Professional Ethics & Risk', color: '#64748b', difficulty: 'advanced',     order: 13 },
+};
+
+export function computeIndividualDomainScores(
+  domainScores: DomainScores,
+): DomainResult[] {
+  const allDomains = Object.keys(DOMAIN_META) as DrillDomain[];
+  return allDomains.map(domainId => {
+    const meta = DOMAIN_META[domainId];
+    const ds = domainScores[domainId];
+    const correct = ds?.correct ?? 0;
+    const total = ds?.total ?? 0;
+    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+    return { domainId, name: meta.name, score, correct, total, color: meta.color, difficulty: meta.difficulty };
+  }).sort((a, b) => DOMAIN_META[a.domainId].order - DOMAIN_META[b.domainId].order);
+}
+
+export function getRecommendedDomainPath(
+  domainScores: DomainScores,
+  overallScore: number,
+): DomainResult[] {
+  const results = computeIndividualDomainScores(domainScores);
+  // Only include domains that were actually tested
+  const tested = results.filter(r => r.total > 0);
+
+  // Complete beginner: overall < 35% or no tested domains → start with Prompt Engineering
+  if (overallScore < 35 || tested.length === 0) {
+    const pe = results.find(r => r.domainId === 'prompt_engineering')!;
+    const rest = results.filter(r => r.domainId !== 'prompt_engineering' && r.total > 0)
+      .sort((a, b) => a.score - b.score);
+    return [pe, ...rest];
+  }
+
+  // Otherwise: sort tested domains by score ascending (weakest first)
+  return [...tested].sort((a, b) => a.score - b.score);
 }
