@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Syne, Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
@@ -31,6 +31,11 @@ const instrumentSerif = Instrument_Serif({
   variable: '--font-serif-next',
 });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "AI Dojo",
   description:
@@ -49,6 +54,7 @@ export default function RootLayout({
       className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#06070a" />
       </head>
