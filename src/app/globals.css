@@ -666,16 +666,18 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 48px}
   .foot-top { grid-template-columns: 1fr 1fr !important; gap: 24px !important; }
 }
 
-/* ── AppShell inner content ── */
-@media (max-width: 767px) {
-  .md-nav { display: none !important; }
+/* ── AppShell nav visibility ── */
+.md-nav { display: none; }
+.mobile-nav { display: flex; }
+@media (min-width: 768px) {
+  .md-nav { display: flex; }
+  .mobile-nav { display: none; }
 }
 @media (max-width: 1023px) and (min-width: 768px) {
-  .md-nav { font-size: 11px !important; }
+  .md-nav { font-size: 11px; }
 }
-@media (min-width: 768px) {
-  .mobile-nav { display: none !important; }
-}
+
+/* ── AppShell inner content ── */
 @media (max-width: 1180px) {
   .app-main-inner { padding: 40px 16px !important; }
 }

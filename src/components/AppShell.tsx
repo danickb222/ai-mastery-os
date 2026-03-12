@@ -114,7 +114,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 borderRadius: 18,
                 padding: "0 8px",
                 height: 50,
-                display: "flex",
                 alignItems: "center",
                 gap: 2,
                 boxShadow: "0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)",
@@ -256,7 +255,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             {/* Mobile nav — bottom bar */}
             <nav
               style={{
-                display: "flex",
                 position: "fixed",
                 bottom: 0,
                 left: 0,
