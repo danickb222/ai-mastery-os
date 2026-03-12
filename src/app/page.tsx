@@ -29,9 +29,22 @@ const COMP_ROWS: { feature: string; dojo: 'yes'; udemy: 'yes'|'no'|'partial'; ud
   { feature: 'Results in under 10 minutes',     dojo: 'yes', udemy: 'no',                            yt: 'no' },
 ];
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function Dashboard() {
   const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
   const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
   const [waitlistOpen, setWaitlistOpen] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -807,7 +820,7 @@ export default function Dashboard() {
                 background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.25)", borderRadius: 4, padding: "1px 5px",
               }}>BETA</span>
             </a>
-            <div className="nav-tabs" style={{ display: "flex", gap: 2 }}>
+            {isMobile === false && <div className="nav-tabs" style={{ display: "flex", gap: 2 }}>
               <a href="/" style={{
                 fontSize: 12.5, fontWeight: 500, color: "rgba(255,255,255,0.9)", padding: "6px 14px",
                 borderRadius: 11, background: "rgba(255,255,255,0.08)", textDecoration: "none",
@@ -853,15 +866,15 @@ export default function Dashboard() {
                 borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",
                 transition: "all 150ms ease",
               }}>Profile</a>
-            </div>
-            <a href="/diagnostic" className="nav-cta-text" style={{
+            </div>}
+            {isMobile === false && <a href="/diagnostic" style={{
               marginLeft: 8, padding: "6px 14px", background: "#fff", borderRadius: 10,
               color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
-            }}>Start Diagnostic</a>
-            <a href="/diagnostic" className="nav-cta-short" style={{
+            }}>Start Diagnostic</a>}
+            {isMobile && <a href="/diagnostic" style={{
               marginLeft: 8, padding: "6px 14px", background: "#fff", borderRadius: 10,
-              color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", display: "none",
-            }}>Diagnose</a>
+              color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
+            }}>Diagnose</a>}
           </div>
         </nav>
 
