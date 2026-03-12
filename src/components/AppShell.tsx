@@ -245,7 +245,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   Start Diagnostic
                 </Link>
 
-                <Link
+                {/* Settings button — hidden for now */}
+                {false && <Link
                   href="/settings"
                   aria-label="Settings"
                   style={{
@@ -262,7 +263,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   }}
                 >
                   <GearIcon />
-                </Link>
+                </Link>}
               </div>
             </nav>}
 
@@ -340,7 +341,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </Link>
                 );
               })}
-              <Link
+              {/* Settings button — hidden for now */}
+              {false && <Link
                 href="/settings"
                 style={{
                   display: "flex",
@@ -360,7 +362,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <GearIcon />
                 <span>Settings</span>
-              </Link>
+              </Link>}
             </nav>}
           </>
         )}
