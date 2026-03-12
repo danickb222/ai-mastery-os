@@ -550,6 +550,20 @@ footer{border-top:1px solid rgba(255,255,255,.05);padding:40px 72px}
   nav.landing-nav .nav-cta-short { display: none !important; }
 }
 
+/* ── Laptop (1024–1440px) ── */
+@media (max-width: 1440px) {
+  .hero-h { font-size: clamp(48px, 5.5vw, 82px) !important; }
+  .hero-sub { font-size: 15px !important; margin: 28px auto 36px !important; }
+  .btn-solid { padding: 11px 24px !important; font-size: 12.5px !important; }
+  .btn-line { padding: 11px 20px !important; font-size: 12.5px !important; }
+  .hero-in { padding-top: 60px !important; }
+  .sh { font-size: clamp(32px, 3.5vw, 52px) !important; }
+  .sec { padding: 80px 48px !important; }
+  .cta-h { font-size: clamp(32px, 4vw, 56px) !important; }
+  .hero-stats { margin-top: 48px !important; }
+  .code-desc { font-size: 14px !important; }
+}
+
 /* ── Hero ── */
 @media (max-width: 767px) {
   .hero-h { font-size: clamp(40px, 10vw, 96px) !important; }
