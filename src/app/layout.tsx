@@ -40,6 +40,10 @@ export const metadata: Metadata = {
   title: "AI Dojo",
   description:
     "Elite training platform for AI operators. Master 12 domains through performance-scored drills.",
+  manifest: "/manifest.webmanifest",
+  other: {
+    "theme-color": "#06070a",
+  },
 };
 
 export default function RootLayout({
@@ -53,11 +57,6 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${syne.variable} ${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#06070a" />
-      </head>
       <body style={{ backgroundColor: "#06070a" }}>
         <AppShell>{children}</AppShell>
       </body>
