@@ -66,11 +66,24 @@ const tabs = [
   { label: "Profile", href: "/profile", icon: <ProfileIcon />, locked: false },
 ];
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [navVisible, setNavVisible] = useState(true);
   const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
   const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleDrillStart = () => setNavVisible(false);
@@ -95,13 +108,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#06070a" }}>
       <ShellErrorBoundary>
-        {navVisible && (
+        {navVisible && isMobile !== null && (
           <>
 
             {/* Desktop nav — top bar */}
-            <nav
+            {!isMobile && <nav
               className="md-nav"
               style={{
+                display: "flex",
                 position: "fixed",
                 top: 14,
                 left: "50%",
@@ -250,11 +264,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <GearIcon />
                 </Link>
               </div>
-            </nav>
+            </nav>}
 
             {/* Mobile nav — bottom bar */}
-            <nav
+            {isMobile && <nav
               style={{
+                display: "flex",
                 position: "fixed",
                 bottom: 0,
                 left: 0,
@@ -346,7 +361,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <GearIcon />
                 <span>Settings</span>
               </Link>
-            </nav>
+            </nav>}
           </>
         )}
       </ShellErrorBoundary>
