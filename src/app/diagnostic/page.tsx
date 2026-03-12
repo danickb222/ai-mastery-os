@@ -584,7 +584,7 @@ export default function DiagnosticPage() {
                   <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', marginBottom: 12, lineHeight: 1.5 }}>
                     {item.statement}
                   </p>
-                  <div style={{ display: 'flex', gap: 6 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {CONFIDENCE_LABELS.map((label, i) => {
                       const level = i + 1
                       const isActive = current === level
@@ -593,7 +593,7 @@ export default function DiagnosticPage() {
                           key={level}
                           onClick={() => setConfidenceScores(prev => ({ ...prev, [item.id]: level }))}
                           style={{
-                            flex: 1, padding: '8px 4px',
+                            flex: '1 1 auto', minWidth: 56, padding: '8px 4px',
                             background: isActive ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.04)',
                             border: isActive ? '1px solid rgba(0,212,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
                             borderRadius: 8,

@@ -909,7 +909,7 @@ export default function Dashboard() {
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
                     background: 'rgba(12,13,18,0.97)', border: '1px solid rgba(255,255,255,0.14)',
-                    borderRadius: 14, padding: '16px 18px', width: 300, maxWidth: 'calc(100vw - 32px)', zIndex: 300,
+                    borderRadius: 14, padding: '16px 18px', width: 'min(300px, calc(100vw - 32px))', zIndex: 300,
                     boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
                   }}>
                     {waitlistStatus === 'success' ? (
