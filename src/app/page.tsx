@@ -45,10 +45,7 @@ export default function Dashboard() {
   const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
   const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
-  const [waitlistOpen, setWaitlistOpen] = useState(false);
-  const [waitlistEmail, setWaitlistEmail] = useState('');
-  const [waitlistStatus, setWaitlistStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-
+  
   // ── All landing page JS behaviors ──
   useEffect(() => {
     const WORDS = [
@@ -772,21 +769,6 @@ export default function Dashboard() {
     document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const submitWaitlist = async () => {
-    if (!waitlistEmail.trim()) return;
-    setWaitlistStatus('loading');
-    try {
-      const res = await fetch('https://formspree.io/f/xkoqjewl', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ email: waitlistEmail, source: 'hero' }),
-      });
-      setWaitlistStatus(res.ok ? 'success' : 'error');
-    } catch {
-      setWaitlistStatus('error');
-    }
-  };
-
   // Helper: tier badge class
   const tierClass = (tier: string) =>
     tier === 'FOUNDATIONAL' ? 'badge-foundational' :
@@ -907,71 +889,6 @@ export default function Dashboard() {
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </a>
-              <div style={{ position: 'relative', display: 'inline-block', zIndex: 300 }}>
-                <button
-                  className="btn-line"
-                  onClick={() => { setWaitlistOpen(o => !o); setWaitlistStatus('idle'); setWaitlistEmail(''); }}
-                  style={{ cursor: 'pointer', background: 'transparent', fontFamily: 'inherit' }}
-                >
-                  Join Waitlist{" "}
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                </button>
-                {waitlistOpen && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 10px)', left: '50%', transform: 'translateX(-50%)',
-                    background: 'rgba(12,13,18,0.97)', border: '1px solid rgba(255,255,255,0.14)',
-                    borderRadius: 14, padding: '16px 18px', width: 'min(300px, calc(100vw - 32px))', zIndex: 300,
-                    boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
-                  }}>
-                    {waitlistStatus === 'success' ? (
-                      <div style={{ textAlign: 'center', fontFamily: 'var(--font-code)', fontSize: 12, color: '#22c55e', letterSpacing: '0.06em', padding: '4px 0' }}>
-                        ✓ You&apos;re on the list!
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>
-                          Get early access
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <input
-                            type="email"
-                            autoFocus
-                            value={waitlistEmail}
-                            onChange={e => setWaitlistEmail(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && submitWaitlist()}
-                            placeholder="your@email.com"
-                            style={{
-                              flex: 1, padding: '9px 12px',
-                              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
-                              borderRadius: 8, color: '#fff', fontFamily: 'var(--font-body)', fontSize: 13,
-                              outline: 'none',
-                            }}
-                          />
-                          <button
-                            onClick={submitWaitlist}
-                            disabled={waitlistStatus === 'loading'}
-                            style={{
-                              padding: '9px 16px', background: '#00d4ff', border: 'none', borderRadius: 8,
-                              color: '#000', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
-                              cursor: 'pointer', whiteSpace: 'nowrap',
-                              opacity: waitlistStatus === 'loading' ? 0.6 : 1,
-                            }}
-                          >
-                            {waitlistStatus === 'loading' ? '...' : '→'}
-                          </button>
-                        </div>
-                        {waitlistStatus === 'error' && (
-                          <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: '#f97316', marginTop: 6 }}>
-                            Something went wrong — try again.
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
           <div className="hero-scroll">
@@ -1326,9 +1243,14 @@ export default function Dashboard() {
 
         {/* ── Footer ── */}
         <footer style={{ padding: '32px 28px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <p style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', margin: 0 }}>
+          <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', marginBottom: '8px' }}>
             © 2026 AI Dojo · Built by Daniel Brocato
-          </p>
+          </div>
+          <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>
+            Next.js · Claude API · Vercel ·{' '}
+            <a href="https://www.linkedin.com/in/daniel-brocato" target="_blank" rel="noopener noreferrer"
+              style={{ color: '#00d4ff', textDecoration: 'none' }}>LinkedIn ↗</a>
+          </div>
         </footer>
 
       </div>

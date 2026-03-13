@@ -920,7 +920,7 @@ export default function DiagnosticPage() {
             Find your operator level.
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, marginBottom: 32, fontFamily: 'var(--font-body)' }}>
-            {totalSteps} challenges across 4 phases. Covers all 13 domains of AI operation.
+            {totalSteps} challenges across 4 phases. Covers all 12 domains of AI operation.
             You&apos;ll get a personalized skill map and recommended learning path.
           </p>
 
