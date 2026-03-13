@@ -1327,7 +1327,7 @@ export default function Dashboard() {
         {/* ── Footer ── */}
         <footer style={{ padding: '32px 28px', textAlign: 'center', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <p style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.08em', margin: 0 }}>
-            © 2025 AI Dojo · Built by Daniel Brocato
+            © 2026 AI Dojo · Built by Daniel Brocato
           </p>
         </footer>
 
