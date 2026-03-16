@@ -39,8 +39,6 @@ const CLUSTER_DRILL_MAP: Record<string, string> = {
   prompt_craft: 'pe_004',
   system_design: 'sp_001',
   reasoning: 'rc_003',
-  workflows: 'cm_001',
-  professional: 'ae_001',
 }
 const FALLBACK_DRILL = 'pe_004'
 
@@ -78,7 +76,7 @@ export default function DiagnosticPage() {
 
   // Phase 4: Calibration
   const [confidenceScores, setConfidenceScores] = useState<Record<string, number>>({
-    conf_1: 3, conf_2: 3, conf_3: 3, conf_4: 3, conf_5: 3,
+    conf_1: 3, conf_2: 3, conf_3: 3,
   })
 
   // Waitlist + share
@@ -669,60 +667,58 @@ export default function DiagnosticPage() {
       : knowledgeScore
     const level = operatorLevel(overall)
     const clusterScores = computeClusterScores(domainScores)
-    const recommendedPath = getRecommendedPath(domainScores)
-    const weakestCluster = recommendedPath[0]
     const individualDomainScores = computeIndividualDomainScores(domainScores)
     const testedDomains = individualDomainScores.filter(d => d.total > 0)
     const recommendedDomains = getRecommendedDomainPath(domainScores, overall)
 
-    // Calibration comparison
-    const calibrationInsights: { label: string; selfScore: number; actualScore: number; gap: string }[] = []
-    for (const item of CONFIDENCE_ITEMS) {
+    // Find biggest calibration gap
+    const calibrationInsights = CONFIDENCE_ITEMS.map(item => {
       const selfRaw = confidenceScores[item.id] ?? 3
       const selfScore = Math.round((selfRaw / 5) * 100)
       const cluster = clusterScores.find(c => item.clusterIds.includes(c.clusterId))
       const actualScore = cluster?.score ?? 0
       const diff = selfScore - actualScore
-      let gap = 'Well-calibrated'
-      if (diff > 25) gap = 'Overconfident'
-      else if (diff < -25) gap = 'Underestimating yourself'
-      calibrationInsights.push({ label: cluster?.label ?? '', selfScore, actualScore, gap })
-    }
+      return { label: cluster?.label ?? '', selfScore, actualScore, diff }
+    })
+    const biggestGap = [...calibrationInsights].sort((a, b) => b.diff - a.diff)[0]
+    const showBiggestGap = biggestGap && biggestGap.diff > 15
 
-    const r = 56, circ = 2 * Math.PI * r, pct = overall / 100
+    const r = 54, circ = 2 * Math.PI * r, pct = overall / 100
+
+    const sec = (delay: number) => ({
+      initial: { opacity: 0, y: 14 },
+      animate: { opacity: 1, y: 0 },
+      transition: { delay, duration: 0.35, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+    })
 
     return (
       <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', justifyContent: 'center', padding: '60px 28px 80px' }}>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{ maxWidth: 640, width: '100%' }}
-        >
-          {/* Header + Score */}
-          <div style={{ textAlign: 'center', marginBottom: 44 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>
+        <div style={{ maxWidth: 640, width: '100%' }}>
+
+          {/* ── Score hero ── */}
+          <motion.div {...sec(0)} style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 14 }}>
               Diagnostic Complete
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,4vw,42px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 28 }}>
-              Your Operator Score
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px,4vw,36px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 28 }}>
+              Here&apos;s where you actually stand.
             </h1>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-              <svg width={140} height={140} style={{ overflow: 'visible' }}>
-                <circle cx={70} cy={70} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={7} />
+              <svg width={148} height={148} style={{ overflow: 'visible' }}>
+                <circle cx={74} cy={74} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={6} />
                 <motion.circle
-                  cx={70} cy={70} r={r} fill="none" stroke={level.color} strokeWidth={7}
+                  cx={74} cy={74} r={r} fill="none" stroke={level.color} strokeWidth={6}
                   strokeLinecap="round" strokeDasharray={circ}
                   initial={{ strokeDashoffset: circ }}
                   animate={{ strokeDashoffset: circ * (1 - pct) }}
                   transition={{ delay: 0.2, duration: 1.0, ease: [0, 0, 0.2, 1] }}
-                  transform="rotate(-90 70 70)"
+                  transform="rotate(-90 74 74)"
                 />
-                <motion.text x="70" y="66" textAnchor="middle" fontSize="34" fill="#fff"
-                  fontFamily="var(--font-display)" fontWeight={400}
+                <motion.text x="74" y="80" textAnchor="middle" fontSize="48" fill="#fff"
+                  fontFamily="var(--font-display)" fontWeight={600}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                 >{overall}</motion.text>
-                <motion.text x="70" y="85" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.3)"
+                <motion.text x="74" y="97" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.3)"
                   fontFamily="var(--font-code)"
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
                 >/ 100</motion.text>
@@ -736,12 +732,36 @@ export default function DiagnosticPage() {
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em' }}>
               {overall >= 85 ? 'Professional-grade operator' : overall >= 65 ? 'Strong foundation \u2014 ready to advance' : overall >= 40 ? 'Building skills \u2014 clear growth path' : 'Starting your operator journey'}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Per-Domain Score Breakdown */}
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 26px', marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>
-              Domain Breakdown — {testedDomains.length} domain{testedDomains.length !== 1 ? 's' : ''} tested
+          {/* ── Your Biggest Gap (calibration) ── */}
+          {showBiggestGap && (
+            <motion.div {...sec(0.08)} style={{
+              background: 'rgba(245,158,11,0.06)',
+              border: '1px solid rgba(245,158,11,0.2)',
+              borderLeft: '3px solid #f59e0b',
+              borderRadius: 12, padding: '18px 22px', marginBottom: 40,
+            }}>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#f59e0b', marginBottom: 10 }}>
+                Your Biggest Gap
+              </div>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, margin: 0 }}>
+                <strong style={{ color: '#fff' }}>{biggestGap.label}:</strong>{' '}
+                You rated yourself {biggestGap.selfScore}% confident but scored {biggestGap.actualScore}%
+                {biggestGap.diff > 0
+                  ? ` — a ${biggestGap.diff}-point gap worth closing. This is your highest-leverage area.`
+                  : ` — you're stronger here than you think.`}
+              </p>
+            </motion.div>
+          )}
+
+          {/* ── Domain breakdown ── */}
+          <motion.div {...sec(0.16)} style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 12, padding: '22px 24px', marginBottom: 40,
+          }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: 20 }}>
+              5 Domains Tested
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {testedDomains.map((ds, i) => (
@@ -750,9 +770,7 @@ export default function DiagnosticPage() {
                     <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{ds.name}</span>
                     <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: ds.color }}>
                       {ds.score}%
-                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginLeft: 6 }}>
-                        {ds.correct}/{ds.total}
-                      </span>
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginLeft: 6 }}>{ds.correct}/{ds.total}</span>
                     </span>
                   </div>
                   <div style={{ height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
@@ -766,98 +784,79 @@ export default function DiagnosticPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Calibration Insights */}
-          {calibrationInsights.some(ci => ci.gap !== 'Well-calibrated') && (
-            <div style={{ background: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.18)', borderRadius: 14, padding: '18px 22px', marginBottom: 18 }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#f97316', marginBottom: 12 }}>
-                Calibration Check
-              </div>
-              {calibrationInsights.filter(ci => ci.gap !== 'Well-calibrated').slice(0, 2).map((ci, i) => {
-                const overconfidentPhrases = [
-                  `You rated yourself ${ci.selfScore}% but scored ${ci.actualScore}% — there's a gap worth closing here.`,
-                  `Self-rated ${ci.selfScore}%, actual ${ci.actualScore}% — this area needs more focused practice.`,
-                ]
-                const underPhrases = [
-                  `You rated yourself ${ci.selfScore}% but scored ${ci.actualScore}% — you're stronger here than you realize.`,
-                  `Self-rated ${ci.selfScore}%, actual ${ci.actualScore}% — give yourself more credit in this area.`,
-                ]
-                const msg = ci.gap === 'Overconfident' ? overconfidentPhrases[i % overconfidentPhrases.length] : underPhrases[i % underPhrases.length]
-                return (
-                  <p key={i} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.7, margin: i > 0 ? '10px 0 0' : 0 }}>
-                    <strong style={{ color: '#fff' }}>{ci.label}:</strong>{' '}{msg}
-                  </p>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Recommended Path */}
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px 22px', marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 6 }}>
+          {/* ── Recommended path ── */}
+          <motion.div {...sec(0.24)} style={{
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 12, padding: '20px 22px', marginBottom: 40,
+          }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: 6 }}>
               Your Recommended Path
             </div>
-            {overall < 35 && (
+            {overall < 35 ? (
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
                 Start with Prompt Engineering — it&apos;s the foundation every other domain builds on.
               </p>
-            )}
-            {overall >= 35 && overall < 65 && (
+            ) : overall < 65 ? (
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
                 Focus on your weakest domains first — closing gaps here will have the biggest impact.
               </p>
-            )}
-            {overall >= 65 && (
+            ) : (
               <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
                 Strong foundation. Sharpen the areas below to reach professional-grade.
               </p>
             )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {recommendedDomains.slice(0, 4).map((domain, i) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {recommendedDomains.slice(0, 5).map((domain, i) => (
                 <div key={domain.domainId} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ fontFamily: 'var(--font-code)', fontSize: 18, color: i === 0 ? domain.color : 'rgba(255,255,255,0.2)', fontWeight: 300, width: 28, textAlign: 'center' }}>
+                  <span style={{ fontFamily: 'var(--font-code)', fontSize: 18, color: i === 0 ? domain.color : 'rgba(255,255,255,0.15)', fontWeight: 300, width: 28, textAlign: 'center', flexShrink: 0 }}>
                     {i + 1}
                   </span>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.5)', fontWeight: i === 0 ? 600 : 400 }}>{domain.name}</span>
-                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.08em', textTransform: 'uppercase', color: domain.color, opacity: 0.7 }}>{domain.difficulty}</span>
+                      <span style={{ fontSize: 14, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.45)', fontWeight: i === 0 ? 600 : 400 }}>{domain.name}</span>
                     </div>
-                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>
-                      {domain.total > 0 ? `${domain.score}% — ${domain.score === 0 ? 'needs work' : domain.score < 40 ? 'needs work' : domain.score < 70 ? 'room to grow' : 'solid'}` : 'not yet tested'}
+                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.28)', marginTop: 2 }}>
+                      {domain.total > 0 ? `${domain.score}% — ${domain.score < 40 ? 'needs work' : domain.score < 70 ? 'room to grow' : 'solid'}` : 'not yet tested'}
                     </div>
                   </div>
-                  {i === 0 && (
+                  {domain.domainId === 'prompt_engineering' ? (
                     <button
-                      onClick={() => router.push(`/run?domain=${domain.domainId}`)}
+                      onClick={() => router.push('/run?domain=prompt_engineering')}
                       style={{
                         padding: '8px 16px', background: '#fff', border: 'none', borderRadius: 10,
                         color: '#000', fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700,
-                        cursor: 'pointer', whiteSpace: 'nowrap',
+                        cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
                         display: 'inline-flex', alignItems: 'center', gap: 6,
                       }}
                     >
-                      Start
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                      Start →
                     </button>
+                  ) : (
+                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.08em', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      Coming soon
+                    </span>
                   )}
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Waitlist */}
-          <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 14, padding: '22px 24px', textAlign: 'center' }}>
+          {/* ── Waitlist ── */}
+          <motion.div {...sec(0.32)} style={{
+            background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.2)',
+            borderRadius: 12, padding: '22px 24px', textAlign: 'center',
+          }}>
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>
-              Full access coming soon
+              Your Next Domains
             </div>
             <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', marginBottom: 18, fontFamily: 'var(--font-body)', lineHeight: 1.6 }}>
-              Get notified when System Prompts, Output Control, and more domains launch.
+              We&apos;re building your next training modules. Get notified when they&apos;re ready.
             </p>
             {waitlistStatus === 'success' ? (
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: '#22c55e', letterSpacing: '0.08em' }}>
-                \u2713 You&apos;re on the list \u2014 we&apos;ll be in touch.
+                ✓ You&apos;re on the list — we&apos;ll be in touch.
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
@@ -879,8 +878,7 @@ export default function DiagnosticPage() {
                   style={{
                     padding: '11px 20px', background: '#fff', border: 'none', borderRadius: 10,
                     color: '#000', fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 700,
-                    cursor: 'pointer', whiteSpace: 'nowrap',
-                    opacity: waitlistStatus === 'loading' ? 0.6 : 1,
+                    cursor: 'pointer', whiteSpace: 'nowrap', opacity: waitlistStatus === 'loading' ? 0.6 : 1,
                   }}
                 >
                   {waitlistStatus === 'loading' ? '...' : 'Join \u2192'}
@@ -889,11 +887,12 @@ export default function DiagnosticPage() {
             )}
             {waitlistStatus === 'error' && (
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: '#f97316', marginTop: 8, letterSpacing: '0.06em' }}>
-                Something went wrong \u2014 try again.
+                Something went wrong — try again.
               </div>
             )}
-          </div>
-        </motion.div>
+          </motion.div>
+
+        </div>
       </div>
     )
   }
@@ -921,7 +920,7 @@ export default function DiagnosticPage() {
             Find your operator level.
           </h1>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, marginBottom: 32, fontFamily: 'var(--font-body)' }}>
-            {totalSteps} challenges across 4 phases. Covers all 12 domains of AI operation.
+            {totalSteps} challenges across 4 phases. Covers the 5 core domains of AI operation.
             You&apos;ll get a personalized skill map and recommended learning path.
           </p>
 

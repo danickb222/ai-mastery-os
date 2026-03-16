@@ -7,7 +7,7 @@ export interface DomainCluster {
   description: string;
   domains: DrillDomain[];
   color: string;
-  recommendedPath: string; // href to start training
+  recommendedPath: string;
 }
 
 export const DOMAIN_CLUSTERS: DomainCluster[] = [
@@ -29,27 +29,11 @@ export const DOMAIN_CLUSTERS: DomainCluster[] = [
   },
   {
     id: 'reasoning',
-    label: 'Reasoning & Context',
-    description: 'Chain-of-thought prompting, document handling, and multi-source synthesis.',
-    domains: ['reasoning_chains', 'context_management'],
+    label: 'Reasoning Chains',
+    description: 'Chain-of-thought prompting and step-by-step reasoning for complex problems.',
+    domains: ['reasoning_chains'],
     color: '#10b981',
     recommendedPath: '/run?domain=reasoning_chains',
-  },
-  {
-    id: 'workflows',
-    label: 'Workflows & Automation',
-    description: 'Multi-step AI pipelines, automation architecture, and workflow orchestration.',
-    domains: ['ai_workflows', 'workflow_automation'],
-    color: '#f59e0b',
-    recommendedPath: '/run?domain=ai_workflows',
-  },
-  {
-    id: 'professional',
-    label: 'Professional & Scale',
-    description: 'Evaluating AI output, tool selection, multi-agent systems, and responsible deployment.',
-    domains: ['ai_evaluation', 'data_extraction', 'tool_ecosystem', 'multi_agent_systems', 'professional_ethics'],
-    color: '#ef4444',
-    recommendedPath: '/run?domain=ai_evaluation',
   },
 ];
 
@@ -118,32 +102,6 @@ export const SCENARIO_QUESTIONS: ScenarioQuestion[] = [
     explanation: 'Schema + example + strict instruction addresses the root cause directly. Validation layers, role framing, and temperature tweaks are workarounds that add complexity without fixing the prompt itself.',
   },
   {
-    id: 'sq_05',
-    domains: ['ai_workflows', 'workflow_automation'],
-    question: 'You\'re building an AI pipeline to process customer feedback: categorize, extract themes, then generate a report. What\'s the most important design decision?',
-    options: [
-      { id: 'a', text: 'Selecting the highest-capability model available for each individual processing stage' },
-      { id: 'b', text: 'Running all three stages in parallel to minimize total end-to-end processing time' },
-      { id: 'c', text: 'Defining strict input/output contracts between stages so failures are isolated and debuggable' },
-      { id: 'd', text: 'Using one model across every stage to keep interpretation and terminology fully consistent' },
-    ],
-    correctId: 'c',
-    explanation: 'Stage contracts are the foundation of reliable pipelines \u2014 they make failures visible and stages independently testable. Model choice, parallelism, and consistency are secondary to structural soundness.',
-  },
-  {
-    id: 'sq_06',
-    domains: ['context_management'],
-    question: 'You need to analyze a 200-page legal document that exceeds the model\'s context limit. Which strategy preserves the most critical information?',
-    options: [
-      { id: 'a', text: 'Summarize the full document progressively, then run your queries against the condensed version' },
-      { id: 'b', text: 'Index key sections by topic using embeddings, then retrieve only relevant chunks per query' },
-      { id: 'c', text: 'Split into equal-sized chunks and process each independently with the same analysis prompt' },
-      { id: 'd', text: 'Extract the first and last 20% of the document, which typically contain key terms and conclusions' },
-    ],
-    correctId: 'b',
-    explanation: 'Retrieval-based chunking preserves detail on demand. Progressive summarization loses nuance, equal splitting ignores document structure, and first/last sampling misses the body.',
-  },
-  {
     id: 'sq_07',
     domains: ['role_prompting', 'system_prompts'],
     question: 'You\'re designing an AI persona to explain complex medical topics at a patient-accessible reading level. Which element matters most for output quality?',
@@ -155,71 +113,6 @@ export const SCENARIO_QUESTIONS: ScenarioQuestion[] = [
     ],
     correctId: 'a',
     explanation: 'Operational constraints on how the persona communicates (reading level, analogy style, vocabulary) drive output quality far more than backstory, reference data, or formatting rules.',
-  },
-  {
-    id: 'sq_08',
-    domains: ['data_extraction', 'output_control'],
-    question: 'You\'re extracting structured data from 500 invoices. Accuracy on the first 50 is 92%, but you need 99%+. Most effective improvement?',
-    options: [
-      { id: 'a', text: 'Upgrade to a more advanced model with stronger document comprehension capabilities' },
-      { id: 'b', text: 'Expand your few-shot examples from 2 to 8, specifically targeting the known edge cases' },
-      { id: 'c', text: 'Pre-process the documents to standardize formatting before running the extraction step' },
-      { id: 'd', text: 'Add field-level validation rules and flag any extractions that fall outside expected ranges' },
-    ],
-    correctId: 'd',
-    explanation: 'At scale, validation and flagging catch the errors that better prompting alone can\'t eliminate. Model upgrades, more examples, and pre-processing all help but can\'t guarantee 99%+ without a verification layer.',
-  },
-  {
-    id: 'sq_09',
-    domains: ['ai_evaluation', 'professional_ethics'],
-    question: 'You need to evaluate whether an AI-generated research summary is factually accurate. Which method is most reliable?',
-    options: [
-      { id: 'a', text: 'Ask a second, independent AI model to fact-check the claims and flag any inconsistencies' },
-      { id: 'b', text: 'Check whether each key claim includes specific citations with verifiable publication details' },
-      { id: 'c', text: 'Compare each claim in the summary directly against the original source documents provided' },
-      { id: 'd', text: 'Evaluate the confidence level of the language \u2014 hedged statements are more likely accurate' },
-    ],
-    correctId: 'c',
-    explanation: 'Source comparison is the gold standard for verification. AI cross-checking inherits hallucination risk, citation presence doesn\'t equal accuracy, and language confidence doesn\'t correlate with truthfulness.',
-  },
-  {
-    id: 'sq_10',
-    domains: ['workflow_automation', 'ai_workflows'],
-    question: 'You\'re automating a content review workflow where AI classifies submissions, flags issues, and notifies reviewers. What should you build first?',
-    options: [
-      { id: 'a', text: 'The error handling and human escalation path for low-confidence classification decisions' },
-      { id: 'b', text: 'The AI classification prompt with comprehensive, well-tested category definitions' },
-      { id: 'c', text: 'A monitoring dashboard to track classification accuracy and detect model drift over time' },
-      { id: 'd', text: 'An A/B test framework comparing AI classification against the current manual process' },
-    ],
-    correctId: 'a',
-    explanation: 'Error handling and escalation are the safety net you build before the happy path. A great classifier with no fallback will silently fail \u2014 a mediocre classifier with good escalation is safe to iterate on.',
-  },
-  {
-    id: 'sq_11',
-    domains: ['tool_ecosystem', 'multi_agent_systems'],
-    question: 'A task requires analyzing a spreadsheet, generating a chart, and writing a narrative summary from the data. Which approach is most practical?',
-    options: [
-      { id: 'a', text: 'Chain three specialized prompts: one for data analysis, one for chart specifications, one for narrative' },
-      { id: 'b', text: 'Use a single powerful model with the spreadsheet as text and detailed multi-step instructions' },
-      { id: 'c', text: 'Build a multi-agent system where analyst, designer, and writer agents collaborate on the task' },
-      { id: 'd', text: 'Use a code-interpreter-enabled AI that can execute data analysis and generate visualizations natively' },
-    ],
-    correctId: 'd',
-    explanation: 'Code interpreter handles data + visualization natively with actual execution \u2014 the simplest reliable approach. Chaining adds overhead, pasting as text loses structure, and multi-agent is over-engineered here.',
-  },
-  {
-    id: 'sq_12',
-    domains: ['professional_ethics', 'ai_evaluation'],
-    question: 'Your AI hiring tool shows 95% overall accuracy in testing, but your team notices it performs differently across demographic groups. Correct next step?',
-    options: [
-      { id: 'a', text: 'Deploy with a mandatory disclaimer that all AI recommendations must be reviewed by a human' },
-      { id: 'b', text: 'Retrain the model on a more balanced and representative dataset to reduce bias across groups' },
-      { id: 'c', text: 'Run a stratified evaluation across each demographic group before making any deployment decision' },
-      { id: 'd', text: 'Document the known performance gaps and present the tradeoffs to stakeholders for their decision' },
-    ],
-    correctId: 'c',
-    explanation: 'You must measure the problem precisely before you can fix it. Deploying with disclaimers, retraining without data, or documenting without analysis are all premature without stratified evaluation.',
   },
 ];
 
@@ -257,7 +150,7 @@ export const SPOT_FIX_EXERCISES: SpotFixExercise[] = [
   },
   {
     id: 'sf_02',
-    domains: ['system_prompts', 'professional_ethics'],
+    domains: ['system_prompts'],
     title: 'The Risky Medical Bot',
     setup: 'A startup deployed this system prompt for their health Q&A chatbot. Users are asking it about medications, dosages, and symptoms.',
     artifact: 'You are a helpful medical assistant. Answer all health questions accurately and thoroughly. Be warm and reassuring.',
@@ -274,7 +167,7 @@ export const SPOT_FIX_EXERCISES: SpotFixExercise[] = [
   },
   {
     id: 'sf_03',
-    domains: ['reasoning_chains', 'context_management'],
+    domains: ['reasoning_chains'],
     title: 'The Missing Context',
     setup: 'A business analyst sent this prompt and was surprised when the AI gave a generic, caveat-heavy response that could apply to any company.',
     artifact: 'Based on our Q3 financials, should we expand into the European market? Give me a clear recommendation.',
@@ -315,20 +208,8 @@ export const CONFIDENCE_ITEMS: ConfidenceItem[] = [
   {
     id: 'conf_3',
     clusterIds: ['reasoning'],
-    statement: 'I can handle complex documents and force AI to reason step-by-step',
-    domains: ['reasoning_chains', 'context_management'],
-  },
-  {
-    id: 'conf_4',
-    clusterIds: ['workflows'],
-    statement: 'I can build multi-step AI pipelines and automated workflows',
-    domains: ['ai_workflows', 'workflow_automation'],
-  },
-  {
-    id: 'conf_5',
-    clusterIds: ['professional'],
-    statement: 'I can evaluate AI output for errors, select the right tools, and deploy AI responsibly',
-    domains: ['ai_evaluation', 'data_extraction', 'tool_ecosystem', 'multi_agent_systems', 'professional_ethics'],
+    statement: 'I can force AI to reason step-by-step through complex, multi-part problems',
+    domains: ['reasoning_chains'],
   },
 ];
 
@@ -392,41 +273,40 @@ export function getRecommendedPath(domainScores: DomainScores): DomainCluster[] 
 export interface DomainResult {
   domainId: DrillDomain;
   name: string;
-  score: number; // 0-100 percentage
+  score: number;
   correct: number;
   total: number;
   color: string;
   difficulty: 'foundational' | 'advanced' | 'expert';
 }
 
-const DOMAIN_META: Record<DrillDomain, { name: string; color: string; difficulty: 'foundational' | 'advanced' | 'expert'; order: number }> = {
-  prompt_engineering:  { name: 'Prompt Engineering',          color: '#4f6ef7', difficulty: 'foundational', order: 1 },
-  system_prompts:     { name: 'System Prompts',              color: '#8b5cf6', difficulty: 'foundational', order: 2 },
-  reasoning_chains:   { name: 'Reasoning Chains',            color: '#10b981', difficulty: 'advanced',     order: 3 },
-  output_control:     { name: 'Output Control',              color: '#f59e0b', difficulty: 'foundational', order: 4 },
-  ai_workflows:       { name: 'AI Workflows',                color: '#f97316', difficulty: 'advanced',     order: 5 },
-  context_management: { name: 'Context Management',          color: '#06b6d4', difficulty: 'advanced',     order: 6 },
-  role_prompting:     { name: 'Role Prompting',              color: '#ec4899', difficulty: 'advanced',     order: 7 },
-  data_extraction:    { name: 'Data Extraction',             color: '#84cc16', difficulty: 'advanced',     order: 8 },
-  ai_evaluation:      { name: 'AI Evaluation',               color: '#ef4444', difficulty: 'advanced',     order: 9 },
-  workflow_automation: { name: 'Workflow Automation',         color: '#f97316', difficulty: 'advanced',     order: 10 },
-  tool_ecosystem:     { name: 'AI Tool Ecosystem',           color: '#3b82f6', difficulty: 'foundational', order: 11 },
-  multi_agent_systems: { name: 'Multi-Agent Systems',        color: '#a855f7', difficulty: 'expert',       order: 12 },
-  professional_ethics: { name: 'Professional Ethics & Risk', color: '#64748b', difficulty: 'advanced',     order: 13 },
+const DOMAIN_META: Partial<Record<DrillDomain, { name: string; color: string; difficulty: 'foundational' | 'advanced' | 'expert'; order: number }>> = {
+  prompt_engineering: { name: 'Prompt Engineering', color: '#4f6ef7', difficulty: 'foundational', order: 1 },
+  output_control:     { name: 'Output Control',     color: '#f59e0b', difficulty: 'foundational', order: 2 },
+  system_prompts:     { name: 'System Prompts',     color: '#8b5cf6', difficulty: 'foundational', order: 3 },
+  role_prompting:     { name: 'Role Prompting',     color: '#ec4899', difficulty: 'advanced',     order: 4 },
+  reasoning_chains:   { name: 'Reasoning Chains',   color: '#10b981', difficulty: 'advanced',     order: 5 },
 };
+
+const DIAGNOSTIC_DOMAINS: DrillDomain[] = [
+  'prompt_engineering',
+  'output_control',
+  'system_prompts',
+  'role_prompting',
+  'reasoning_chains',
+];
 
 export function computeIndividualDomainScores(
   domainScores: DomainScores,
 ): DomainResult[] {
-  const allDomains = Object.keys(DOMAIN_META) as DrillDomain[];
-  return allDomains.map(domainId => {
-    const meta = DOMAIN_META[domainId];
+  return DIAGNOSTIC_DOMAINS.map(domainId => {
+    const meta = DOMAIN_META[domainId]!;
     const ds = domainScores[domainId];
     const correct = ds?.correct ?? 0;
     const total = ds?.total ?? 0;
     const score = total > 0 ? Math.round((correct / total) * 100) : 0;
     return { domainId, name: meta.name, score, correct, total, color: meta.color, difficulty: meta.difficulty };
-  }).sort((a, b) => DOMAIN_META[a.domainId].order - DOMAIN_META[b.domainId].order);
+  }).sort((a, b) => (DOMAIN_META[a.domainId]?.order ?? 99) - (DOMAIN_META[b.domainId]?.order ?? 99));
 }
 
 export function getRecommendedDomainPath(
@@ -434,10 +314,8 @@ export function getRecommendedDomainPath(
   overallScore: number,
 ): DomainResult[] {
   const results = computeIndividualDomainScores(domainScores);
-  // Only include domains that were actually tested
   const tested = results.filter(r => r.total > 0);
 
-  // Complete beginner: overall < 35% or no tested domains → start with Prompt Engineering
   if (overallScore < 35 || tested.length === 0) {
     const pe = results.find(r => r.domainId === 'prompt_engineering')!;
     const rest = results.filter(r => r.domainId !== 'prompt_engineering' && r.total > 0)
@@ -445,6 +323,5 @@ export function getRecommendedDomainPath(
     return [pe, ...rest];
   }
 
-  // Otherwise: sort tested domains by score ascending (weakest first)
   return [...tested].sort((a, b) => a.score - b.score);
 }
