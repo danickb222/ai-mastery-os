@@ -184,6 +184,10 @@ export default function DiagnosticPage() {
       },
     })
     setItem(STORAGE_KEYS.DRILL_HISTORY, history)
+    const levelLabel = operatorLevel(overall).label
+    localStorage.setItem('diagnosticScore', overall.toString())
+    localStorage.setItem('diagnosticLevel', levelLabel)
+    localStorage.setItem('diagnosticDate', new Date().toISOString())
     setTimeout(() => setPhase('result'), 2200)
   }
 
@@ -906,7 +910,7 @@ export default function DiagnosticPage() {
             Diagnostic
           </div>
           <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.3)', marginBottom: 16 }}>
-            Beta \u2014 free to take
+            Beta · Free to take
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px,5vw,52px)', fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 20 }}>
             Find your operator level.

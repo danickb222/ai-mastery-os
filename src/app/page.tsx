@@ -1209,9 +1209,12 @@ export default function Dashboard() {
             © 2026 AI Dojo · Built by Daniel Brocato
           </div>
           <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>
-            Next.js · Claude API · Vercel ·{' '}
+            Next.js · Claude API · OpenAI · Vercel ·{' '}
             <a href="https://www.linkedin.com/in/daniel-brocato" target="_blank" rel="noopener noreferrer"
               style={{ color: '#00d4ff', textDecoration: 'none' }}>LinkedIn ↗</a>
+            {' '}·{' '}
+            <a href="https://github.com/danickb222" target="_blank" rel="noopener noreferrer"
+              style={{ color: '#00d4ff', textDecoration: 'none' }}>GitHub ↗</a>
           </div>
         </footer>
 

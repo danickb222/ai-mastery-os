@@ -94,9 +94,15 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
       : false
   );
 
-  console.log('DrillFeedback render - evalData:', result?.evalData);
-
   const { evalData } = result;
+
+  // Persist last drill result to localStorage for profile/dashboard reads
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('lastDrillScore', sc.toString());
+    localStorage.setItem('lastDrillName', drill.title);
+    localStorage.setItem('lastDrillDate', new Date().toISOString());
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Animate score counter (only for evalData branch)
   useEffect(() => {

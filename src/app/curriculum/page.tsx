@@ -284,9 +284,16 @@ export default function CurriculumPage() {
     const check = () => setIsMobile(window.innerWidth <= 768)
     check()
     window.addEventListener('resize', check)
-    const history = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || []
-    const diag = history.find(h => h.drillId === 'diagnostic')
-    if (diag) setDiagnosticScore(diag.score)
+    // Primary: direct localStorage key (saved by diagnostic completion)
+    const raw = localStorage.getItem('diagnosticScore')
+    if (raw) {
+      setDiagnosticScore(parseInt(raw, 10))
+    } else {
+      // Fallback: DRILL_HISTORY entry
+      const history = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || []
+      const diag = history.find(h => h.drillId === 'diagnostic')
+      if (diag) setDiagnosticScore(diag.score)
+    }
     return () => window.removeEventListener('resize', check)
   }, [])
 

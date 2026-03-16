@@ -1,263 +1,207 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getOperatorProfile,
-  getItem,
-  STORAGE_KEYS,
-  type OperatorProfile,
-  type DomainScore,
-  type ArenaState,
-} from "@/core/storage";
-import { DOMAINS } from "@/core/content/domains";
-import { getDrillsByDomain } from "@/core/content/drills";
+import { useRouter } from "next/navigation";
+import { getItem, STORAGE_KEYS } from "@/core/storage";
+import { getMVPDrillsByDomain } from "@/core/content/drills";
 import type { DrillResult } from "@/core/types/drills";
-import { ScoreCounter } from "@/components/ui/ScoreCounter";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { ProgressBar } from "@/components/ui/ProgressBar";
+
+const DOMAIN_META = [
+  { id: "prompt_engineering", name: "Prompt Engineering", color: "#4f6ef7" },
+  { id: "output_control",     name: "Output Control",     color: "#f59e0b" },
+  { id: "system_prompts",     name: "System Prompts",     color: "#8b5cf6" },
+  { id: "role_prompting",     name: "Role Prompting",     color: "#ec4899" },
+  { id: "reasoning_chains",   name: "Reasoning Chains",   color: "#10b981" },
+] as const;
+
+// Sample data shown blurred when no diagnostic taken
+const SAMPLE_DOMAIN_SCORES = [72, 45, 58, 40, 65];
+const SAMPLE_SCORE = 56;
+
+function levelFromScore(n: number) {
+  if (n >= 85) return { label: "Advanced",    color: "#00d4ff" };
+  if (n >= 65) return { label: "Proficient",  color: "#22c55e" };
+  if (n >= 40) return { label: "Developing",  color: "#f59e0b" };
+  return           { label: "Beginner",     color: "#f97316" };
+}
+
+function LockIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+      stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [profile, setProfile] = useState<OperatorProfile | null>(null);
-  const [domainScores, setDomainScores] = useState<DomainScore[]>([]);
-  const [arenaState, setArenaState] = useState<ArenaState | null>(null);
-  const [drillHistory, setDrillHistory] = useState<DrillResult[]>([]);
-  const [copied, setCopied] = useState(false);
+  const [diagnosticScore, setDiagnosticScore] = useState<number | null>(null);
+  const [diagnosticLevel, setDiagnosticLevel] = useState("Developing");
+  const [domainProgress, setDomainProgress] = useState<
+    { id: string; name: string; color: string; completed: number; total: number }[]
+  >([]);
 
   useEffect(() => {
-    const p = getOperatorProfile();
-    setProfile(p);
-    
+    // Primary: direct localStorage key set by Fix 3
+    const raw = localStorage.getItem("diagnosticScore");
+    if (raw) {
+      const parsed = parseInt(raw, 10);
+      setDiagnosticScore(parsed);
+      setDiagnosticLevel(localStorage.getItem("diagnosticLevel") || levelFromScore(parsed).label);
+    } else {
+      // Fallback: DRILL_HISTORY entry
+      const history = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || [];
+      const diag = history.find(h => h.drillId === "diagnostic");
+      if (diag) {
+        setDiagnosticScore(diag.score);
+        setDiagnosticLevel(levelFromScore(diag.score).label);
+      }
+    }
+
+    // Domain progress from completed drills
     const history = getItem<DrillResult[]>(STORAGE_KEYS.DRILL_HISTORY) || [];
-    setDrillHistory(history);
-
-    const ds: DomainScore[] = DOMAINS.map(domain => {
-      const domainDrills = getDrillsByDomain(domain.id);
-      const completedDrills = history.filter(h => 
-        domainDrills.some(d => d.id === h.drillId)
-      );
-      const avgScore = completedDrills.length > 0
-        ? Math.round(completedDrills.reduce((sum, h) => sum + h.score, 0) / completedDrills.length)
-        : 0;
-      
-      return {
-        domainId: domain.id,
-        score: avgScore,
-        drillsCompleted: completedDrills.length,
-        drillsTotal: domainDrills.length,
-        lastAttempted: completedDrills.length > 0 ? completedDrills[completedDrills.length - 1].submittedAt : ""
-      };
+    const progress = DOMAIN_META.map(d => {
+      const allDrills = getMVPDrillsByDomain(d.id as Parameters<typeof getMVPDrillsByDomain>[0]);
+      const completed = history.filter(h => allDrills.some(dr => dr.id === h.drillId)).length;
+      return { ...d, completed, total: allDrills.length };
     });
-    setDomainScores(ds);
-
-    const as = getItem<ArenaState>(STORAGE_KEYS.ARENA_STATE);
-    setArenaState(as);
-
+    setDomainProgress(progress);
     setLoaded(true);
   }, []);
 
   if (!loaded) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div style={{ height: 32, width: 192, borderRadius: 8, background: "rgba(255,255,255,0.1)" }} />
-        <div style={{ height: 128, borderRadius: 16, background: "rgba(255,255,255,0.1)" }} />
+      <div style={{ padding: "40px 0" }}>
+        <div style={{ height: 32, width: 160, borderRadius: 8, background: "rgba(255,255,255,0.06)", marginBottom: 16 }} />
+        <div style={{ height: 200, borderRadius: 16, background: "rgba(255,255,255,0.04)" }} />
       </div>
     );
   }
 
-  if (!profile) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 20, textAlign: "center" }}>
-        <p className="t-tag" style={{ justifyContent: "center", marginBottom: 8 }}>Operator Profile</p>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 52, fontWeight: 400, color: "var(--text-primary)", letterSpacing: "-0.03em", lineHeight: 0.92 }}>Your profile awaits.</h2>
-        <p style={{ fontSize: 14, color: "var(--text-muted)", maxWidth: 360, lineHeight: 1.7 }}>Complete the diagnostic to generate your operator score.</p>
-        <a
-          href="/diagnostic"
-          className="btn btn-primary"
-          style={{ marginTop: 16 }}
-        >
-          Start Your Diagnostic →
-        </a>
-      </div>
-    );
-  }
+  const hasScore = diagnosticScore !== null;
+  const displayScore = hasScore ? diagnosticScore : SAMPLE_SCORE;
+  const level = levelFromScore(displayScore);
+  const levelLabel = hasScore ? diagnosticLevel : "Developing";
+  const levelColor = levelFromScore(displayScore).color;
 
-  const handleCopy = async () => {
-    const text = `AI Dojo · Operator Score: ${profile.operatorScore}/100 · ${profile.rankLabel} · ${profile.streakDays} day streak`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      try {
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      } catch {
-        // Silent fail
-      }
-    }
-  };
+  const r = 54, circ = 2 * Math.PI * r;
+  const activeDomains = domainProgress.filter(d => d.completed > 0).length;
 
-  const activeDomains = domainScores.filter(ds => ds.drillsCompleted > 0).length;
-  const totalDrills = drillHistory.length;
-  const bestArenaScore = arenaState?.bestScore || 0;
-
-  const domainsWithScores = domainScores.filter(ds => ds.drillsCompleted > 0);
-  const allDomainsComplete = DOMAINS.every(domain => {
-    const ds = domainScores.find(d => d.domainId === domain.id);
-    return ds && ds.drillsCompleted >= ds.drillsTotal;
-  });
-  const certificationEligible = allDomainsComplete && profile.operatorScore >= 75;
+  // Domain bars: real data if score exists, sample if blurred
+  const displayDomains = DOMAIN_META.map((d, i) => ({
+    ...d,
+    score: hasScore
+      ? (domainProgress.find(dp => dp.id === d.id)?.completed ?? 0) > 0
+        ? Math.round((domainProgress.find(dp => dp.id === d.id)!.completed / Math.max(domainProgress.find(dp => dp.id === d.id)!.total, 1)) * 100)
+        : (i === 0 ? displayScore : 0)
+      : SAMPLE_DOMAIN_SCORES[i],
+  }));
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div>
-        <p className="t-tag">Operator Profile</p>
-      </div>
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: "24px 0 60px" }}>
 
-      {/* Score Hero */}
-      <div className="text-center py-12">
-        <ScoreCounter target={profile.operatorScore} />
-        <div style={{ marginTop: 16 }}>
-          <span className="badge badge-expert">
-            {profile.rankLabel}
-          </span>
-        </div>
-        <p className="score-label" style={{ marginTop: 12 }}>
-          Top {profile.rankPercentile}% globally
-        </p>
-      </div>
+      <div style={{ position: "relative" }}>
 
-      {/* Three Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="stat-block">
-          <span className="stat-num">{profile.streakDays}</span>
-          <span className="stat-label">Day Streak</span>
-          {profile.streakDays > 0 && (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div style={{ width: 8, height: 8, borderRadius: 4, background: "var(--cyan)" }} />
-              <span style={{ fontSize: 10, color: "var(--cyan)" }}>Active</span>
+        {/* ── Profile content (blurred+dimmed when no score) ── */}
+        <div style={{ opacity: hasScore ? 1 : 0.35, pointerEvents: hasScore ? "auto" : "none" }}>
+
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 32, padding: "24px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16 }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: `${levelColor}20`, border: `2px solid ${levelColor}50`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 600, color: levelColor }}>DB</span>
             </div>
-          )}
-        </div>
-
-        <div className="stat-block">
-          <span className="stat-num">{activeDomains}</span>
-          <span className="stat-label">Domains Trained</span>
-        </div>
-
-        <div className="stat-block">
-          <span className="stat-num">{totalDrills}</span>
-          <span className="stat-label">Drills Completed</span>
-        </div>
-      </div>
-
-      {/* Domain Breakdown */}
-      <div>
-        <p className="t-tag" style={{ marginBottom: 16 }}>Domain Performance</p>
-        {domainsWithScores.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", border: "1px dashed var(--border)", borderRadius: 14 }}>
-            <p style={{ fontSize: 14, color: "var(--text-muted)" }}>Complete drills to build your performance profile.</p>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#f0f0f0", marginBottom: 4 }}>Daniel Brocato</div>
+              <div style={{ fontFamily: "var(--font-code)", fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: "0.06em" }}>
+                AI Operator · {levelLabel}
+              </div>
+              <div style={{ fontFamily: "var(--font-code)", fontSize: 10, color: "rgba(255,255,255,0.25)", letterSpacing: "0.04em", marginTop: 6 }}>
+                5 domains assessed · {activeDomains} active · Last active today
+              </div>
+            </div>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {domainsWithScores.map((ds, idx) => {
-              const domain = DOMAINS.find(d => d.id === ds.domainId);
-              if (!domain) return null;
 
-              return (
-                <div
-                  key={ds.domainId} 
-                  className="animate-fade-up"
-                  style={{ 
-                    animationDelay: `${idx * 50}ms`,
-                    background: "var(--bg3)",
-                    border: "1px solid var(--border)",
-                    borderLeft: `3px solid ${domain.color}`,
-                    borderRadius: 14,
-                    padding: 20,
-                    transition: "all 240ms ease"
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 style={{ fontFamily: "var(--font-display)", fontSize: 16, fontWeight: 400, color: "var(--text-primary)" }}>{domain.name}</h3>
-                    <div style={{ fontFamily: "var(--font-code)", fontSize: 12, color: "var(--text-muted)" }}>{ds.score}/100</div>
+          {/* Score ring */}
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "32px 24px", marginBottom: 16, textAlign: "center" }}>
+            <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 16 }}>Operator Score</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+              <svg width={148} height={148} style={{ overflow: "visible" }}>
+                <circle cx={74} cy={74} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={6} />
+                <circle cx={74} cy={74} r={r} fill="none" stroke={levelColor} strokeWidth={6}
+                  strokeLinecap="round" strokeDasharray={circ}
+                  strokeDashoffset={circ * (1 - displayScore / 100)}
+                  transform="rotate(-90 74 74)" />
+                <text x="74" y="82" textAnchor="middle" fontSize="48" fill="#fff" fontFamily="var(--font-display)" fontWeight={600}>{displayScore}</text>
+                <text x="74" y="99" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.3)" fontFamily="var(--font-code)">/ 100</text>
+              </svg>
+            </div>
+            <div style={{ display: "inline-block", fontFamily: "var(--font-code)", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: levelColor, background: `${levelColor}18`, border: `1px solid ${levelColor}40`, borderRadius: 100, padding: "4px 16px" }}>
+              {levelLabel}
+            </div>
+          </div>
+
+          {/* Domain bars */}
+          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 16, padding: "24px" }}>
+            <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 20 }}>Domain Breakdown</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {displayDomains.map(d => (
+                <div key={d.id}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>{d.name}</span>
+                    <span style={{ fontFamily: "var(--font-code)", fontSize: 10, color: d.color }}>{d.score}%</span>
                   </div>
-                  <ProgressBar 
-                    value={(ds.drillsCompleted / ds.drillsTotal) * 100} 
-                    size="sm"
-                  />
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 9, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase", marginTop: 8 }}>
-                    {ds.drillsCompleted}/{ds.drillsTotal} drills
+                  <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${d.score}%`, background: d.color, borderRadius: 2, transition: "width 0.6s ease" }} />
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* ── Locked overlay (only shown when no diagnostic score) ── */}
+        {!hasScore && (
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+            <div style={{
+              background: "rgba(13,13,13,0.92)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 16,
+              padding: "36px 32px",
+              textAlign: "center",
+              maxWidth: 380,
+              width: "100%",
+              backdropFilter: "blur(12px)",
+            }}>
+              <div style={{ marginBottom: 16 }}>
+                <LockIcon />
+              </div>
+              <h2 style={{ fontSize: 17, fontWeight: 600, color: "#f0f0f0", marginBottom: 10, lineHeight: 1.4 }}>
+                Complete the diagnostic to unlock your profile.
+              </h2>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.65, marginBottom: 24 }}>
+                Your operator score, domain breakdown, and skill map will appear here.
+              </p>
+              <button
+                onClick={() => router.push("/diagnostic")}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "11px 24px",
+                  background: "#fff", border: "none", borderRadius: 10,
+                  color: "#000", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  fontFamily: "var(--font-body)",
+                }}
+              >
+                Start Diagnostic →
+              </button>
+            </div>
           </div>
         )}
+
       </div>
-
-      {/* Operator Card (Shareable) */}
-      <div>
-        <p className="t-tag" style={{ marginBottom: 16 }}>Operator Credential</p>
-        <div className="max-w-[400px] mx-auto">
-          <div style={{ background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 20, padding: 32 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div className="flex items-start justify-between">
-                <span style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.2em", color: "var(--text-dim)", textTransform: "uppercase" }}>AI DOJO</span>
-              </div>
-
-              <div className="text-center">
-                <div className="score-big">{profile.operatorScore}</div>
-                <span className="badge badge-expert" style={{ marginTop: 8, display: "inline-block" }}>
-                  {profile.rankLabel}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{profile.streakDays}</div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Streak</div>
-                </div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{activeDomains}</div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Domains</div>
-                </div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{totalDrills}</div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Drills</div>
-                </div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 20, color: "var(--text-primary)" }}>{profile.operatorScore}</div>
-                  <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Score</div>
-                </div>
-              </div>
-
-              <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)", textAlign: "right" }}>
-                <div style={{ fontFamily: "var(--font-code)", fontSize: 8, letterSpacing: "0.12em", color: "var(--text-dim)", textTransform: "uppercase" }}>Beta Operator</div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            className="btn btn-secondary"
-            onClick={handleCopy}
-            style={{ width: "100%", marginTop: 16 }}
-          >
-            {copied ? "✓ Copied" : "Copy to Clipboard"}
-          </button>
-        </div>
-      </div>
-
     </div>
   );
 }
