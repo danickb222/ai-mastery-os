@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 
 const DOMAINS_DATA = [
@@ -42,8 +42,6 @@ function useIsMobile(breakpoint = 768) {
 }
 
 export default function Dashboard() {
-  const [comingSoonTab, setComingSoonTab] = useState<string | null>(null);
-  const comingSoonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMobile = useIsMobile();
   
   // ── All landing page JS behaviors ──
@@ -758,12 +756,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  function showComingSoon(href: string) {
-    setComingSoonTab(href);
-    if (comingSoonTimer.current) clearTimeout(comingSoonTimer.current);
-    comingSoonTimer.current = setTimeout(() => setComingSoonTab(null), 2000);
-  }
-
   const scrollToCta = (e: React.MouseEvent) => {
     e.preventDefault();
     document.getElementById('cta')?.scrollIntoView({ behavior: 'smooth' });
@@ -813,36 +805,6 @@ export default function Dashboard() {
                 borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",
                 transition: "all 150ms ease",
               }}>Train</a>
-              <div style={{ position: "relative" }}>
-                <button onClick={() => showComingSoon('/arena')} style={{
-                  fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.35)", padding: "6px 14px",
-                  borderRadius: 11, background: "transparent", border: "1px solid transparent",
-                  cursor: "default", fontFamily: "inherit",
-                }}>Arena</button>
-                <div style={{
-                  position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)",
-                  marginTop: 6, background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 6, padding: "4px 10px", fontFamily: "var(--font-code)", fontSize: 10,
-                  letterSpacing: "0.1em", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
-                  zIndex: 2000, pointerEvents: "none",
-                  opacity: comingSoonTab === '/arena' ? 1 : 0, transition: "opacity 0.2s ease",
-                }}>Coming soon</div>
-              </div>
-              <div style={{ position: "relative" }}>
-                <button onClick={() => showComingSoon('/lab')} style={{
-                  fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.35)", padding: "6px 14px",
-                  borderRadius: 11, background: "transparent", border: "1px solid transparent",
-                  cursor: "default", fontFamily: "inherit",
-                }}>Lab</button>
-                <div style={{
-                  position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)",
-                  marginTop: 6, background: "rgba(20,21,26,0.95)", border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 6, padding: "4px 10px", fontFamily: "var(--font-code)", fontSize: 10,
-                  letterSpacing: "0.1em", color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap",
-                  zIndex: 2000, pointerEvents: "none",
-                  opacity: comingSoonTab === '/lab' ? 1 : 0, transition: "opacity 0.2s ease",
-                }}>Coming soon</div>
-              </div>
               <a href="/profile" style={{
                 fontSize: 12.5, fontWeight: 400, color: "rgba(255,255,255,0.28)", padding: "6px 14px",
                 borderRadius: 11, background: "transparent", textDecoration: "none", border: "1px solid transparent",

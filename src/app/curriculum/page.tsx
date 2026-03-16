@@ -189,7 +189,7 @@ function ParticleCanvas({ isMobile }: { isMobile: boolean }) {
     }
 
     let particles = makeParticles(w, h)
-    let rafId: number
+    let rafId = 0
 
     const tick = () => {
       ctx.clearRect(0, 0, w, h)
@@ -253,7 +253,7 @@ function ParticleCanvas({ isMobile }: { isMobile: boolean }) {
     return () => { cancelAnimationFrame(rafId); window.removeEventListener('mousemove', onMove); window.removeEventListener('resize', onResize) }
   }, [isMobile])
 
-  return <canvas ref={canvasRef} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 0, opacity: 0.75, pointerEvents: 'none' }} />
+  return <canvas ref={canvasRef} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 0, opacity: 0.75, pointerEvents: 'none' }} />
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
