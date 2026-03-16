@@ -67,6 +67,108 @@ interface RubricDataItem {
   evidenceQuotes: string[]
 }
 
+// ─── Sparse particle background ──────────────────────────────────────────────
+
+function SparseParticleCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let rafId = 0
+
+    function resize() {
+      if (!canvas) return
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    type Particle = { x: number; y: number; vx: number; vy: number; alpha: number; r: number }
+
+    function initParticles(): Particle[] {
+      if (!canvas) return []
+      const count = Math.floor((canvas.width * canvas.height) / 18000)
+      return Array.from({ length: count }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        alpha: 0.15 + Math.random() * 0.1,
+        r: 1 + Math.random() * 1.5,
+      }))
+    }
+
+    let particles = initParticles()
+
+    function draw() {
+      if (!canvas || !ctx) return
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+      for (const p of particles) {
+        p.x += p.vx
+        p.y += p.vy
+        if (p.x < 0) p.x = canvas.width
+        if (p.x > canvas.width) p.x = 0
+        if (p.y < 0) p.y = canvas.height
+        if (p.y > canvas.height) p.y = 0
+      }
+
+      const maxDist = 120
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x
+          const dy = particles[i].y - particles[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < maxDist) {
+            const a = (1 - dist / maxDist) * 0.08
+            ctx.strokeStyle = `rgba(0,212,255,${a})`
+            ctx.lineWidth = 0.5
+            ctx.beginPath()
+            ctx.moveTo(particles[i].x, particles[i].y)
+            ctx.lineTo(particles[j].x, particles[j].y)
+            ctx.stroke()
+          }
+        }
+      }
+
+      for (const p of particles) {
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(0,212,255,${p.alpha})`
+        ctx.fill()
+      }
+
+      rafId = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        top: 0, left: 0,
+        width: '100%', height: '100%',
+        opacity: 0.4,
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    />
+  )
+}
+
 // ─── Score colour helper ──────────────────────────────────────────────────────
 
 function scoreColor(n: number): string {
@@ -277,11 +379,12 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
 
   return (
     <div className="sniper-root">
+      <SparseParticleCanvas />
 
       {/* ─── HEADER ────────────────────────────────────────────────────────── */}
       <div className="sniper-header">
 
-        {/* Domain + difficulty badges */}
+        {/* Left: badges */}
         <div className="sniper-badges">
           {totalDrills != null && drillIndex != null && (
             <span style={{
@@ -296,32 +399,26 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           }}>Prompt Engineering</span>
           <span style={{
             fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+            color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
             padding: '3px 8px', borderRadius: 4,
           }}>{drill.difficulty}</span>
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{drill.points}pts</span>
         </div>
 
-        {/* Live score bar — center */}
+        {/* Center: live score bar */}
         <div className="sniper-score-bar">
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 20, lineHeight: 1, color: '#00d4ff', minWidth: 34, textAlign: 'right' }}>
             {Math.round(displayScore)}
           </span>
-
-          {/* Bar track */}
           <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, position: 'relative', overflow: 'visible' }}>
             <motion.div
               animate={{ width: `${Math.min(100, displayScore)}%` }}
               transition={{ duration: 0.55, ease: [0, 0, 0.2, 1] }}
               style={{ height: '100%', borderRadius: 4, background: '#00d4ff', boxShadow: '0 0 8px rgba(0,212,255,0.4)' }}
             />
-            {/* 90-point target notch */}
             <div style={{ position: 'absolute', top: -4, left: '90%', width: 1, height: 12, background: 'rgba(255,255,255,0.35)', borderRadius: 1 }} />
           </div>
-
           <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>/ 100</span>
-
-          {/* Scoring pulse dot */}
           <AnimatePresence>
             {isScoring && (
               <motion.div
@@ -336,7 +433,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           </AnimatePresence>
         </div>
 
-        {/* Timer + exit — right */}
+        {/* Right: timer + exit */}
         <div className="sniper-timer">
           <div style={{ textAlign: 'right' }}>
             <div style={{
@@ -349,7 +446,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           <button
             onClick={onExit}
             style={{
-              background: 'transparent', border: '1px solid var(--border)',
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
               color: 'rgba(255,255,255,0.4)', borderRadius: 8,
               padding: '6px 14px', fontFamily: 'var(--font-code)', fontSize: 10,
               letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
@@ -358,145 +455,147 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         </div>
       </div>
 
-      {/* ─── MAIN ──────────────────────────────────────────────────────────── */}
+      {/* ─── MAIN GRID ──────────────────────────────────────────────────────── */}
+      <div className="sniper-main-grid">
 
-      {(
-        // ── WRITE / SUBMITTING PHASE ─────────────────────────────────────────
-        <>
-        <div className="sniper-title">
-          <h1>{drill.title}</h1>
-        </div>
-        <div className="sniper-main-grid">
+        {/* LEFT: Mission brief */}
+        <motion.div className="sniper-left-col" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
 
-          {/* LEFT: Mission brief */}
-          <motion.div className="sniper-left-col" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
+          {/* Title */}
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 2.2vw, 30px)', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px', flexShrink: 0 }}>{drill.title}</h1>
 
-            {/* Broken prompt */}
-            <div className="sniper-box" style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)' }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt to Fix</div>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 13, color: 'rgba(239,68,68,0.65)', fontStyle: 'italic', lineHeight: 1.75 }}>&ldquo;{drill.brokenPrompt}&rdquo;</div>
-            </div>
+          {/* Broken prompt — red code block */}
+          <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 12, padding: '16px 20px', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt</div>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 13, color: 'rgba(239,68,68,0.65)', fontStyle: 'italic', lineHeight: 1.75 }}>&ldquo;{drill.brokenPrompt}&rdquo;</div>
+          </div>
 
-            {/* Situation */}
-            <div className="sniper-box" style={{ background: 'var(--bg3)', border: '1px solid var(--border)' }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>Situation</div>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)', lineHeight: 1.75, margin: 0 }}>{drill.context}</p>
-            </div>
+          {/* Situation */}
+          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 20px', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>Situation</div>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)', lineHeight: 1.75, margin: 0 }}>{drill.context}</p>
+          </div>
 
-            {/* Target output */}
-            <div className="sniper-box" style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>
-                <span>🎯</span> Target Output
-              </div>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: 0 }}>{drill.targetOutput}</p>
-            </div>
-          </motion.div>
+          {/* Target output — green border-left */}
+          <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.15)', borderLeft: '3px solid rgba(34,197,94,0.5)', borderRadius: 12, padding: '16px 20px', flexShrink: 0 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(34,197,94,0.8)', marginBottom: 10 }}>Target Output</div>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: 0 }}>{drill.targetOutput}</p>
+          </div>
 
-          {/* RIGHT: Sniper editor */}
-          <motion.div
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.45, delay: 0.08 }}
-            className="sniper-right-col"
+        </motion.div>
+
+        {/* RIGHT: Editor */}
+        <motion.div
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.45, delay: 0.08 }}
+          className="sniper-right-col"
+        >
+
+          {/* Label + char count */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.28)', flexShrink: 0,
+          }}>
+            <span>Your Fixed Prompt</span>
+            <span>{prompt.length} chars</span>
+          </div>
+
+          {/* Textarea */}
+          <textarea
+            value={prompt}
+            onChange={e => setPrompt(e.target.value)}
+            disabled={phase !== 'write'}
+            placeholder="Fix the broken prompt above. Define the audience, specify the format, set constraints on length and tone, name exact sections..."
+            style={{
+              width: '100%',
+              flex: 1,
+              minHeight: 0,
+              background: 'rgba(255,255,255,0.025)',
+              border: isScoring ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 14, padding: '16px 20px',
+              fontFamily: 'var(--font-code)', fontSize: 13, lineHeight: 1.8,
+              color: '#fff', resize: 'none', outline: 'none',
+              transition: 'border-color 0.35s ease',
+              boxSizing: 'border-box',
+            }}
+          />
+
+          {/* Tip hint */}
+          <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.2)', lineHeight: 1.6, flexShrink: 0 }}>
+            Tip — specify audience, format, length constraints, and tone. Vague prompts score below 40.
+          </div>
+
+          {/* Submit button */}
+          <motion.button
+            onClick={handleSubmit}
+            disabled={phase !== 'write' || prompt.trim().length < 10}
+            whileHover={phase === 'write' && prompt.trim().length >= 10 ? { scale: 1.015 } : {}}
+            whileTap={phase === 'write' && prompt.trim().length >= 10 ? { scale: 0.985 } : {}}
+            style={{
+              width: '100%', padding: '15px 24px',
+              background: phase === 'submitting' ? 'rgba(255,255,255,0.06)' : '#fff',
+              border: 'none', borderRadius: 12,
+              color: phase === 'submitting' ? 'rgba(255,255,255,0.3)' : '#000',
+              fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
+              cursor: phase === 'write' && prompt.trim().length >= 10 ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              transition: 'all 0.2s ease', flexShrink: 0,
+            }}
           >
-
-            {/* Sparkline trend */}
-            <AnimatePresence>
-              {scoreHistory.length >= 2 && (
+            {phase === 'submitting' ? (
+              <>
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 12 }}
-                >
-                  <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: '0.14em', whiteSpace: 'nowrap' }}>Score trend</span>
-                  <svg width={72} height={18} overflow="visible">
-                    {scoreHistory.map((s, i) => {
-                      if (i === 0) return null
-                      const x1 = ((i - 1) / (scoreHistory.length - 1)) * 72
-                      const x2 = (i / (scoreHistory.length - 1)) * 72
-                      const y1 = 18 - (scoreHistory[i - 1] / 100) * 18
-                      const y2 = 18 - (s / 100) * 18
-                      return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#00d4ff" strokeWidth={1.5} opacity={0.65} />
-                    })}
-                    {scoreHistory.length > 0 && (
-                      <circle
-                        cx={(scoreHistory.length - 1) / (scoreHistory.length - 1) * 72}
-                        cy={18 - (scoreHistory[scoreHistory.length - 1] / 100) * 18}
-                        r={3} fill="#00d4ff"
-                      />
-                    )}
-                  </svg>
-                  {scoreHistory.length >= 2 && (
-                    <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: '#00d4ff', marginLeft: 4 }}>
-                      {scoreHistory[scoreHistory.length - 1] > scoreHistory[scoreHistory.length - 2] ? '↑' : scoreHistory[scoreHistory.length - 1] === scoreHistory[scoreHistory.length - 2] ? '→' : '↓'}
-                    </span>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+                  style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.15)', borderTopColor: 'rgba(255,255,255,0.6)', borderRadius: '50%' }}
+                />
+                Scoring your prompt...
+              </>
+            ) : 'Submit for Scoring →'}
+          </motion.button>
 
-            {/* Textarea */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.28)', marginBottom: 8, flexShrink: 0,
-              }}>
-                <span>Your Improved Prompt</span>
-                <span>{prompt.length} chars</span>
-              </div>
-              <textarea
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                disabled={phase !== 'write'}
-                placeholder="Fix the broken prompt above. Define the audience, specify the format, set constraints on length and tone, name exact sections..."
+          {/* Submitting overlay */}
+          <AnimatePresence>
+            {phase === 'submitting' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 style={{
-                  width: '100%',
-                  flex: 1,
-                  minHeight: 0,
-                  background: 'rgba(255,255,255,0.025)',
-                  border: isScoring ? '1px solid rgba(0,212,255,0.3)' : '1px solid var(--border)',
-                  borderRadius: 14, padding: '16px 20px',
-                  fontFamily: 'var(--font-code)', fontSize: 13, lineHeight: 1.8,
-                  color: '#fff', resize: 'none', outline: 'none',
-                  transition: 'border-color 0.35s ease',
-                  boxSizing: 'border-box',
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(10,10,10,0.88)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  gap: 16, backdropFilter: 'blur(4px)',
                 }}
-              />
-            </div>
-
-            {/* Submit */}
-            <motion.button
-              onClick={handleSubmit}
-              disabled={phase !== 'write' || prompt.trim().length < 10}
-              whileHover={phase === 'write' && prompt.trim().length >= 10 ? { scale: 1.015 } : {}}
-              whileTap={phase === 'write' && prompt.trim().length >= 10 ? { scale: 0.985 } : {}}
-              style={{
-                width: '100%', padding: '15px 24px',
-                background: phase === 'submitting' ? 'rgba(255,255,255,0.06)' : '#fff',
-                border: 'none', borderRadius: 12,
-                color: phase === 'submitting' ? 'rgba(255,255,255,0.3)' : '#000',
-                fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
-                cursor: phase === 'write' && prompt.trim().length >= 10 ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {phase === 'submitting' ? (
-                <>
-                  <motion.div
+              >
+                <svg width={56} height={56} style={{ flexShrink: 0 }}>
+                  <circle cx={28} cy={28} r={22} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3} />
+                  <motion.circle
+                    cx={28} cy={28} r={22} fill="none" stroke="#00d4ff" strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeDasharray={`${22 * 2 * Math.PI}`}
+                    strokeDashoffset={`${22 * 2 * Math.PI * 0.72}`}
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
-                    style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.15)', borderTopColor: 'rgba(255,255,255,0.6)', borderRadius: '50%' }}
+                    transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                    style={{ transformOrigin: '28px 28px' }}
                   />
-                  Analyzing...
-                </>
-              ) : '🎯 Fire'}
-            </motion.button>
-          </motion.div>
-        </div>
-        </>
-      )}
+                </svg>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#f0f0f0', marginBottom: 6 }}>
+                    Analysing your prompt...
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                    Scoring against {drill.successCriteria.length} criteria
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+        </motion.div>
+      </div>
     </div>
   )
 }
