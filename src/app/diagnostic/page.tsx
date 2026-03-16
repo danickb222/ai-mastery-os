@@ -157,6 +157,7 @@ export default function DiagnosticPage() {
 
   function handleBuildSubmit({ score = 0 }: { userInput: string; score?: number }) {
     setBuildScore(score)
+    transitionTo('calibration', '04', 'Self-Assessment', 'Rate your confidence across key skill areas.')
   }
 
   function handleBuildExit() {
