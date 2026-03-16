@@ -152,6 +152,20 @@ export interface DrillResult {
   evalData?: EvalData;
 }
 
+export interface AutopsySegment {
+  text: string;
+  type: 'critical' | 'good' | 'neutral' | 'weak' | 'bad';
+  explanation: string;
+  criterion: string | null;
+}
+
+export interface AutopsyResult {
+  segments: AutopsySegment[];
+  fatalIssues: string[];
+  exemplarPrompt: string;
+  topInsight: string;
+}
+
 export function getDrillById(id: string, drills: AnyDrill[]): AnyDrill | undefined {
   return drills.find((d) => d.id === id);
 }
