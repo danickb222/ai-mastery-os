@@ -23,23 +23,6 @@ function TrainIcon() {
   );
 }
 
-function ArenaIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  );
-}
-
-function LabIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 3h6v7l4 8H5l4-8V3z" />
-      <path d="M9 3h6" />
-    </svg>
-  );
-}
-
 function ProfileIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -61,8 +44,6 @@ function GearIcon() {
 const tabs = [
   { label: "Dashboard", href: "/", icon: <DashboardIcon />, locked: false },
   { label: "Train", href: "/curriculum", icon: <TrainIcon />, locked: false },
-  { label: "Arena", href: "/arena", icon: <ArenaIcon />, locked: true },
-  { label: "Lab", href: "/lab", icon: <LabIcon />, locked: true },
   { label: "Profile", href: "/profile", icon: <ProfileIcon />, locked: false },
 ];
 

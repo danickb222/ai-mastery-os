@@ -18,7 +18,6 @@ import {
   getRecommendedPath,
   operatorLevel,
   computeIndividualDomainScores,
-  getRecommendedDomainPath,
   type DomainScores,
 } from '@/core/content/diagnosticQuestions'
 
@@ -669,7 +668,13 @@ export default function DiagnosticPage() {
     const clusterScores = computeClusterScores(domainScores)
     const individualDomainScores = computeIndividualDomainScores(domainScores)
     const testedDomains = individualDomainScores.filter(d => d.total > 0)
-    const recommendedDomains = getRecommendedDomainPath(domainScores, overall)
+    const FIXED_PATH = [
+      { domainId: 'prompt_engineering', name: 'Prompt Engineering', color: '#4f6ef7', isOpen: true },
+      { domainId: 'output_control',     name: 'Output Control',     color: '#f59e0b', isOpen: false },
+      { domainId: 'system_prompts',     name: 'System Prompts',     color: '#8b5cf6', isOpen: false },
+      { domainId: 'role_prompting',     name: 'Role Prompting',     color: '#ec4899', isOpen: false },
+      { domainId: 'reasoning_chains',   name: 'Reasoning Chains',   color: '#10b981', isOpen: false },
+    ]
 
     // Find biggest calibration gap
     const calibrationInsights = CONFIDENCE_ITEMS.map(item => {
@@ -794,34 +799,21 @@ export default function DiagnosticPage() {
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 9, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: 6 }}>
               Your Recommended Path
             </div>
-            {overall < 35 ? (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
-                Start with Prompt Engineering — it&apos;s the foundation every other domain builds on.
-              </p>
-            ) : overall < 65 ? (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
-                Focus on your weakest domains first — closing gaps here will have the biggest impact.
-              </p>
-            ) : (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 14, fontFamily: 'var(--font-body)' }}>
-                Strong foundation. Sharpen the areas below to reach professional-grade.
-              </p>
-            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {recommendedDomains.slice(0, 5).map((domain, i) => (
-                <div key={domain.domainId} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <span style={{ fontFamily: 'var(--font-code)', fontSize: 18, color: i === 0 ? domain.color : 'rgba(255,255,255,0.15)', fontWeight: 300, width: 28, textAlign: 'center', flexShrink: 0 }}>
+              {FIXED_PATH.map((domain, i) => (
+                <div key={domain.domainId} style={{ display: 'flex', alignItems: 'center', gap: 14, opacity: domain.isOpen ? 1 : 0.45 }}>
+                  <span style={{ fontFamily: 'var(--font-code)', fontSize: 18, color: domain.isOpen ? domain.color : 'rgba(255,255,255,0.15)', fontWeight: 300, width: 28, textAlign: 'center', flexShrink: 0 }}>
                     {i + 1}
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 14, color: i === 0 ? '#fff' : 'rgba(255,255,255,0.45)', fontWeight: i === 0 ? 600 : 400 }}>{domain.name}</span>
-                    </div>
-                    <div style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.28)', marginTop: 2 }}>
-                      {domain.total > 0 ? `${domain.score}% — ${domain.score < 40 ? 'needs work' : domain.score < 70 ? 'room to grow' : 'solid'}` : 'not yet tested'}
-                    </div>
+                    <span style={{ fontSize: 14, color: domain.isOpen ? '#fff' : 'rgba(255,255,255,0.45)', fontWeight: domain.isOpen ? 600 : 400 }}>{domain.name}</span>
+                    {domain.isOpen && (
+                      <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 3, lineHeight: 1.4 }}>
+                        Start here — it&apos;s the foundation every other domain builds on
+                      </div>
+                    )}
                   </div>
-                  {domain.domainId === 'prompt_engineering' ? (
+                  {domain.isOpen ? (
                     <button
                       onClick={() => router.push('/run?domain=prompt_engineering')}
                       style={{
