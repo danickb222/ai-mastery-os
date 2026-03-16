@@ -161,7 +161,7 @@ interface Particle { x: number; y: number; vx: number; vy: number; r: number; is
 
 function ParticleCanvas({ isMobile }: { isMobile: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const mouseRef = useRef({ x: -9999, y: -9999 })
+  const mouse = useRef({ x: -9999, y: -9999 })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -193,22 +193,26 @@ function ParticleCanvas({ isMobile }: { isMobile: boolean }) {
 
     const tick = () => {
       ctx.clearRect(0, 0, w, h)
-      const mx = mouseRef.current.x
-      const my = mouseRef.current.y
 
       for (const p of particles) {
-        if (!isMobile) {
-          const dx = p.x - mx, dy = p.y - my
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 140 && dist > 0) {
-            const force = (140 - dist) / 140 * 2.5
-            p.vx += (dx / dist) * force * 0.01
-            p.vy += (dy / dist) * force * 0.01
-          }
-        }
+        // Natural drift with velocity cap
         const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
         if (spd > 0.4) { p.vx = p.vx / spd * 0.4; p.vy = p.vy / spd * 0.4 }
         p.x += p.vx; p.y += p.vy
+
+        // Direct position push from mouse — immediately visible
+        if (!isMobile) {
+          const dx = p.x - mouse.current.x
+          const dy = p.y - mouse.current.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 140 && dist > 0) {
+            const force = (140 - dist) / 140
+            p.x += (dx / dist) * force * 3
+            p.y += (dy / dist) * force * 3
+          }
+        }
+
+        // Bounce walls
         if (p.x < 0) { p.x = 0; p.vx = Math.abs(p.vx) }
         if (p.x > w) { p.x = w; p.vx = -Math.abs(p.vx) }
         if (p.y < 0) { p.y = 0; p.vy = Math.abs(p.vy) }
@@ -242,7 +246,7 @@ function ParticleCanvas({ isMobile }: { isMobile: boolean }) {
 
     tick()
 
-    const onMove = (e: MouseEvent) => { mouseRef.current = { x: e.clientX, y: e.clientY } }
+    const onMove = (e: MouseEvent) => { mouse.current.x = e.clientX; mouse.current.y = e.clientY }
     const onResize = () => {
       w = window.innerWidth; h = window.innerHeight
       canvas.width = w; canvas.height = h
@@ -253,7 +257,7 @@ function ParticleCanvas({ isMobile }: { isMobile: boolean }) {
     return () => { cancelAnimationFrame(rafId); window.removeEventListener('mousemove', onMove); window.removeEventListener('resize', onResize) }
   }, [isMobile])
 
-  return <canvas ref={canvasRef} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 0, opacity: 0.75, pointerEvents: 'none' }} />
+  return <canvas ref={canvasRef} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 0, opacity: 0.75, pointerEvents: 'none' }} />
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
