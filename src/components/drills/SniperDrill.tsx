@@ -23,7 +23,6 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { evaluateDrill } from '@/app/actions/evaluateDrill'
 
 // ─── Types (mirrors existing drill shape) ────────────────────────────────────
@@ -67,107 +66,113 @@ interface RubricDataItem {
   evidenceQuotes: string[]
 }
 
-// ─── Sparse particle background ──────────────────────────────────────────────
+// ─── Criteria config ──────────────────────────────────────────────────────────
 
-function SparseParticleCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+const CRITERIA_CONFIG = [
+  { name: 'Audience', pts: 20, keywords: ['founder','operator','b2b','saas','audience','subscriber','marketing manager','target'] },
+  { name: 'Structure', pts: 25, keywords: ['section','header','structure','format','bullet','numbered','outline','paragraph'] },
+  { name: 'Tone', pts: 20, keywords: ['tone','voice','direct','expert','authoritative','professional','avoid','style'] },
+  { name: 'Length', pts: 15, keywords: ['word','character','length','300','400','500','brief','concise','limit'] },
+  { name: 'Format', pts: 20, keywords: ['subject','cta','call to action','newsletter','email','template','opening','closing'] },
+]
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+// ─── CSS ──────────────────────────────────────────────────────────────────────
 
-    let rafId = 0
-
-    function resize() {
-      if (!canvas) return
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
+const CSS_STYLES = `
+  @keyframes snprScanLine {
+    0%   { top: 0%;   opacity: 0; }
+    5%   { opacity: 1; }
+    95%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  @keyframes snprBlink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+  }
+  @keyframes snprSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  .snpr-fade-up {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 350ms ease-out, transform 350ms ease-out;
+  }
+  .snpr-fade-up.snpr-in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .snpr-slide-left {
+    opacity: 0;
+    transform: translateX(-12px);
+    transition: opacity 350ms ease-out, transform 350ms ease-out;
+  }
+  .snpr-slide-right {
+    opacity: 0;
+    transform: translateX(12px);
+    transition: opacity 350ms ease-out, transform 350ms ease-out;
+  }
+  .snpr-slide-left.snpr-in,
+  .snpr-slide-right.snpr-in {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  .snpr-submit-btn .snpr-arrow {
+    display: inline-block;
+    transition: transform 200ms ease;
+  }
+  .snpr-submit-btn:not(:disabled):hover .snpr-arrow {
+    transform: translateX(3px);
+  }
+  .snpr-submit-btn:not(:disabled):hover {
+    background: rgba(34,197,94,0.18) !important;
+    border-color: rgba(34,197,94,0.55) !important;
+    transform: translateY(-1px);
+  }
+  .snpr-submit-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .snpr-exit-btn:hover {
+    border-color: rgba(255,255,255,0.18) !important;
+    color: rgba(255,255,255,0.4) !important;
+  }
+  .snpr-textarea::placeholder {
+    color: rgba(255,255,255,0.15);
+  }
+  @media (max-width: 768px) {
+    .snpr-brief-cards {
+      grid-template-columns: 1fr !important;
     }
-    resize()
-    window.addEventListener('resize', resize)
-
-    type Particle = { x: number; y: number; vx: number; vy: number; alpha: number; r: number }
-
-    function initParticles(): Particle[] {
-      if (!canvas) return []
-      const count = Math.floor((canvas.width * canvas.height) / 18000)
-      return Array.from({ length: count }, () => ({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.3,
-        vy: (Math.random() - 0.5) * 0.3,
-        alpha: 0.15 + Math.random() * 0.1,
-        r: 1 + Math.random() * 1.5,
-      }))
+    .snpr-brief-zone {
+      padding: 20px !important;
     }
-
-    let particles = initParticles()
-
-    function draw() {
-      if (!canvas || !ctx) return
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      for (const p of particles) {
-        p.x += p.vx
-        p.y += p.vy
-        if (p.x < 0) p.x = canvas.width
-        if (p.x > canvas.width) p.x = 0
-        if (p.y < 0) p.y = canvas.height
-        if (p.y > canvas.height) p.y = 0
-      }
-
-      const maxDist = 120
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < maxDist) {
-            const a = (1 - dist / maxDist) * 0.08
-            ctx.strokeStyle = `rgba(0,212,255,${a})`
-            ctx.lineWidth = 0.5
-            ctx.beginPath()
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.stroke()
-          }
-        }
-      }
-
-      for (const p of particles) {
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(0,212,255,${p.alpha})`
-        ctx.fill()
-      }
-
-      rafId = requestAnimationFrame(draw)
+    .snpr-title {
+      font-size: 26px !important;
     }
-
-    draw()
-
-    return () => {
-      cancelAnimationFrame(rafId)
-      window.removeEventListener('resize', resize)
+    .snpr-write-zone {
+      padding: 16px 20px !important;
     }
-  }, [])
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0, left: 0,
-        width: '100%', height: '100%',
-        opacity: 0.4,
-        pointerEvents: 'none',
-        zIndex: 0,
-      }}
-    />
-  )
-}
+    .snpr-bottom-bar {
+      height: auto !important;
+      flex-direction: column !important;
+      gap: 12px !important;
+      padding: 12px 20px !important;
+    }
+    .snpr-criteria-row {
+      flex-wrap: wrap !important;
+    }
+    .snpr-submit-btn {
+      width: 100% !important;
+    }
+    .snpr-textarea {
+      min-height: 180px !important;
+    }
+    .snpr-topbar {
+      padding: 0 16px !important;
+    }
+  }
+`
 
 // ─── Score colour helper ──────────────────────────────────────────────────────
 
@@ -262,10 +267,42 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
   const [timeLeft, setTimeLeft] = useState(drill.timeLimit ?? 480)
   const [scanActive, setScanActive] = useState(false)
 
+  // ── Visual-only state ──────────────────────────────────────────────────────
+  const [criteriaLit, setCriteriaLit] = useState([false, false, false, false, false])
+  const [animIn, setAnimIn] = useState({
+    difficulty: false,
+    title: false,
+    cards: false,
+    situation: false,
+    writeZone: false,
+    bottomBar: false,
+  })
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scoreRef = useRef(0)
   scoreRef.current = liveScore
   const serverScoreRef = useRef(false)
+
+  // ── Staggered entrance animations ─────────────────────────────────────────
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setAnimIn(p => ({ ...p, difficulty: true })), 200),
+      setTimeout(() => setAnimIn(p => ({ ...p, title: true })), 350),
+      setTimeout(() => setAnimIn(p => ({ ...p, cards: true })), 500),
+      setTimeout(() => setAnimIn(p => ({ ...p, situation: true })), 650),
+      setTimeout(() => setAnimIn(p => ({ ...p, writeZone: true })), 800),
+      setTimeout(() => setAnimIn(p => ({ ...p, bottomBar: true })), 900),
+    ]
+    return () => timers.forEach(clearTimeout)
+  }, [])
+
+  // ── Live criteria detection ────────────────────────────────────────────────
+
+  useEffect(() => {
+    const lower = prompt.toLowerCase()
+    setCriteriaLit(CRITERIA_CONFIG.map(c => c.keywords.some(k => lower.includes(k))))
+  }, [prompt])
 
   // ── Timer ──────────────────────────────────────────────────────────────────
 
@@ -320,7 +357,6 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
 
       const cs: Record<string, number> = {}
 
-      // Map criterion scores from rubricScores if available
       if (result?.rubricScores?.length) {
         const rubricMap: Record<string, number> = {}
         for (const r of result.rubricScores) {
@@ -371,231 +407,538 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
     }
   }, [phase, prompt, drill, onSubmit])
 
-  const displayScore = finalScore !== null ? finalScore : liveScore
-  const color = '#00d4ff'
-  const totalMaxPoints = drill.successCriteria.reduce((a, c) => a + c.maxPoints, 0)
+  const isSubmitting = phase === 'submitting'
+  const canSubmit = prompt.length >= 20 && !isSubmitting
+  const domainLabel = drill.domain.replace(/_/g, ' ').toUpperCase()
+  const difficultyLabel = drill.difficulty.toUpperCase()
+  const charCountLit = prompt.length > 30
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="sniper-root">
-      <SparseParticleCanvas />
+    <>
+      <style>{CSS_STYLES}</style>
 
-      {/* ─── HEADER ────────────────────────────────────────────────────────── */}
-      <div className="sniper-header">
+      {/* ROOT */}
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#07070a',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+        overflow: 'hidden',
+        position: 'relative',
+        color: '#fff',
+      }}>
 
-        {/* Left: badges */}
-        <div className="sniper-badges">
-          {totalDrills != null && drillIndex != null && (
-            <span style={{
-              fontFamily: 'var(--font-code)', fontSize: 11, letterSpacing: '0.08em',
-              color: 'rgba(255,255,255,0.55)', marginRight: 2,
-            }}>Drill {drillIndex + 1} of {totalDrills}</span>
-          )}
-          <span style={{
-            fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
-            color: 'var(--cyan)', background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
-            padding: '3px 8px', borderRadius: 4,
-          }}>Prompt Engineering</span>
-          <span style={{
-            fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            padding: '3px 8px', borderRadius: 4,
-          }}>{drill.difficulty}</span>
-          <span style={{ fontFamily: 'var(--font-code)', fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>{drill.points}pts</span>
-        </div>
+        {/* ── 1. TOPBAR ──────────────────────────────────────────────────── */}
+        <div className="snpr-topbar" style={{
+          height: 44,
+          flexShrink: 0,
+          background: 'transparent',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          padding: '0 28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
 
-        {/* Center: live score bar */}
-        <div className="sniper-score-bar">
-          <span style={{ fontFamily: 'var(--font-code)', fontSize: 20, lineHeight: 1, color: '#00d4ff', minWidth: 34, textAlign: 'right' }}>
-            {Math.round(displayScore)}
-          </span>
-          <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 4, position: 'relative', overflow: 'visible' }}>
-            <motion.div
-              animate={{ width: `${Math.min(100, displayScore)}%` }}
-              transition={{ duration: 0.55, ease: [0, 0, 0.2, 1] }}
-              style={{ height: '100%', borderRadius: 4, background: '#00d4ff', boxShadow: '0 0 8px rgba(0,212,255,0.4)' }}
-            />
-            <div style={{ position: 'absolute', top: -4, left: '90%', width: 1, height: 12, background: 'rgba(255,255,255,0.35)', borderRadius: 1 }} />
-          </div>
-          <span style={{ fontFamily: 'var(--font-code)', fontSize: 8, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>/ 100</span>
-          <AnimatePresence>
-            {isScoring && (
-              <motion.div
-                key="dot"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: [1, 0.3, 1], scale: 1 }}
-                exit={{ opacity: 0, scale: 0 }}
-                transition={{ opacity: { duration: 0.5, repeat: Infinity }, scale: { duration: 0.15 } }}
-                style={{ width: 5, height: 5, borderRadius: '50%', background: '#00d4ff', boxShadow: '0 0 6px rgba(0,212,255,0.7)' }}
-              />
+          {/* Left */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {drillIndex != null && totalDrills != null && (
+              <span style={{
+                fontSize: 11,
+                color: 'rgba(255,255,255,0.25)',
+                letterSpacing: '0.02em',
+              }}>
+                Drill {drillIndex + 1} of {totalDrills}
+              </span>
             )}
-          </AnimatePresence>
+            {drillIndex != null && totalDrills != null && (
+              <div style={{
+                width: 1,
+                height: 12,
+                background: 'rgba(255,255,255,0.1)',
+                flexShrink: 0,
+              }} />
+            )}
+            <span style={{
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              color: 'rgba(160,163,255,0.85)',
+              background: 'rgba(99,102,241,0.12)',
+              border: '1px solid rgba(99,102,241,0.2)',
+              padding: '3px 10px',
+              borderRadius: 100,
+            }}>
+              {domainLabel}
+            </span>
+          </div>
+
+          {/* Right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              {/* Blinking green dot */}
+              <div style={{
+                width: 5,
+                height: 5,
+                borderRadius: '50%',
+                background: '#22c55e',
+                animation: 'snprBlink 1s ease-in-out infinite',
+                flexShrink: 0,
+              }} />
+              <span style={{
+                fontSize: 12,
+                color: 'rgba(255,255,255,0.4)',
+                fontVariantNumeric: 'tabular-nums',
+                letterSpacing: '0.04em',
+              }}>
+                {fmt(timeLeft)}
+              </span>
+            </div>
+            <button
+              className="snpr-exit-btn"
+              onClick={onExit}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.2)',
+                padding: '4px 12px',
+                borderRadius: 6,
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'border-color 200ms ease, color 200ms ease',
+              }}
+            >
+              Exit
+            </button>
+          </div>
         </div>
 
-        {/* Right: timer + exit */}
-        <div className="sniper-timer">
-          <div style={{ textAlign: 'right' }}>
-            <div style={{
-              fontFamily: 'var(--font-code)', fontSize: 18, letterSpacing: '-0.03em', lineHeight: 1,
-              color: timeLeft < 60 ? '#ef4444' : 'rgba(255,255,255,0.75)',
-              transition: 'color 0.3s ease',
-            }}>{fmt(timeLeft)}</div>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 7, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.16em', textTransform: 'uppercase' }}>remain</div>
-          </div>
-          <button
-            onClick={onExit}
-            style={{
-              background: 'transparent', border: '1px solid rgba(255,255,255,0.12)',
-              color: 'rgba(255,255,255,0.4)', borderRadius: 8,
-              padding: '6px 14px', fontFamily: 'var(--font-code)', fontSize: 10,
-              letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer',
-            }}
-          >Exit</button>
-        </div>
-      </div>
+        {/* ── 2. BRIEF ZONE ──────────────────────────────────────────────── */}
+        <div className="snpr-brief-zone" style={{
+          flexShrink: 0,
+          padding: '36px 48px 28px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
 
-      {/* ─── MAIN GRID ──────────────────────────────────────────────────────── */}
-      <div className="sniper-main-grid">
-
-        {/* LEFT: Mission brief */}
-        <motion.div className="sniper-left-col" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}>
-
-          {/* Title */}
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px, 2.2vw, 30px)', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 8px', flexShrink: 0 }}>{drill.title}</h1>
-
-          {/* Broken prompt — red code block */}
-          <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.18)', borderRadius: 12, padding: '16px 20px', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(239,68,68,0.7)', marginBottom: 8 }}>⚠ Broken Prompt</div>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 13, color: 'rgba(239,68,68,0.65)', fontStyle: 'italic', lineHeight: 1.75 }}>&ldquo;{drill.brokenPrompt}&rdquo;</div>
-          </div>
-
-          {/* Situation */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 20px', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 10 }}>Situation</div>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.62)', lineHeight: 1.75, margin: 0 }}>{drill.context}</p>
-          </div>
-
-          {/* Target output — green border-left */}
-          <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.15)', borderLeft: '3px solid rgba(34,197,94,0.5)', borderRadius: 12, padding: '16px 20px', flexShrink: 0 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(34,197,94,0.8)', marginBottom: 10 }}>Target Output</div>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.72)', lineHeight: 1.75, margin: 0 }}>{drill.targetOutput}</p>
-          </div>
-
-        </motion.div>
-
-        {/* RIGHT: Editor */}
-        <motion.div
-          initial={{ opacity: 0, x: 16 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.45, delay: 0.08 }}
-          className="sniper-right-col"
-        >
-
-          {/* Label + char count */}
+          {/* Scanning line */}
           <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.28)', flexShrink: 0,
-          }}>
-            <span>Your Fixed Prompt</span>
-            <span>{prompt.length} chars</span>
-          </div>
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: 1,
+            background: 'linear-gradient(90deg, transparent, rgba(34,197,94,0.2), transparent)',
+            animation: 'snprScanLine 4s ease-in-out infinite',
+            pointerEvents: 'none',
+            zIndex: 2,
+          }} />
 
-          {/* Textarea */}
-          <textarea
-            value={prompt}
-            onChange={e => setPrompt(e.target.value)}
-            disabled={phase !== 'write'}
-            placeholder="Fix the broken prompt above. Define the audience, specify the format, set constraints on length and tone, name exact sections..."
+          {/* Radial glow */}
+          <div style={{
+            position: 'absolute',
+            left: '50%',
+            top: 20,
+            transform: 'translateX(-50%)',
+            width: 400,
+            height: 200,
+            background: 'radial-gradient(ellipse, rgba(34,197,94,0.04) 0%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }} />
+
+          {/* Difficulty + points */}
+          <div
+            className={`snpr-fade-up${animIn.difficulty ? ' snpr-in' : ''}`}
             style={{
-              width: '100%',
-              flex: 1,
-              minHeight: 0,
-              background: 'rgba(255,255,255,0.025)',
-              border: isScoring ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 14, padding: '16px 20px',
-              fontFamily: 'var(--font-code)', fontSize: 13, lineHeight: 1.8,
-              color: '#fff', resize: 'none', outline: 'none',
-              transition: 'border-color 0.35s ease',
-              boxSizing: 'border-box',
-            }}
-          />
-
-          {/* Tip hint */}
-          <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.2)', lineHeight: 1.6, flexShrink: 0 }}>
-            Tip — specify audience, format, length constraints, and tone. Vague prompts score below 40.
-          </div>
-
-          {/* Submit button */}
-          <motion.button
-            onClick={handleSubmit}
-            disabled={phase !== 'write' || prompt.trim().length < 10}
-            whileHover={phase === 'write' && prompt.trim().length >= 10 ? { scale: 1.015 } : {}}
-            whileTap={phase === 'write' && prompt.trim().length >= 10 ? { scale: 0.985 } : {}}
-            style={{
-              width: '100%', padding: '15px 24px',
-              background: phase === 'submitting' ? 'rgba(255,255,255,0.06)' : '#fff',
-              border: 'none', borderRadius: 12,
-              color: phase === 'submitting' ? 'rgba(255,255,255,0.3)' : '#000',
-              fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 700,
-              cursor: phase === 'write' && prompt.trim().length >= 10 ? 'pointer' : 'not-allowed',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              transition: 'all 0.2s ease', flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              marginBottom: 16,
+              position: 'relative',
+              zIndex: 1,
             }}
           >
-            {phase === 'submitting' ? (
-              <>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
-                  style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.15)', borderTopColor: 'rgba(255,255,255,0.6)', borderRadius: '50%' }}
-                />
-                Scoring your prompt...
-              </>
-            ) : 'Submit for Scoring →'}
-          </motion.button>
+            <span style={{
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              color: 'rgba(34,197,94,0.85)',
+              background: 'rgba(34,197,94,0.1)',
+              border: '1px solid rgba(34,197,94,0.2)',
+              padding: '3px 10px',
+              borderRadius: 100,
+            }}>
+              {difficultyLabel}
+            </span>
+            <span style={{
+              fontSize: 10,
+              color: 'rgba(255,255,255,0.25)',
+            }}>
+              {drill.points} points
+            </span>
+          </div>
 
-          {/* Submitting overlay */}
-          <AnimatePresence>
-            {phase === 'submitting' && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'rgba(10,10,10,0.88)',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  gap: 16, backdropFilter: 'blur(4px)',
-                }}
-              >
-                <svg width={56} height={56} style={{ flexShrink: 0 }}>
-                  <circle cx={28} cy={28} r={22} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3} />
-                  <motion.circle
-                    cx={28} cy={28} r={22} fill="none" stroke="#00d4ff" strokeWidth={3}
+          {/* Drill title */}
+          <h1
+            className={`snpr-title snpr-fade-up${animIn.title ? ' snpr-in' : ''}`}
+            style={{
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontSize: 36,
+              fontWeight: 500,
+              color: '#f5f5f5',
+              letterSpacing: '-0.025em',
+              lineHeight: 1.15,
+              margin: '0 0 22px',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            {drill.title}
+          </h1>
+
+          {/* Brief cards */}
+          <div
+            className="snpr-brief-cards"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 14,
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            {/* Broken prompt */}
+            <div
+              className={`snpr-slide-left${animIn.cards ? ' snpr-in' : ''}`}
+              style={{
+                background: 'rgba(239,68,68,0.04)',
+                border: '1px solid rgba(239,68,68,0.12)',
+                borderRadius: 10,
+                padding: '14px 16px',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                marginBottom: 8,
+              }}>
+                <div style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: 'rgba(239,68,68,0.7)',
+                  flexShrink: 0,
+                }} />
+                <span style={{
+                  fontSize: 10,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(239,68,68,0.6)',
+                }}>
+                  Broken Prompt
+                </span>
+              </div>
+              <div style={{
+                fontFamily: 'ui-monospace, "Cascadia Code", "Source Code Pro", monospace',
+                fontSize: 13,
+                color: 'rgba(255,120,120,0.85)',
+                lineHeight: 1.65,
+              }}>
+                {drill.brokenPrompt}
+              </div>
+            </div>
+
+            {/* Target output */}
+            <div
+              className={`snpr-slide-right${animIn.cards ? ' snpr-in' : ''}`}
+              style={{
+                background: 'rgba(34,197,94,0.03)',
+                border: '1px solid rgba(34,197,94,0.1)',
+                borderRadius: 10,
+                padding: '14px 16px',
+              }}
+            >
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
+                marginBottom: 8,
+              }}>
+                <div style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: 'rgba(34,197,94,0.7)',
+                  flexShrink: 0,
+                }} />
+                <span style={{
+                  fontSize: 10,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(34,197,94,0.6)',
+                }}>
+                  Target Output
+                </span>
+              </div>
+              <div style={{
+                fontSize: 13,
+                color: 'rgba(255,255,255,0.5)',
+                lineHeight: 1.65,
+              }}>
+                {drill.targetOutput}
+              </div>
+            </div>
+          </div>
+
+          {/* Situation strip */}
+          <div
+            className={`snpr-fade-up${animIn.situation ? ' snpr-in' : ''}`}
+            style={{
+              marginTop: 12,
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.05)',
+              borderRadius: 8,
+              padding: '12px 16px',
+              position: 'relative',
+              zIndex: 1,
+            }}
+          >
+            <div style={{
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              color: 'rgba(255,255,255,0.2)',
+              marginBottom: 6,
+            }}>
+              Situation
+            </div>
+            <div style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.4)',
+              lineHeight: 1.6,
+            }}>
+              {drill.context}
+            </div>
+          </div>
+        </div>
+
+        {/* ── 3. WRITE ZONE ──────────────────────────────────────────────── */}
+        <div
+          className={`snpr-write-zone snpr-fade-up${animIn.writeZone ? ' snpr-in' : ''}`}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '20px 48px 16px',
+            overflow: 'hidden',
+          }}
+        >
+          {isSubmitting ? (
+            /* Loading state */
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 16,
+            }}>
+              <div style={{ animation: 'snprSpin 1s linear infinite', transformOrigin: 'center' }}>
+                <svg width={48} height={48} viewBox="0 0 48 48" fill="none">
+                  <circle cx={24} cy={24} r={20} stroke="rgba(34,197,94,0.15)" strokeWidth={2} />
+                  <circle
+                    cx={24} cy={24} r={20}
+                    stroke="#22c55e"
+                    strokeWidth={2}
                     strokeLinecap="round"
-                    strokeDasharray={`${22 * 2 * Math.PI}`}
-                    strokeDashoffset={`${22 * 2 * Math.PI * 0.72}`}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
-                    style={{ transformOrigin: '28px 28px' }}
+                    strokeDasharray={`${Math.PI * 2 * 20 * 0.25} ${Math.PI * 2 * 20 * 0.75}`}
+                    fill="none"
                   />
                 </svg>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'var(--font-body)', fontSize: 14, fontWeight: 600, color: '#f0f0f0', marginBottom: 6 }}>
-                    Analysing your prompt...
-                  </div>
-                  <div style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-                    Scoring against {drill.successCriteria.length} criteria
-                  </div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{
+                  fontSize: 15,
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: 6,
+                }}>
+                  Scoring your prompt...
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div style={{
+                  fontSize: 13,
+                  color: 'rgba(255,255,255,0.3)',
+                }}>
+                  Evaluating against 5 criteria
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Write zone header */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 0,
+                flexShrink: 0,
+              }}>
+                <span style={{
+                  fontSize: 10,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'rgba(255,255,255,0.2)',
+                }}>
+                  Your Improved Prompt
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Criteria indicator dots */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {criteriaLit.map((lit, i) => (
+                      <div
+                        key={i}
+                        title={CRITERIA_CONFIG[i].name}
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: '50%',
+                          background: lit ? 'rgba(34,197,94,0.7)' : 'rgba(255,255,255,0.1)',
+                          transition: 'background 300ms ease',
+                          flexShrink: 0,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  {/* Char count */}
+                  <span style={{
+                    fontSize: 11,
+                    color: charCountLit ? 'rgba(34,197,94,0.6)' : 'rgba(255,255,255,0.18)',
+                    fontVariantNumeric: 'tabular-nums',
+                    transition: 'color 300ms ease',
+                  }}>
+                    {prompt.length} chars
+                  </span>
+                </div>
+              </div>
 
-        </motion.div>
+              {/* Textarea */}
+              <textarea
+                className="snpr-textarea"
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+                disabled={phase !== 'write'}
+                placeholder="Rewrite the broken prompt above. Define the audience precisely, specify the exact output format and structure, set hard constraints on length and tone..."
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                  padding: '18px 0',
+                  fontSize: 15,
+                  fontFamily: 'inherit',
+                  color: 'rgba(255,255,255,0.88)',
+                  lineHeight: 1.8,
+                  resize: 'none',
+                  outline: 'none',
+                  caretColor: '#22c55e',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </>
+          )}
+        </div>
+
+        {/* ── 4. BOTTOM BAR ──────────────────────────────────────────────── */}
+        <div
+          className={`snpr-bottom-bar snpr-fade-up${animIn.bottomBar ? ' snpr-in' : ''}`}
+          style={{
+            height: 64,
+            flexShrink: 0,
+            padding: '0 48px',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          {/* Left: criteria row */}
+          <div
+            className="snpr-criteria-row"
+            style={{ display: 'flex', alignItems: 'center', gap: 14 }}
+          >
+            {CRITERIA_CONFIG.map((c, i) => {
+              const lit = criteriaLit[i]
+              return (
+                <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: '50%',
+                    background: lit ? 'rgba(34,197,94,0.7)' : 'rgba(255,255,255,0.1)',
+                    transition: 'background 300ms ease',
+                    flexShrink: 0,
+                  }} />
+                  <span style={{
+                    fontSize: 11,
+                    color: lit ? 'rgba(34,197,94,0.65)' : 'rgba(255,255,255,0.2)',
+                    transition: 'color 300ms ease',
+                  }}>
+                    {c.name}
+                  </span>
+                  <span style={{
+                    fontSize: 10,
+                    color: lit ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.12)',
+                    transition: 'color 300ms ease',
+                  }}>
+                    {c.pts}pts
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Right: submit or loading text */}
+          {isSubmitting ? (
+            <span style={{
+              fontSize: 13,
+              color: 'rgba(255,255,255,0.3)',
+              letterSpacing: '0.02em',
+            }}>
+              Scoring...
+            </span>
+          ) : (
+            <button
+              className="snpr-submit-btn"
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              style={{
+                background: 'rgba(34,197,94,0.1)',
+                border: '1px solid rgba(34,197,94,0.28)',
+                color: '#4ade80',
+                padding: '11px 28px',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: canSubmit ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                transition: 'background 200ms ease, border-color 200ms ease, transform 200ms ease',
+                flexShrink: 0,
+              }}
+            >
+              Submit for Scoring <span className="snpr-arrow">→</span>
+            </button>
+          )}
+        </div>
+
       </div>
-    </div>
+    </>
   )
 }
