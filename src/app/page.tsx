@@ -23,7 +23,7 @@ const COMP_ROWS: { feature: string; dojo: 'yes'; udemy: 'yes'|'no'|'partial'; ud
   { feature: 'AI-graded rubric feedback',       dojo: 'yes', udemy: 'no',                            yt: 'no' },
   { feature: 'Measurable skill score',          dojo: 'yes', udemy: 'partial', udemyNote: 'Quiz %',  yt: 'no' },
   { feature: 'Weakness & gap analysis',         dojo: 'yes', udemy: 'no',                            yt: 'no' },
-  { feature: 'Adaptive difficulty',             dojo: 'yes', udemy: 'no',                            yt: 'no' },
+  { feature: 'Progressive difficulty tiers',     dojo: 'yes', udemy: 'no',                            yt: 'no' },
   { feature: 'Deliberate practice loops',       dojo: 'yes', udemy: 'partial', udemyNote: 'Quizzes', yt: 'no' },
   { feature: 'Proof of real ability',           dojo: 'yes', udemy: 'partial', udemyNote: 'Certificate', yt: 'no' },
   { feature: 'Results in under 10 minutes',     dojo: 'yes', udemy: 'no',                            yt: 'no' },
@@ -43,18 +43,31 @@ function useIsMobile(breakpoint = 768) {
 
 export default function Dashboard() {
   const isMobile = useIsMobile();
-  
+  const [scrollHidden, setScrollHidden] = useState(false);
+
+  // ── Scroll indicator — disappear on first scroll ──
+  useEffect(() => {
+    const hide = () => setScrollHidden(true);
+    window.addEventListener('scroll', hide, { passive: true, once: true } as EventListenerOptions);
+    return () => window.removeEventListener('scroll', hide);
+  }, []);
+
   // ── All landing page JS behaviors ──
   useEffect(() => {
     const WORDS = [
       'founders.','builders.','students.','starters.','creators.',
-      'dreamers.','pioneers.','hustlers.','strivers.','explorers.',
+      'pioneers.','hustlers.','strivers.','explorers.',
       'learners.','seekers.','achievers.','tinkerers.','operators.',
       'doers.','makers.','students.','teachers.'
     ];
 
     const s = document.createElement('style');
-    s.textContent = '@keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}';
+    s.textContent = [
+      '@keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}',
+      '@keyframes ring-pulse{0%{opacity:0.6;transform:scale(1)}100%{opacity:0;transform:scale(1.08)}}',
+      '@keyframes scroll-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}',
+      '@keyframes amber-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.35;transform:scale(0.75)}}',
+    ].join('');
     document.head.appendChild(s);
 
     // ── Three.js WebGL hero shader ──
@@ -182,33 +195,46 @@ export default function Dashboard() {
       });
       document.body.removeChild(probe);
 
-      wrap.style.width  = Math.ceil(maxW) + 'px';
-      wrap.style.height = clipH + 'px';
+      wrap.style.width    = Math.ceil(maxW) + 'px';
+      wrap.style.height   = clipH + 'px';
+      wrap.style.position = 'relative';
+      wrap.style.overflow = 'hidden';
 
-      active.textContent      = shuffled[0];
-      active.style.transform  = 'translateY(0px)';
-      active.style.opacity    = '1';
-      standby.style.transform = `translateY(-${clipH}px)`;
-      standby.style.opacity   = '0';
+      // Both slots stacked at the same position — pure opacity sequential crossfade
+      [slotA, slotB].forEach(s => {
+        s.style.position   = 'absolute';
+        s.style.top        = '0';
+        s.style.left       = '0';
+        s.style.width      = '100%';
+        s.style.transition = 'none';
+        s.style.transform  = 'none';
+      });
+
+      active.textContent    = shuffled[0];
+      active.style.opacity  = '1';
+      standby.style.opacity = '0';
 
       setInterval(() => {
         idx = (idx + 1) % shuffled.length;
-        standby.textContent = shuffled[idx];
-        standby.style.transition = 'none';
-        standby.style.transform  = `translateY(-${clipH}px)`;
-        standby.style.opacity    = '0';
 
-        requestAnimationFrame(() => requestAnimationFrame(() => {
-          const ease = '.52s cubic-bezier(.4,0,.2,1)';
-          active.style.transition  = `transform ${ease},opacity ${ease}`;
-          active.style.transform   = `translateY(${clipH}px)`;
-          active.style.opacity     = '0';
-          standby.style.transition = `transform ${ease},opacity ${ease}`;
-          standby.style.transform  = 'translateY(0px)';
-          standby.style.opacity    = '1';
-          [active, standby] = [standby, active];
-        }));
-      }, 2000);
+        // Phase 1 (200ms): outgoing word fully fades to opacity 0
+        active.style.transition = 'opacity 200ms ease-out';
+        active.style.opacity    = '0';
+
+        setTimeout(() => {
+          // Set incoming word while nothing is visible
+          standby.textContent      = shuffled[idx];
+          standby.style.transition = 'none';
+          standby.style.opacity    = '0';
+
+          requestAnimationFrame(() => {
+            // Phase 2 (200ms): incoming word fades in
+            standby.style.transition = 'opacity 200ms ease-out';
+            standby.style.opacity    = '1';
+            [active, standby] = [standby, active];
+          });
+        }, 200);
+      }, 2500);
     }
 
     function revealId(id: string, dur = .7) {
@@ -338,73 +364,36 @@ export default function Dashboard() {
             // Phase 2: type improved prompt
             typeLines(goodLines, () => {
               cur.style.display = 'none';
-              // Phase 3: show submit button
-              if (submitBtn) {
-                submitBtn.style.display = 'inline-flex';
-                submitBtn.style.opacity = '0';
-                submitBtn.style.transform = 'translateY(6px)';
-                requestAnimationFrame(() => {
-                  submitBtn.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-                  submitBtn.style.opacity = '1';
-                  submitBtn.style.transform = 'translateY(0)';
-                });
-              }
-              // Phase 4: animate cursor toward button using real coordinates
+
+              // Phase 2: Submit moment — 800ms pause, button brightens then kicks off scoring
               setTimeout(() => {
-                const codeWin = document.getElementById('code-window');
-                if (cursorDot && submitBtn && codeWin) {
-                  const winRect = codeWin.getBoundingClientRect();
-                  const btnRect = submitBtn.getBoundingClientRect();
-                  // Start cursor: center of code body
-                  const startX = (winRect.width * 0.55);
-                  const startY = (btnRect.top - winRect.top - 40);
-                  // End cursor: center of button
-                  const endX = (btnRect.left - winRect.left + btnRect.width / 2 + 8);
-                  const endY = (btnRect.top - winRect.top + btnRect.height / 2 + 2);
-
-                  cursorDot.style.display = 'block';
-                  cursorDot.style.opacity = '0';
-                  cursorDot.style.left = startX + 'px';
-                  cursorDot.style.top = startY + 'px';
-                  cursorDot.style.transform = 'scale(1)';
-                  cursorDot.style.transition = 'none';
-
+                if (submitBtn) {
+                  submitBtn.style.display = 'inline-flex';
+                  submitBtn.style.opacity = '0';
+                  submitBtn.style.transform = 'scale(1)';
+                  submitBtn.style.boxShadow = 'none';
+                  submitBtn.style.transition = 'none';
                   requestAnimationFrame(() => {
-                    cursorDot.style.transition = 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), top 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease';
-                    cursorDot.style.opacity = '1';
-                    cursorDot.style.left = endX + 'px';
-                    cursorDot.style.top = endY + 'px';
-                  });
-
-                  // Phase 5: click effect after cursor arrives at button
-                  setTimeout(() => {
-                    // Click pulse on cursor
-                    cursorDot.style.transition = 'transform 0.1s ease';
-                    cursorDot.style.transform = 'scale(0.65)';
+                    submitBtn.style.transition = 'opacity 0.3s ease, transform 0.15s ease, box-shadow 0.15s ease';
+                    submitBtn.style.opacity = '1';
+                    // Brief visual activation: scale 1.02 + border glow
                     setTimeout(() => {
-                      cursorDot.style.transform = 'scale(1)';
-                    }, 110);
-                    // Button click visual feedback
-                    submitBtn.classList.add('clicked');
-                    submitBtn.style.transform = 'scale(0.95)';
-                    setTimeout(() => { submitBtn.style.transform = 'scale(1)'; }, 140);
-                    // After click: fade out cursor + button, then show result
-                    setTimeout(() => {
-                      cursorDot.style.transition = 'opacity 0.25s ease';
-                      cursorDot.style.opacity = '0';
-                      submitBtn.style.transition = 'opacity 0.25s ease';
-                      submitBtn.style.opacity = '0';
+                      submitBtn.style.transform = 'scale(1.02)';
+                      submitBtn.style.boxShadow = '0 0 0 2px rgba(255,255,255,0.4)';
                       setTimeout(() => {
-                        submitBtn.style.display = 'none';
-                        cursorDot.style.display = 'none';
-                        showResult();
-                      }, 280);
-                    }, 300);
-                  }, 900);
+                        submitBtn.style.transition = 'opacity 0.25s ease';
+                        submitBtn.style.opacity = '0';
+                        setTimeout(() => {
+                          submitBtn.style.display = 'none';
+                          runScoringSequence();
+                        }, 280);
+                      }, 400);
+                    }, 200);
+                  });
                 } else {
-                  setTimeout(showResult, 400);
+                  runScoringSequence();
                 }
-              }, 650);
+              }, 800);
             }, 18);
           }, 380);
         }, 1400);
@@ -495,43 +484,529 @@ export default function Dashboard() {
       }));
     }
 
+    // ── Scoring sequence — replaces old showResult panel ────────────────────
+    function runScoringSequence() {
+      const body = document.getElementById('code-body');
+      if (!body) return;
+
+      // Phase 3a: fade out terminal content
+      body.style.transition = 'opacity 0.35s ease';
+      body.style.opacity = '0';
+
+      setTimeout(() => {
+        body!.innerHTML = '';
+        body!.style.transition = 'none';
+        body!.style.opacity = '1';
+
+        type SPart = { text: string; color: string; weight?: string; style?: string };
+
+        // Types each segment of a line at 15ms/char, calls onDone when complete
+        function addLine(parts: SPart[], onDone?: () => void) {
+          const lineEl = document.createElement('div');
+          lineEl.style.fontFamily = 'var(--font-code)';
+          lineEl.style.fontSize = '13px';
+          lineEl.style.lineHeight = '1.8';
+          body!.appendChild(lineEl);
+
+          let pi = 0, ci = 0;
+          let span: HTMLSpanElement | null = null;
+
+          function next() {
+            if (pi >= parts.length) { onDone?.(); return; }
+            const p = parts[pi];
+            if (ci === 0) {
+              span = document.createElement('span');
+              span.style.color = p.color;
+              if (p.weight) span.style.fontWeight = p.weight;
+              if (p.style) span.style.fontStyle = p.style;
+              lineEl.appendChild(span);
+            }
+            if (ci < p.text.length) {
+              span!.textContent += p.text[ci++];
+              setTimeout(next, 15);
+            } else { ci = 0; pi++; setTimeout(next, 6); }
+          }
+          next();
+        }
+
+        const W = 'rgba(255,255,255,0.5)';
+        const D = 'rgba(255,255,255,0.2)';
+
+        // Line 1 — evaluating
+        addLine([{ text: 'Evaluating submission...', color: 'rgba(255,255,255,0.4)', style: 'italic' }], () => {
+          // Line 2 after 600ms
+          setTimeout(() => {
+            addLine([
+              { text: 'Audience Definition ', color: W },
+              { text: '..........', color: D },
+              { text: ' 17', color: '#22c55e', weight: '600' },
+              { text: ' / 20', color: W },
+            ], () => setTimeout(() => {
+              // Line 3
+              addLine([
+                { text: 'Structure Specification ', color: W },
+                { text: '.......', color: D },
+                { text: ' 21', color: '#22c55e', weight: '600' },
+                { text: ' / 25', color: W },
+              ], () => setTimeout(() => {
+                // Line 4
+                addLine([
+                  { text: 'Tone Definition ', color: W },
+                  { text: '...............', color: D },
+                  { text: ' 18', color: '#22c55e', weight: '600' },
+                  { text: ' / 20', color: W },
+                ], () => setTimeout(() => {
+                  // Line 5
+                  addLine([
+                    { text: 'Length Constraint ', color: W },
+                    { text: '.............', color: D },
+                    { text: ' 11', color: '#f59e0b', weight: '600' },
+                    { text: ' / 15', color: W },
+                  ], () => setTimeout(() => {
+                    // Line 6
+                    addLine([
+                      { text: 'Format Elements ', color: W },
+                      { text: '...............', color: D },
+                      { text: ' 16', color: '#22c55e', weight: '600' },
+                      { text: ' / 20', color: W },
+                    ], () => setTimeout(() => {
+                      // Line 7 — divider
+                      addLine([{ text: '──────────────────────────────────', color: 'rgba(255,255,255,0.15)' }], () => {
+                        setTimeout(() => {
+                          // Line 8 — TOTAL SCORE with count-up
+                          const totalLine = document.createElement('div');
+                          totalLine.style.fontFamily = 'var(--font-code)';
+                          totalLine.style.fontSize = '14px';
+                          totalLine.style.lineHeight = '1.8';
+                          totalLine.style.marginTop = '2px';
+                          body!.appendChild(totalLine);
+
+                          const labelSpan = document.createElement('span');
+                          labelSpan.style.color = 'rgba(255,255,255,0.8)';
+                          labelSpan.style.fontWeight = '600';
+                          labelSpan.textContent = 'TOTAL SCORE:  ';
+                          totalLine.appendChild(labelSpan);
+
+                          const numSpan = document.createElement('span');
+                          numSpan.style.color = '#22c55e';
+                          numSpan.style.fontWeight = '600';
+                          numSpan.textContent = '0';
+                          totalLine.appendChild(numSpan);
+
+                          const maxSpan = document.createElement('span');
+                          maxSpan.style.color = 'rgba(255,255,255,0.5)';
+                          maxSpan.textContent = ' / 100  ';
+                          totalLine.appendChild(maxSpan);
+
+                          const profBadge = document.createElement('span');
+                          profBadge.style.cssText = [
+                            'display:inline-block',
+                            'padding:2px 8px',
+                            'background:rgba(34,197,94,0.1)',
+                            'border:1px solid rgba(34,197,94,0.3)',
+                            'border-radius:4px',
+                            'font-size:10px',
+                            'letter-spacing:0.1em',
+                            'color:rgba(34,197,94,0.9)',
+                            'text-transform:uppercase',
+                            'opacity:0',
+                            'transition:opacity 0.3s ease',
+                            'vertical-align:middle',
+                            'font-family:var(--font-code)',
+                          ].join(';');
+                          profBadge.textContent = 'PROFICIENT';
+                          totalLine.appendChild(profBadge);
+
+                          // Count 0 → 83 over 600ms with ease-out
+                          const t0 = performance.now();
+                          const easeOut3 = (t: number) => 1 - Math.pow(1 - t, 3);
+                          function countUp(now: number) {
+                            const p = Math.min((now - t0) / 600, 1);
+                            numSpan.textContent = String(Math.floor(easeOut3(p) * 83));
+                            if (p < 1) requestAnimationFrame(countUp);
+                            else {
+                              numSpan.textContent = '83';
+                              requestAnimationFrame(() => { profBadge.style.opacity = '1'; });
+                            }
+                          }
+                          requestAnimationFrame(countUp);
+
+                          // Phase 4: hold 2500ms, then Phase 5
+                          setTimeout(() => {
+                            body!.style.transition = 'opacity 0.4s ease';
+                            body!.style.opacity = '0';
+                            // Phase 5: reset and loop
+                            setTimeout(() => {
+                              body!.style.transition = 'none';
+                              body!.style.opacity = '1';
+                              runDrillAnimation();
+                            }, 900);
+                          }, 2500);
+                        }, 200);
+                      });
+                    }, 400));
+                  }, 400));
+                }, 400));
+              }, 400));
+            }, 400));
+          }, 600);
+        });
+      }, 400);
+    }
+
     function initAutoScroll() {
       const _el = document.getElementById('featscroll'); if (!_el) return;
       const el = _el;
       let paused = false;
-      let pauseTimer: ReturnType<typeof setTimeout> | null = null;
-      let rafId = 0;
-      const speed = 0.8; // px per frame (~48px/s at 60fps)
+      let stepTimer: ReturnType<typeof setTimeout> | null = null;
+      let stepRaf = 0;
 
-      function step() {
-        if (!paused) {
-          el.scrollLeft += speed;
-          // Infinite loop: when past halfway (duplicate set), jump back
-          const half = el.scrollWidth / 2;
-          if (el.scrollLeft >= half) {
-            el.scrollLeft -= half;
+      function getCardStep(): number {
+        const card = el.querySelector('.fcard') as HTMLElement | null;
+        if (!card) return 260;
+        const gap = parseFloat(getComputedStyle(el).gap || '16');
+        return card.getBoundingClientRect().width + gap;
+      }
+
+      function smoothScrollBy(amount: number, duration: number, onDone?: () => void) {
+        const start = el.scrollLeft;
+        const t0 = performance.now();
+        function tick(now: number) {
+          const p = Math.min((now - t0) / duration, 1);
+          const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+          el.scrollLeft = start + amount * ease;
+          if (p < 1) {
+            stepRaf = requestAnimationFrame(tick);
+          } else {
+            el.scrollLeft = start + amount;
+            const half = el.scrollWidth / 2;
+            if (el.scrollLeft >= half) el.scrollLeft -= half;
+            onDone?.();
           }
         }
-        rafId = requestAnimationFrame(step);
+        stepRaf = requestAnimationFrame(tick);
       }
-      rafId = requestAnimationFrame(step);
 
-      const pauseScroll = () => {
-        paused = true;
-        if (pauseTimer) clearTimeout(pauseTimer);
-        pauseTimer = setTimeout(() => { paused = false; }, 3000);
-      };
+      function scheduleStep() {
+        stepTimer = setTimeout(() => {
+          if (!paused) {
+            smoothScrollBy(getCardStep(), 500, scheduleStep);
+          } else {
+            scheduleStep();
+          }
+        }, 4000);
+      }
 
-      // Pause on any user interaction
-      el.addEventListener('wheel', pauseScroll, { passive: true });
-      el.addEventListener('touchstart', pauseScroll, { passive: true });
-      el.addEventListener('mousedown', pauseScroll);
-      el.addEventListener('pointerdown', pauseScroll);
+      scheduleStep();
+
+      // Pause on hover, resume on leave
+      el.addEventListener('mouseenter', () => { paused = true; });
+      el.addEventListener('mouseleave', () => { paused = false; });
+      el.addEventListener('touchstart', () => { paused = true; }, { passive: true });
+      el.addEventListener('touchend', () => { setTimeout(() => { paused = false; }, 1500); });
 
       // Store cleanup ref
       (el as any)._autoScrollCleanup = () => {
+        if (stepTimer) clearTimeout(stepTimer);
+        if (stepRaf) cancelAnimationFrame(stepRaf);
+      };
+    }
+
+    // ── Multi-agent carousel card canvas ──
+    function initMultiAgentCanvas(canvas: HTMLCanvasElement): () => void {
+      const ctxRaw = canvas.getContext('2d');
+      if (!ctxRaw) return () => {};
+      const ctx: CanvasRenderingContext2D = ctxRaw;
+      const t0 = performance.now();
+      let rafId = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        if (!rect.width) return;
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+      const ndefs = [
+        { nx: 0.50, ny: 0.24, label: 'Classifier', color: '#f59e0b' },
+        { nx: 0.18, ny: 0.78, label: 'Responder',  color: '#22c55e' },
+        { nx: 0.82, ny: 0.78, label: 'Escalation', color: '#60a5fa' },
+      ];
+      function draw(now: number) {
+        const rect = canvas.getBoundingClientRect();
+        const W = rect.width, H = rect.height;
+        if (!W || !H) { rafId = requestAnimationFrame(draw); return; }
+        ctx.clearRect(0, 0, W, H);
+        const t = (now - t0) / 1000;
+        const nPos = ndefs.map(n => ({ x: n.nx * W, y: n.ny * H, label: n.label, color: n.color }));
+        // Dashed connection lines
+        ctx.save();
+        ctx.setLineDash([2, 4]);
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        [[0,1],[1,2],[2,0]].forEach(([a, b]) => {
+          ctx.beginPath(); ctx.moveTo(nPos[a].x, nPos[a].y); ctx.lineTo(nPos[b].x, nPos[b].y); ctx.stroke();
+        });
+        ctx.restore();
+        // Animated packet
+        const segDur = 1.1;
+        const loopDur = segDur * 3;
+        const tp = t % loopDur;
+        const seg = tp < segDur ? 0 : tp < segDur * 2 ? 1 : 2;
+        const frac = seg === 0 ? tp / segDur : seg === 1 ? (tp - segDur) / segDur : (tp - segDur * 2) / segDur;
+        const ef = frac < 0.5 ? 2 * frac * frac : -1 + (4 - 2 * frac) * frac;
+        const fromN = nPos[seg % 3], toN = nPos[(seg + 1) % 3];
+        const px = fromN.x + (toN.x - fromN.x) * ef;
+        const py = fromN.y + (toN.y - fromN.y) * ef;
+        const pColor = ndefs[seg % 3].color;
+        // Trail
+        for (let i = 5; i >= 0; i--) {
+          const tf = Math.max(0, frac - (i + 1) * 0.07);
+          const te = tf < 0.5 ? 2*tf*tf : -1+(4-2*tf)*tf;
+          ctx.beginPath();
+          ctx.arc(fromN.x + (toN.x - fromN.x) * te, fromN.y + (toN.y - fromN.y) * te, Math.max(0.3, 2.2 - i * 0.3), 0, Math.PI * 2);
+          ctx.fillStyle = pColor + Math.round(Math.max(0, 0.45 - i * 0.07) * 255).toString(16).padStart(2, '0');
+          ctx.fill();
+        }
+        // Packet
+        ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fillStyle = pColor; ctx.fill();
+        // Node glow on arrival
+        nPos.forEach((n, i) => {
+          const aTime = i * segDur;
+          const gA = tp > aTime && tp < aTime + 0.45 ? 0.22 * Math.sin(Math.PI * (tp - aTime) / 0.45) : 0;
+          if (gA > 0) {
+            const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, 22);
+            grad.addColorStop(0, n.color + Math.round(gA * 255).toString(16).padStart(2, '0'));
+            grad.addColorStop(1, n.color + '00');
+            ctx.beginPath(); ctx.arc(n.x, n.y, 22, 0, Math.PI * 2);
+            ctx.fillStyle = grad; ctx.fill();
+          }
+        });
+        // Nodes
+        nPos.forEach(n => {
+          ctx.beginPath(); ctx.arc(n.x, n.y, 11, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(8,9,12,0.9)'; ctx.fill();
+          ctx.strokeStyle = n.color + '88'; ctx.lineWidth = 1; ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.font = 'bold 7px system-ui,sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(n.label, n.x, n.y + 23);
+        });
+        rafId = requestAnimationFrame(draw);
+      }
+      rafId = requestAnimationFrame(draw);
+      return () => cancelAnimationFrame(rafId);
+    }
+
+    // ── Sparse green particle background ──
+    function initParticles(canvasId: string): () => void {
+      const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+      if (!canvas) return () => {};
+      const ctxRaw = canvas.getContext('2d');
+      if (!ctxRaw) return () => {};
+      const ctx: CanvasRenderingContext2D = ctxRaw;
+      let rafId = 0;
+      type Particle = { x: number; y: number; vx: number; vy: number; r: number; alpha: number };
+      let particles: Particle[] = [];
+      function spawn(W: number, H: number): Particle[] {
+        const count = Math.max(4, Math.floor(W * H / 20000));
+        return Array.from({ length: count }, () => ({
+          x: Math.random() * W, y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.28, vy: (Math.random() - 0.5) * 0.28,
+          r: Math.random() * 1.4 + 0.5,
+          alpha: 0.12 + Math.random() * 0.08,
+        }));
+      }
+      function resize() {
+        const rect = canvas!.getBoundingClientRect();
+        if (!rect.width) return;
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        canvas!.width = rect.width * dpr;
+        canvas!.height = rect.height * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        particles = spawn(rect.width, rect.height);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      function draw() {
+        const rect = canvas!.getBoundingClientRect();
+        const W = rect.width, H = rect.height;
+        if (!W || !H) { rafId = requestAnimationFrame(draw); return; }
+        ctx.clearRect(0, 0, W, H);
+        particles.forEach(p => {
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+          if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+        });
+        // Connection lines
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 120) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = `rgba(34,197,94,${(1 - d / 120) * 0.06})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+        // Dots
+        particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(34,197,94,${p.alpha})`;
+          ctx.fill();
+        });
+        rafId = requestAnimationFrame(draw);
+      }
+      rafId = requestAnimationFrame(draw);
+      return () => { cancelAnimationFrame(rafId); window.removeEventListener('resize', resize); };
+    }
+
+    // ── Multi-agent preview section canvas ──
+    function initMASection(): () => void {
+      const canvas = document.getElementById('ma-section-canvas') as HTMLCanvasElement | null;
+      if (!canvas) return () => {};
+      const ctxRaw = canvas.getContext('2d');
+      if (!ctxRaw) return () => {};
+      const ctx: CanvasRenderingContext2D = ctxRaw;
+      const t0 = performance.now();
+      let rafId = 0;
+      function resize() {
+        const rect = canvas!.getBoundingClientRect();
+        if (!rect.width) return;
+        const dpr = Math.min(window.devicePixelRatio, 2);
+        canvas!.width = rect.width * dpr;
+        canvas!.height = rect.height * dpr;
+        ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      resize();
+      window.addEventListener('resize', resize);
+      const agents = [
+        { label: 'CLASSIFIER', sub: 'routes input',       color: '#f59e0b' },
+        { label: 'RESPONDER',  sub: 'drafts reply',       color: '#22c55e' },
+        { label: 'ESCALATION', sub: 'handles edge cases', color: '#60a5fa' },
+      ];
+      function rr(x: number, y: number, w: number, h: number, r: number) {
+        ctx!.beginPath();
+        ctx!.moveTo(x + r, y); ctx!.lineTo(x + w - r, y);
+        ctx!.arcTo(x + w, y, x + w, y + r, r); ctx!.lineTo(x + w, y + h - r);
+        ctx!.arcTo(x + w, y + h, x + w - r, y + h, r); ctx!.lineTo(x + r, y + h);
+        ctx!.arcTo(x, y + h, x, y + h - r, r); ctx!.lineTo(x, y + r);
+        ctx!.arcTo(x, y, x + r, y, r); ctx!.closePath();
+      }
+      function draw(now: number) {
+        const rect = canvas!.getBoundingClientRect();
+        const W = rect.width, H = rect.height;
+        if (!W || !H) { rafId = requestAnimationFrame(draw); return; }
+        ctx!.clearRect(0, 0, W, H);
+        const t = (now - t0) / 1000;
+        const tp = t % 6.0;
+        const cardW = Math.min(130, W * 0.17);
+        const cardH = 68;
+        const cardY = H / 2 - cardH / 2;
+        const xs = [W * 0.22, W * 0.5, W * 0.78];
+        // Connection lines
+        ctx!.save(); ctx!.setLineDash([3, 5]); ctx!.lineWidth = 1;
+        ctx!.strokeStyle = 'rgba(255,255,255,0.07)';
+        for (let i = 0; i < 2; i++) {
+          ctx!.beginPath();
+          ctx!.moveTo(xs[i] + cardW / 2, H / 2);
+          ctx!.lineTo(xs[i + 1] - cardW / 2, H / 2);
+          ctx!.stroke();
+        }
+        ctx!.restore();
+        // Ticket enters from left (0..1.8s)
+        if (tp < 1.8) {
+          const prog = Math.min(tp / 1.2, 1);
+          const ease = 1 - Math.pow(1 - prog, 3);
+          const tx = W * 0.03 + (xs[0] - cardW / 2 - W * 0.03 - 44) * ease;
+          const alpha = tp < 0.15 ? tp / 0.15 : tp > 1.4 ? 1 - (tp - 1.4) / 0.4 : 1;
+          ctx!.globalAlpha = Math.max(0, alpha);
+          rr(tx, H / 2 - 14, 44, 28, 5);
+          ctx!.fillStyle = 'rgba(245,158,11,0.1)'; ctx!.fill();
+          ctx!.strokeStyle = 'rgba(245,158,11,0.35)'; ctx!.lineWidth = 1; ctx!.stroke();
+          ctx!.fillStyle = 'rgba(245,158,11,0.75)'; ctx!.font = '8px system-ui,sans-serif';
+          ctx!.textAlign = 'center'; ctx!.fillText('ticket', tx + 22, H / 2 + 3);
+          ctx!.globalAlpha = 1;
+        }
+        // Packet 1: Agent0 → Agent1 (1.5..3.0)
+        if (tp >= 1.5 && tp < 3.0) {
+          const p = (tp - 1.5) / 1.5;
+          const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
+          const x1 = xs[0] + cardW / 2, x2 = xs[1] - cardW / 2;
+          const ppx = x1 + (x2 - x1) * e;
+          for (let i = 5; i >= 0; i--) {
+            const tp2 = Math.max(0, p - (i+1)*0.06); const ep = tp2 < 0.5 ? 2*tp2*tp2 : -1+(4-2*tp2)*tp2;
+            ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * ep, H/2, Math.max(0.3, 2.5-i*0.3), 0, Math.PI*2);
+            ctx!.fillStyle = `rgba(34,197,94,${Math.max(0,0.5-i*0.08)})`; ctx!.fill();
+          }
+          ctx!.beginPath(); ctx!.arc(ppx, H/2, 3.5, 0, Math.PI*2); ctx!.fillStyle = '#22c55e'; ctx!.fill();
+        }
+        // Packet 2: Agent1 → Agent2 (3.0..4.5)
+        if (tp >= 3.0 && tp < 4.5) {
+          const p = (tp - 3.0) / 1.5;
+          const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
+          const x1 = xs[1] + cardW / 2, x2 = xs[2] - cardW / 2;
+          const ppx = x1 + (x2 - x1) * e;
+          for (let i = 5; i >= 0; i--) {
+            const tp2 = Math.max(0, p - (i+1)*0.06); const ep = tp2 < 0.5 ? 2*tp2*tp2 : -1+(4-2*tp2)*tp2;
+            ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * ep, H/2, Math.max(0.3, 2.5-i*0.3), 0, Math.PI*2);
+            ctx!.fillStyle = `rgba(96,165,250,${Math.max(0,0.5-i*0.08)})`; ctx!.fill();
+          }
+          ctx!.beginPath(); ctx!.arc(ppx, H/2, 3.5, 0, Math.PI*2); ctx!.fillStyle = '#60a5fa'; ctx!.fill();
+        }
+        // Output badge (4.5..6.0)
+        if (tp >= 4.5) {
+          const alpha = Math.min((tp - 4.5) / 0.4, 1) * (tp > 5.6 ? 1 - (tp - 5.6) / 0.4 : 1);
+          ctx!.globalAlpha = Math.max(0, alpha);
+          const ox = xs[2] + cardW / 2 + 10;
+          rr(ox, H/2 - 18, 62, 36, 7);
+          ctx!.fillStyle = 'rgba(96,165,250,0.08)'; ctx!.fill();
+          ctx!.strokeStyle = 'rgba(96,165,250,0.25)'; ctx!.lineWidth = 1; ctx!.stroke();
+          ctx!.fillStyle = 'rgba(255,255,255,0.65)'; ctx!.font = '8px system-ui,sans-serif';
+          ctx!.textAlign = 'center'; ctx!.fillText('resolved', ox + 31, H/2 - 3);
+          ctx!.fillStyle = '#22c55e'; ctx!.font = '10px system-ui,sans-serif';
+          ctx!.fillText('✓', ox + 31, H/2 + 13);
+          ctx!.globalAlpha = 1;
+        }
+        // Agent cards
+        agents.forEach((agent, i) => {
+          const x = xs[i] - cardW / 2;
+          const isActive = (i === 0 && tp >= 1.2 && tp < 1.8) || (i === 1 && tp >= 3.0 && tp < 3.6) || (i === 2 && tp >= 4.5 && tp < 5.1);
+          const gFrac = i === 0 ? (tp - 1.2) / 0.6 : i === 1 ? (tp - 3.0) / 0.6 : (tp - 4.5) / 0.6;
+          const glowA = isActive ? 0.18 * Math.sin(Math.PI * Math.max(0, Math.min(1, gFrac))) : 0;
+          if (glowA > 0) {
+            const grad = ctx!.createRadialGradient(xs[i], H/2, 0, xs[i], H/2, 65);
+            grad.addColorStop(0, agent.color + Math.round(glowA * 255).toString(16).padStart(2, '0'));
+            grad.addColorStop(1, 'transparent');
+            ctx!.beginPath(); ctx!.arc(xs[i], H/2, 65, 0, Math.PI*2);
+            ctx!.fillStyle = grad; ctx!.fill();
+          }
+          rr(x, cardY, cardW, cardH, 9);
+          ctx!.fillStyle = 'rgba(255,255,255,0.025)'; ctx!.fill();
+          ctx!.strokeStyle = agent.color + '4d'; ctx!.lineWidth = 1; ctx!.stroke();
+          ctx!.beginPath(); ctx!.arc(x + 14, cardY + 14, 3.5, 0, Math.PI*2);
+          ctx!.fillStyle = agent.color + 'cc'; ctx!.fill();
+          ctx!.fillStyle = 'rgba(255,255,255,0.72)'; ctx!.font = 'bold 9px system-ui,sans-serif';
+          ctx!.textAlign = 'left'; ctx!.fillText(agent.label, x + 24, cardY + 17);
+          ctx!.fillStyle = 'rgba(255,255,255,0.28)'; ctx!.font = '7.5px system-ui,sans-serif';
+          ctx!.fillText(agent.sub, x + 10, cardY + 36);
+          ctx!.fillStyle = agent.color + '80'; ctx!.font = '7px system-ui,sans-serif';
+          ctx!.fillText('READY', x + 10, cardY + 54);
+        });
+        rafId = requestAnimationFrame(draw);
+      }
+      rafId = requestAnimationFrame(draw);
+      return () => {
         cancelAnimationFrame(rafId);
-        if (pauseTimer) clearTimeout(pauseTimer);
+        window.removeEventListener('resize', resize);
       };
     }
 
@@ -551,6 +1026,87 @@ export default function Dashboard() {
       }, 50);
     }
     initAutoScroll();
+
+    // Init multi-agent carousel card canvases
+    const maCanvasCleanups: (() => void)[] = [];
+    document.querySelectorAll('.ma-canvas').forEach(cv => {
+      const cleanup = initMultiAgentCanvas(cv as HTMLCanvasElement);
+      maCanvasCleanups.push(cleanup);
+    });
+
+    // Init multi-agent preview section via IO
+    let masCleanup: (() => void) | null = null;
+    const masSection = document.getElementById('multiagent-preview');
+    let masObs: IntersectionObserver | null = null;
+    if (masSection) {
+      masObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting && !masCleanup) {
+            masCleanup = initMASection();
+            masObs!.disconnect();
+          }
+        });
+      }, { threshold: 0.1 });
+      masObs.observe(masSection);
+    }
+
+    // Particle backgrounds — Why section
+    let whyParticlesCleanup: (() => void) | null = null;
+    let whyParticlesObs: IntersectionObserver | null = null;
+    const whySect = document.getElementById('why');
+    if (whySect) {
+      whyParticlesObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting && !whyParticlesCleanup) {
+            whyParticlesCleanup = initParticles('why-particles');
+            whyParticlesObs!.disconnect();
+          }
+        });
+      }, { threshold: 0.05 });
+      whyParticlesObs.observe(whySect);
+    }
+
+    // Particle backgrounds — CTA section
+    let ctaParticlesCleanup: (() => void) | null = null;
+    let ctaParticlesObs: IntersectionObserver | null = null;
+    const ctaSectForParticles = document.getElementById('cta');
+    if (ctaSectForParticles) {
+      ctaParticlesObs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting && !ctaParticlesCleanup) {
+            ctaParticlesCleanup = initParticles('cta-particles');
+            ctaParticlesObs!.disconnect();
+          }
+        });
+      }, { threshold: 0.05 });
+      ctaParticlesObs.observe(ctaSectForParticles);
+    }
+
+    // Domain card hover states
+    document.querySelectorAll('.fcard').forEach(card => {
+      const el = card as HTMLElement;
+      const isLive = (el.style.border || '').includes('34,197,94');
+      const origBorder = el.style.border;
+      const origTransform = el.style.transform || '';
+      el.style.transition = 'transform 0.2s ease, border-color 0.2s ease, border 0.2s ease, opacity 0.2s ease';
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'translateY(-3px) scale(1.01)';
+        if (isLive) {
+          el.style.borderColor = 'rgba(34,197,94,0.45)';
+        } else {
+          el.style.border = '1px solid rgba(255,255,255,0.15)';
+        }
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = origTransform;
+        if (isLive) {
+          el.style.borderColor = 'rgba(34,197,94,0.25)';
+        } else {
+          el.style.border = origBorder;
+        }
+      });
+    });
+
     startHero();
 
     // Scroll progress bar
@@ -560,8 +1116,8 @@ export default function Dashboard() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Generic .rv reveal
-    const rvEls = document.querySelectorAll('.rv');
+    // Generic .rv reveal — excludes h2.sh which get their own threshold-0.3 observer below
+    const rvEls = document.querySelectorAll('.rv:not(h2.sh)');
     const rvObservers: IntersectionObserver[] = [];
     rvEls.forEach(el => {
       const obs = new IntersectionObserver(entries => {
@@ -569,6 +1125,24 @@ export default function Dashboard() {
       }, { threshold: .08, rootMargin: '-20px' });
       obs.observe(el);
       rvObservers.push(obs);
+    });
+
+    // Section headline IO — threshold 0.3, anim-hidden → anim-visible
+    const headlineEls = document.querySelectorAll('h2.sh');
+    const headlineObs: IntersectionObserver[] = [];
+    headlineEls.forEach(h => {
+      (h as HTMLElement).classList.add('anim-hidden');
+      const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (e.isIntersecting) {
+            (e.target as HTMLElement).classList.add('anim-visible');
+            (e.target as HTMLElement).classList.add('vis');
+            obs.disconnect();
+          }
+        });
+      }, { threshold: 0.3 });
+      obs.observe(h);
+      headlineObs.push(obs);
     });
 
     // .div sweep
@@ -600,7 +1174,7 @@ export default function Dashboard() {
       codeObs.observe(codeWindowEl);
     }
 
-    // Why pillars: merge-in animation
+    // Why pillars: staggered merge-in (0 / 100 / 200 / 300ms)
     const pillarsEl = document.querySelector('.why-pillars');
     let pillarsObs: IntersectionObserver | null = null;
     if (pillarsEl) {
@@ -608,11 +1182,15 @@ export default function Dashboard() {
         entries.forEach(e => {
           if (e.isIntersecting) {
             const pillars = pillarsEl.querySelectorAll('.pillar');
-            pillars.forEach((p, i) => setTimeout(() => p.classList.add('merged'), i * 90));
+            const stagger = [0, 100, 200, 300];
+            pillars.forEach((p, i) => {
+              (p as HTMLElement).style.transitionDelay = stagger[i] + 'ms';
+              setTimeout(() => p.classList.add('merged'), stagger[i]);
+            });
             pillarsObs!.disconnect();
           }
         });
-      }, { threshold: .15 });
+      }, { threshold: .2 });
       pillarsObs.observe(pillarsEl);
     }
 
@@ -628,12 +1206,26 @@ export default function Dashboard() {
               card.classList.add('appeared');
               if (card.classList.contains('wide') && !bentoFired) {
                 bentoFired = true;
-                animateNumber('bento-score', 0, 71, 2800);
+                animateNumber('bento-score', 0, 85, 1200);
                 const fills = card.querySelectorAll('.bc-bar-fill') as NodeListOf<HTMLElement>;
-                const vals = [88, 74, 42];
+                const vals = [85, 0, 0, 0, 0];
+                const barDelays = [200, 350, 500, 650, 800];
                 fills.forEach((fill, fi) => {
-                  setTimeout(() => { fill.style.width = vals[fi] + '%'; }, 400 + fi * 600);
+                  setTimeout(() => {
+                    fill.style.transition = 'width 800ms cubic-bezier(0.4, 0, 0.2, 1)';
+                    fill.style.width = vals[fi] + '%';
+                  }, barDelays[fi]);
                 });
+                // Proficient badge fades in last
+                const rankEl = card.querySelector('.bc-ls-rank') as HTMLElement | null;
+                if (rankEl) {
+                  rankEl.style.opacity = '0';
+                  rankEl.style.transition = 'none';
+                  setTimeout(() => {
+                    rankEl.style.transition = 'opacity 300ms ease';
+                    rankEl.style.opacity = '1';
+                  }, 1000);
+                }
               }
             }, i * 70);
             obs.disconnect();
@@ -660,21 +1252,51 @@ export default function Dashboard() {
       fcardObs.push(obs);
     });
 
-    // Comparison table rows stagger reveal
-    const ctRows = document.querySelectorAll('.ct-row');
+    // Comparison table — single observer: rows reveal, then checkmark spring + ✗ fade
+    const ctBodyEl = document.querySelector('.ct-body');
     const ctObs: IntersectionObserver[] = [];
-    ctRows.forEach((row, i) => {
+    if (ctBodyEl) {
       const obs = new IntersectionObserver(entries => {
         entries.forEach(e => {
-          if (e.isIntersecting) {
-            setTimeout(() => row.classList.add('vis'), i * 70);
-            obs.disconnect();
-          }
+          if (!e.isIntersecting) return;
+
+          // Reveal all rows immediately
+          ctBodyEl.querySelectorAll('.ct-row').forEach(r => r.classList.add('vis'));
+
+          // ✓ checkmarks: scale(0)→scale(1) spring bounce, 40ms stagger
+          let delay = 0;
+          ctBodyEl.querySelectorAll('.ct-check.ct-yes').forEach(el => {
+            const h = el as HTMLElement;
+            h.style.display = 'inline-flex';
+            h.style.transform = 'scale(0)';
+            h.style.transition = 'none';
+            const d = delay;
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                h.style.transition = 'transform 120ms cubic-bezier(0.34, 1.56, 0.64, 1)';
+                h.style.transform = 'scale(1)';
+              }, d);
+            });
+            delay += 40;
+          });
+
+          // ✗ icons: opacity 0→0.5 simultaneously (subtle)
+          ctBodyEl.querySelectorAll('.ct-check.ct-no').forEach(el => {
+            const h = el as HTMLElement;
+            h.style.opacity = '0';
+            h.style.transition = 'none';
+            requestAnimationFrame(() => {
+              h.style.transition = 'opacity 300ms ease';
+              h.style.opacity = '0.5';
+            });
+          });
+
+          obs.disconnect();
         });
-      }, { threshold: .1 });
-      obs.observe(row);
+      }, { threshold: 0.1 });
+      obs.observe(ctBodyEl);
       ctObs.push(obs);
-    });
+    }
 
     // ── Lamp canvas animation ──
     let lampRaf = 0;
@@ -743,6 +1365,7 @@ export default function Dashboard() {
     return () => {
       window.removeEventListener('scroll', handleScroll);
       rvObservers.forEach(o => o.disconnect());
+      headlineObs.forEach(o => o.disconnect());
       divObservers.forEach(o => o.disconnect());
       bcardObs.forEach(o => o.disconnect());
       fcardObs.forEach(o => o.disconnect());
@@ -751,6 +1374,13 @@ export default function Dashboard() {
       if (pillarsObs) pillarsObs.disconnect();
       if (lampObs)    lampObs.disconnect();
       if (lampRaf)    cancelAnimationFrame(lampRaf);
+      if (masObs)     masObs.disconnect();
+      if (masCleanup) masCleanup();
+      maCanvasCleanups.forEach(c => c());
+      if (whyParticlesObs)   whyParticlesObs.disconnect();
+      if (whyParticlesCleanup) whyParticlesCleanup();
+      if (ctaParticlesObs)   ctaParticlesObs.disconnect();
+      if (ctaParticlesCleanup) ctaParticlesCleanup();
       const scrollEl = document.getElementById('featscroll');
       if (scrollEl && (scrollEl as any)._autoScrollCleanup) (scrollEl as any)._autoScrollCleanup();
     };
@@ -845,25 +1475,54 @@ export default function Dashboard() {
               exactly where you stand against everyone else.
             </p>
             <div className="hero-btns" id="hbtns">
-              <a href="/diagnostic" className="btn-solid">
-                Begin Diagnostic{" "}
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </a>
+              <div style={{ position: 'relative', display: 'inline-block' }}>
+                <a href="/diagnostic" className="btn-solid">
+                  Start Diagnostic{" "}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </a>
+                <div style={{
+                  position: 'absolute',
+                  inset: -4,
+                  borderRadius: 14,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  animation: 'ring-pulse 3s ease-out infinite',
+                  pointerEvents: 'none',
+                }} />
+              </div>
             </div>
           </div>
-          <div className="hero-scroll">
-            <div className="scr-rod"></div>
-            <span className="scr-txt">Scroll</span>
+          <div style={{
+            position: 'absolute',
+            bottom: 32,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 4,
+              opacity: scrollHidden ? 0 : 0.4,
+              transition: 'opacity 0.3s ease',
+              animation: 'scroll-bounce 1.5s ease-in-out infinite',
+            }}>
+              <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.2)' }} />
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>∨</span>
+            </div>
           </div>
         </section>
 
         <div className="div" id="dv1"></div>
 
         {/* ── 2. Why AI Dojo ── */}
-        <section id="why">
-          <div className="sec">
+        <section id="why" style={{ position: 'relative' }}>
+          <canvas id="why-particles" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.5, zIndex: 0 }} />
+          <div className="sec" style={{ position: 'relative', zIndex: 1 }}>
             <div className="why-layout">
               <div>
                 <div className="tag rv">Why AI Dojo</div>
@@ -890,8 +1549,19 @@ export default function Dashboard() {
                 </div>
                 <div className="pillar br">
                   <span className="pi-n">04</span>
-                  <div className="pi-t">12 domains, one standard</div>
-                  <div className="pi-d">From prompt engineering to multi-agent systems. Every area a professional AI operator must command.</div>
+                  <div className="pi-t">7 domains on the roadmap</div>
+                  <div className="pi-d">From prompt engineering to multi-agent systems. Every area a professional AI operator must command. 1 live now.</div>
+                  <span style={{
+                    display: 'inline-block',
+                    marginTop: 10,
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                    color: 'rgba(34,197,94,0.85)',
+                    background: 'rgba(34,197,94,0.1)',
+                    border: '1px solid rgba(34,197,94,0.2)',
+                    padding: '2px 8px',
+                    borderRadius: 100,
+                  }}>OPEN BETA</span>
                 </div>
               </div>
             </div>
@@ -924,29 +1594,33 @@ export default function Dashboard() {
                   </div>
                   <div className="bc-ls-bars">
                     {[
-                      { lbl: 'Prompt Engineering',  val: 88 },
-                      { lbl: 'Reasoning Chains',    val: 74 },
-                      { lbl: 'Multi-Agent Systems', val: 42 },
+                      { lbl: 'Prompt Engineering', val: 85, note: '' },
+                      { lbl: 'Output Control',     val: 0,  note: 'not yet trained' },
+                      { lbl: 'System Prompts',     val: 0,  note: '' },
+                      { lbl: 'Role Prompting',     val: 0,  note: '' },
+                      { lbl: 'Reasoning Chains',   val: 0,  note: '' },
                     ].map(row => (
                       <div key={row.lbl} className="bc-bar-row">
                         <div className="bc-bar-lbl">{row.lbl}</div>
                         <div className="bc-bar-track">
                           <div className="bc-bar-fill" style={{ width: 0 }}></div>
                         </div>
-                        <div className="bc-bar-val">{row.val}</div>
+                        <div className="bc-bar-val" style={{ color: row.val === 0 ? 'rgba(255,255,255,0.2)' : undefined }}>
+                          {row.val === 0 ? (row.note || '—') : row.val}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Card 2 — 12 domains */}
+              {/* Card 2 — 7 domains */}
               <div className="bcard">
                 <div className="bc-icon">🗂</div>
-                <div className="bc-t">12 domains</div>
-                <div className="bc-d">Drills across 3 tiers — new domains launching monthly.</div>
+                <div className="bc-t">7 domains</div>
+                <div className="bc-d">1 live now · more launching monthly</div>
                 <div className="bc-domains">
-                  {['Prompts', 'Systems', 'Reasoning', 'Output', 'Agents', 'Ethics'].map(d => (
+                  {['Prompts', 'Output', 'Systems', 'Roles', 'Reasoning', 'Extraction', 'Evaluation'].map(d => (
                     <div key={d} className="bc-dp">{d}</div>
                   ))}
                 </div>
@@ -958,21 +1632,21 @@ export default function Dashboard() {
               </div>
 
               {/* Card 3 — amber: AI scored */}
-              <div className="bcard amber">
+              <div className="bcard amber bcard-glow">
                 <div className="bc-icon">⚡</div>
                 <div className="bc-t">AI-scored in seconds</div>
                 <div className="bc-d">Submit your output. Real score against a professional rubric. No waiting. No humans in the loop.</div>
               </div>
 
               {/* Card 4 — Progress tracking */}
-              <div className="bcard">
+              <div className="bcard bcard-glow">
                 <div className="bc-icon">📈</div>
                 <div className="bc-t">Track your growth</div>
                 <div className="bc-d">Every drill scored, every improvement tracked. See exactly how your skills develop over time.</div>
               </div>
 
               {/* Card 5 — amber: No shortcuts */}
-              <div className="bcard amber">
+              <div className="bcard amber bcard-glow">
                 <div className="bc-icon">🔒</div>
                 <div className="bc-t">No shortcuts</div>
                 <div className="bc-d">No multiple choice. No partial credit. No effort scores. Only output quality moves your number.</div>
@@ -992,15 +1666,33 @@ export default function Dashboard() {
                 <div className="tag rv">The diagnostic</div>
                 <h2 className="sh rv d1">See what a <em>scored drill</em> actually looks like.</h2>
                 <p className="code-desc rv d2">Every drill gives you a brief, a target, and a rubric. You produce the output. AI scores it in seconds against weighted criteria — no partial credit.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+                    Average score on first attempt: 34 / 100
+                  </span>
+                </div>
               </div>
               <div className="code-window" id="code-window" style={{ position: 'relative' }}>
-                <div className="cw-bar">
+                {/* Radial glow — sits behind all terminal content */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 500,
+                  height: 300,
+                  background: 'radial-gradient(ellipse, rgba(34,197,94,0.05) 0%, transparent 70%)',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                }} />
+                <div className="cw-bar" style={{ position: 'relative', zIndex: 1 }}>
                   <div className="cw-dot cw-d1"></div>
                   <div className="cw-dot cw-d2"></div>
                   <div className="cw-dot cw-d3"></div>
                   <span className="cw-title">drill_01_prompt_engineering.md</span>
                 </div>
-                <div id="code-body" style={{ padding: 24, fontFamily: 'var(--font-code)', fontSize: 12.5, lineHeight: 1.8, minHeight: 300, whiteSpace: 'pre', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                <div id="code-body" style={{ padding: 24, fontFamily: 'var(--font-code)', fontSize: 12.5, lineHeight: 1.8, minHeight: 300, whiteSpace: 'pre', position: 'relative', overflow: 'hidden', flexShrink: 0, zIndex: 1 }}>
                   <span id="code-cur" className="code-cursor"></span>
                 </div>
                 {/* Submit button (animated in by JS) */}
@@ -1086,26 +1778,136 @@ export default function Dashboard() {
             <div className="tag rv">Drills</div>
             <h2 className="sh rv d1">What you actually train <em>inside.</em></h2>
           </div>
-          <div className="feat-scroll-wrap">
+          <div className="feat-scroll-wrap" style={{ position: 'relative' }}>
+            {/* Left edge fade */}
+            <div style={{
+              position: 'absolute', top: 0, left: 0, bottom: 0, width: 72, zIndex: 2, pointerEvents: 'none',
+              background: 'linear-gradient(to right, #08090c 0%, transparent 100%)',
+            }} />
+            {/* Right edge fade */}
+            <div style={{
+              position: 'absolute', top: 0, right: 0, bottom: 0, width: 72, zIndex: 2, pointerEvents: 'none',
+              background: 'linear-gradient(to left, #08090c 0%, transparent 100%)',
+            }} />
             <div className="feat-scroll feat-autoscroll" id="featscroll">
-              {/* Original set */}
-              {DOMAINS_DATA.map(d => (
-                <div key={d.num} className="fcard appeared">
-                  <span className="fc-num">DOMAIN {d.num}</span>
-                  <div className="fc-t">{d.title}</div>
-                  <div className="fc-d">{d.desc}</div>
-                  <span className={`fc-tag badge ${tierClass(d.tier)}`}>{d.tier}</span>
+              {/* Original set — Prompt Engineering first, OPEN BETA; rest COMING SOON */}
+              {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].map(d => {
+                const isLive = d.num === '01';
+                return (
+                  <div key={d.num} className="fcard appeared" style={{
+                    opacity: isLive ? 1 : 0.55,
+                    border: isLive ? '1px solid rgba(34,197,94,0.25)' : undefined,
+                  }}>
+                    <span className="fc-num">DOMAIN {d.num}</span>
+                    <div className="fc-t">{d.title}</div>
+                    <div className="fc-d">{d.desc}</div>
+                    {isLive ? (
+                      <span style={{
+                        display: 'inline-block',
+                        fontSize: 10,
+                        letterSpacing: '0.1em',
+                        color: 'rgba(34,197,94,0.85)',
+                        background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.2)',
+                        padding: '2px 8px',
+                        borderRadius: 100,
+                      }}>OPEN BETA</span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-block',
+                        fontSize: 10,
+                        letterSpacing: '0.1em',
+                        color: 'rgba(255,255,255,0.3)',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        padding: '2px 8px',
+                        borderRadius: 100,
+                      }}>COMING SOON</span>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Multi-Agent Systems — animated preview card */}
+              <div className="fcard appeared" style={{
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                padding: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+              }}>
+                <div style={{ padding: '20px 20px 12px' }}>
+                  <span className="fc-num">DOMAIN 11</span>
+                  <div className="fc-t">Multi-Agent Systems</div>
+                  <div className="fc-d" style={{ marginBottom: 10 }}>Orchestrate networks of agents that collaborate and produce results humans can&apos;t match alone.</div>
+                  <span style={{
+                    display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                    color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.2)', padding: '2px 8px', borderRadius: 100,
+                  }}>COMING SOON</span>
                 </div>
-              ))}
+                <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
+              </div>
               {/* Duplicate set for seamless loop */}
-              {DOMAINS_DATA.map(d => (
-                <div key={d.num + '-dup'} className="fcard appeared" aria-hidden="true">
-                  <span className="fc-num">DOMAIN {d.num}</span>
-                  <div className="fc-t">{d.title}</div>
-                  <div className="fc-d">{d.desc}</div>
-                  <span className={`fc-tag badge ${tierClass(d.tier)}`}>{d.tier}</span>
+              {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].map(d => {
+                const isLive = d.num === '01';
+                return (
+                  <div key={d.num + '-dup'} className="fcard appeared" aria-hidden="true" style={{
+                    opacity: isLive ? 1 : 0.55,
+                    border: isLive ? '1px solid rgba(34,197,94,0.25)' : undefined,
+                  }}>
+                    <span className="fc-num">DOMAIN {d.num}</span>
+                    <div className="fc-t">{d.title}</div>
+                    <div className="fc-d">{d.desc}</div>
+                    {isLive ? (
+                      <span style={{
+                        display: 'inline-block',
+                        fontSize: 10,
+                        letterSpacing: '0.1em',
+                        color: 'rgba(34,197,94,0.85)',
+                        background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.2)',
+                        padding: '2px 8px',
+                        borderRadius: 100,
+                      }}>OPEN BETA</span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-block',
+                        fontSize: 10,
+                        letterSpacing: '0.1em',
+                        color: 'rgba(255,255,255,0.3)',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        padding: '2px 8px',
+                        borderRadius: 100,
+                      }}>COMING SOON</span>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Duplicate — Multi-Agent card */}
+              <div className="fcard appeared" aria-hidden="true" style={{
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(245,158,11,0.2)',
+                padding: 0,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                flexShrink: 0,
+              }}>
+                <div style={{ padding: '20px 20px 12px' }}>
+                  <span className="fc-num">DOMAIN 11</span>
+                  <div className="fc-t">Multi-Agent Systems</div>
+                  <div className="fc-d" style={{ marginBottom: 10 }}>Orchestrate networks of agents that collaborate and produce results humans can&apos;t match alone.</div>
+                  <span style={{
+                    display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                    color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.2)', padding: '2px 8px', borderRadius: 100,
+                  }}>COMING SOON</span>
                 </div>
-              ))}
+                <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
+              </div>
             </div>
           </div>
         </section>
@@ -1151,6 +1953,18 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* ── Closing line ── */}
+            <p style={{
+              textAlign: 'center',
+              fontSize: 16,
+              color: 'rgba(255,255,255,0.4)',
+              marginTop: 32,
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontStyle: 'italic',
+            }}>
+              The difference isn&apos;t what you learn. It&apos;s what you can prove.
+            </p>
+
             {/* ── Comparison Cards (mobile only) ── */}
             <div className="comparison-cards" style={{ display: 'none' }}>
               {COMP_ROWS.map((row) => (
@@ -1184,16 +1998,76 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* ── 7. CTA ── */}
+        {/* ── 7. Multi-Agent Preview ── */}
+        <section id="multiagent-preview" style={{ padding: '96px 0 80px', position: 'relative' }}>
+          <div className="sec">
+            <div style={{ textAlign: 'center', marginBottom: 40 }}>
+              {/* COMING NEXT eyebrow */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 18 }}>
+                <div style={{
+                  width: 6, height: 6, borderRadius: '50%', background: '#f59e0b',
+                  animation: 'amber-pulse 2s ease-in-out infinite',
+                }} />
+                <span style={{
+                  fontFamily: 'var(--font-code)', fontSize: 10, letterSpacing: '0.2em',
+                  textTransform: 'uppercase' as const, color: 'rgba(245,158,11,0.7)',
+                }}>COMING NEXT</span>
+              </div>
+              <h2 className="sh" style={{
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                fontSize: 34, fontWeight: 400, fontStyle: 'italic',
+                color: 'rgba(255,255,255,0.88)', lineHeight: 1.3, marginBottom: 14,
+              }}>Train the hardest skill in AI.</h2>
+              <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.38)', maxWidth: 460, margin: '0 auto' }}>
+                Orchestrating agents that think, delegate, and deliver — together.
+              </p>
+            </div>
+
+            {/* Canvas */}
+            <div style={{
+              border: '1px solid rgba(245,158,11,0.13)', borderRadius: 16,
+              background: 'rgba(255,255,255,0.015)', overflow: 'hidden', marginBottom: 28,
+            }}>
+              <canvas id="ma-section-canvas" style={{ width: '100%', height: 280, display: 'block' }} />
+            </div>
+
+            {/* Feature pills */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' as const, marginBottom: 22 }}>
+              {['Orchestration patterns', 'Agent handoffs', 'Failure recovery'].map(pill => (
+                <span key={pill} style={{
+                  fontSize: 12, color: 'rgba(255,255,255,0.45)',
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                  padding: '5px 14px', borderRadius: 100,
+                }}>{pill}</span>
+              ))}
+            </div>
+
+            {/* Coming pill + waitlist */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 14 }}>
+              <span style={{
+                fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase' as const,
+                color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.07)',
+                border: '1px solid rgba(245,158,11,0.2)', padding: '4px 12px',
+                borderRadius: 100, fontFamily: 'var(--font-code)',
+              }}>COMING Q2 2026</span>
+              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)' }}>
+                Join the waitlist for early access
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 8. CTA ── */}
         <section id="cta" style={{ position: 'relative', overflow: 'hidden' }}>
           <canvas id="lamp-canvas" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.55 }} />
+          <canvas id="cta-particles" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.5, zIndex: 0 }} />
           <div className="cta-in" style={{ position: 'relative', zIndex: 1 }}>
             <div className="cta-tag rv">Step one</div>
             <h2 className="cta-h rv d1">Find out where you <em>actually</em> stand.</h2>
             <p className="cta-sub rv d2">3 drills. 8 minutes. No account required. Your score tells you exactly where to start.</p>
             <div className="cta-btns-wrap rv d3" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
               <a href="/diagnostic" className="btn-solid">
-                Begin Diagnostic{" "}
+                Start Diagnostic{" "}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
