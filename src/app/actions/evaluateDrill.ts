@@ -82,6 +82,21 @@ function coerceAndPatch(parsed: any) {
   if (parsed && typeof parsed === 'object') {
     const md = normalizeMasteryDecision(parsed.masteryDecision);
     parsed.masteryDecision = md ?? 'not_yet';
+
+    // Normalize strengths: empty or missing → fallback string
+    if (!Array.isArray(parsed.strengths) || parsed.strengths.length === 0) {
+      parsed.strengths = ['See revision instructions for improvement areas'];
+    }
+
+    // Normalize revisionInstructions: string → array
+    if (typeof parsed.revisionInstructions === 'string') {
+      parsed.revisionInstructions = parsed.revisionInstructions.trim()
+        ? [parsed.revisionInstructions]
+        : [];
+    }
+    if (!Array.isArray(parsed.revisionInstructions)) {
+      parsed.revisionInstructions = [];
+    }
   }
   return parsed;
 }
@@ -224,6 +239,8 @@ function applyStructuralPenalty(submission: string) {
 export async function evaluateDrill(args: EvaluateDrillArgs) {
   const { drillId, submission } = args;
 
+  console.log('evaluateDrill called', { drillId, submissionLen: submission?.length });
+
   if (!drillId || !submission?.trim()) throw new Error('drillId and submission are required');
 
   const drill = getDrillById(drillId);
@@ -326,16 +343,15 @@ export async function evaluateDrill(args: EvaluateDrillArgs) {
         : (validated.missedConstraints ?? []);
 
       console.log(`[SCORE-TRACE] 8-RETURN finalScore=${finalScore} masteryDecision=${finalMastery}`);
-      return {
+      const evalResult = {
         ...validated,
         overallScore: finalScore,
         masteryDecision: finalMastery,
         missedConstraints: finalMissed,
-        structuralPenalty: {
-          totalPenalty,
-          breakdown: penaltyBreakdown,
-        },
-      } as any;
+        structuralPenalty: { totalPenalty, breakdown: penaltyBreakdown },
+      };
+      console.log('evaluateDrill result:', JSON.stringify(evalResult).slice(0, 200));
+      return evalResult as any;
     } catch (e: any) {
       console.log(`[SCORE-TRACE] CATCH attempt=${attempt} error=${(e as any)?.message}`);
       lastErr = e;

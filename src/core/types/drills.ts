@@ -114,6 +114,21 @@ export type AnyDrill =
   | LiveChallengeDrill
   | ScenarioSimulationDrill;
 
+export interface EvalData {
+  rubricScores: Array<{
+    rubricItemId: string;
+    score: number;
+    justification: string;
+    evidenceQuotes: string[];
+  }>;
+  strengths: string[];
+  weaknesses: string[];
+  missedConstraints: string[];
+  revisionInstructions: string[];
+  improvedVersionOutline: string;
+  masteryDecision: 'not_yet' | 'mastered';
+}
+
 export interface DrillResult {
   drillId: string;
   score: number;
@@ -134,6 +149,7 @@ export interface DrillResult {
     performanceLabel: string;
     feedbackSummary: string;
   };
+  evalData?: EvalData;
 }
 
 export function getDrillById(id: string, drills: AnyDrill[]): AnyDrill | undefined {

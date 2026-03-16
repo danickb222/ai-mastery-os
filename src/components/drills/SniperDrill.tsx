@@ -54,10 +54,17 @@ interface Drill {
 
 interface SniperDrillProps {
   drill: Drill
-  onSubmit: (result: { userInput: string; score?: number }) => void
+  onSubmit: (result: { userInput: string; score?: number; evalResult?: any }) => void
   onExit: () => void
   drillIndex?: number
   totalDrills?: number
+}
+
+interface RubricDataItem {
+  rubricItemId: string
+  score: number
+  justification: string
+  evidenceQuotes: string[]
 }
 
 // ─── Score colour helper ──────────────────────────────────────────────────────
@@ -76,6 +83,12 @@ function scoreLabel(n: number): string {
   if (n >= 50) return '~ Getting Closer'
   if (n >= 25) return '↗ Keep Refining'
   return '✗ Missed'
+}
+
+function criterionBarColor(pct: number): string {
+  if (pct >= 70) return '#22c55e'
+  if (pct >= 40) return '#f59e0b'
+  return '#ef4444'
 }
 
 // ─── Heuristic live scorer (runs client-side, no API call) ───────────────────
@@ -135,7 +148,14 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
   const [phase, setPhase] = useState<'write' | 'submitting' | 'result'>('write')
   const [finalScore, setFinalScore] = useState<number | null>(null)
   const [criteriaScores, setCriteriaScores] = useState<Record<string, number>>({})
-  const [feedback, setFeedback] = useState('')
+  const [rubricData, setRubricData] = useState<RubricDataItem[]>([])
+  const [strengths, setStrengths] = useState<string[]>([])
+  const [weaknesses, setWeaknesses] = useState<string[]>([])
+  const [missedConstraints, setMissedConstraints] = useState<string[]>([])
+  const [revisionTip, setRevisionTip] = useState('')
+  const [improvedOutline, setImprovedOutline] = useState('')
+  const [outlineOpen, setOutlineOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [scoreHistory, setScoreHistory] = useState<number[]>([])
   const [timeLeft, setTimeLeft] = useState(drill.timeLimit ?? 480)
   const [scanActive, setScanActive] = useState(false)
@@ -195,6 +215,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
       const score: number = result?.overallScore ?? heuristicScore(prompt, drill)
       serverScoreRef.current = true
       setFinalScore(score)
+
       const cs: Record<string, number> = {}
 
       // Map criterion scores from rubricScores if available
@@ -206,25 +227,26 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         for (const c of drill.successCriteria) {
           cs[c.id] = rubricMap[c.id] ?? Math.round((score / 100) * c.maxPoints)
         }
+        setRubricData(result.rubricScores as RubricDataItem[])
       } else {
-        // Distribute proportionally
         for (const c of drill.successCriteria) {
           cs[c.id] = Math.round((score / 100) * c.maxPoints * (0.75 + Math.random() * 0.5))
         }
+        setRubricData([])
       }
 
-      const fb = [
-        ...(result?.strengths ?? []).map((s: string) => `✓ ${s}`),
-        ...(result?.weaknesses ?? []).map((w: string) => `✗ ${w}`),
-      ].join('\n')
-
       setCriteriaScores(cs)
-      setFeedback(fb)
+      setStrengths(result?.strengths ?? [])
+      setWeaknesses(result?.weaknesses ?? [])
+      setMissedConstraints(result?.missedConstraints ?? [])
+      setRevisionTip(result?.revisionInstructions?.[0] ?? '')
+      setImprovedOutline(result?.improvedVersionOutline ?? '')
 
       setTimeout(() => {
         setScanActive(false)
         setPhase('result')
-        onSubmit({ userInput: prompt, score })
+        console.log('SniperDrill onSubmit called', { score, hasEvalResult: !!result })
+        onSubmit({ userInput: prompt, score, evalResult: result })
       }, 900)
     } catch (err: unknown) {
       console.error('[SNIPER-CATCH] evaluateDrill threw — falling back to heuristic. Error:', err)
@@ -235,6 +257,12 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
         cs[c.id] = Math.round((score / 100) * c.maxPoints)
       }
       setCriteriaScores(cs)
+      setRubricData([])
+      setStrengths([])
+      setWeaknesses([])
+      setMissedConstraints([])
+      setRevisionTip('')
+      setImprovedOutline('')
       setTimeout(() => {
         setScanActive(false)
         setPhase('result')
@@ -479,7 +507,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           transition={{ duration: 0.5 }}
           className="sniper-result"
         >
-          {/* Score circle */}
+          {/* Score circle — unchanged */}
           <div style={{ textAlign: 'center', marginBottom: 44 }}>
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>Final Score</div>
             <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -523,50 +551,165 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
             >{scoreLabel(finalScore ?? 0)}</motion.div>
           </div>
 
-          {/* Criteria breakdown */}
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 26px', marginBottom: 18 }}>
-            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 20 }}>Breakdown</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* ── Criteria breakdown — upgraded cards ── */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 14 }}>Breakdown</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {drill.successCriteria.map((c, idx) => {
                 const earned = criteriaScores[c.id] ?? 0
-                const pct = (earned / c.maxPoints) * 100
+                const pct = c.maxPoints > 0 ? (earned / c.maxPoints) * 100 : 0
+                const barColor = criterionBarColor(pct)
+                const rubric = rubricData.find(r => r.rubricItemId === c.id)
                 return (
-                  <div key={c.id}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{c.label}</span>
-                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 11, color: '#00d4ff' }}>{earned}<span style={{ color: 'rgba(255,255,255,0.25)' }}>/{c.maxPoints}</span></span>
+                  <div
+                    key={c.id}
+                    style={{
+                      background: 'var(--bg3)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 12,
+                      padding: '14px 16px',
+                    }}
+                  >
+                    {/* Label + score */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, gap: 12 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>{c.label}</span>
+                      <span style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: barColor, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        {earned}<span style={{ color: 'rgba(255,255,255,0.25)' }}> / {c.maxPoints}</span>
+                      </span>
                     </div>
-                    <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
+
+                    {/* Progress bar */}
+                    <div style={{ height: 3, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden', marginBottom: rubric?.justification ? 10 : 0 }}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${pct}%` }}
                         transition={{ delay: 0.2 + idx * 0.07, duration: 0.7, ease: [0, 0, 0.2, 1] }}
-                        style={{ height: '100%', borderRadius: 2, background: '#00d4ff' }}
+                        style={{ height: '100%', borderRadius: 2, background: barColor }}
                       />
                     </div>
+
+                    {/* Justification text */}
+                    {rubric?.justification && (
+                      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, margin: 0 }}>
+                        {rubric.justification}
+                      </p>
+                    )}
+
+                    {/* Evidence quote */}
+                    {rubric?.evidenceQuotes?.[0] && (
+                      <blockquote style={{
+                        borderLeft: `2px solid ${barColor}55`,
+                        margin: '8px 0 0 0',
+                        paddingLeft: 10,
+                        fontSize: 11,
+                        fontFamily: 'var(--font-code)',
+                        color: 'rgba(255,255,255,0.3)',
+                        lineHeight: 1.65,
+                        fontStyle: 'italic',
+                      }}>
+                        &ldquo;{rubric.evidenceQuotes[0].length > 130
+                          ? rubric.evidenceQuotes[0].slice(0, 130) + '…'
+                          : rubric.evidenceQuotes[0]}&rdquo;
+                      </blockquote>
+                    )}
                   </div>
                 )
               })}
             </div>
           </div>
 
-          {/* AI Feedback */}
-          {feedback && (
-            <div style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.15)', borderRadius: 14, padding: '18px 22px', marginBottom: 18 }}>
-              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 10 }}>Coach Feedback</div>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.68)', lineHeight: 1.8, margin: 0 }}>{feedback}</p>
+          {/* ── Coach Analysis — strengths / weaknesses / revision tip ── */}
+          {(strengths.length > 0 || weaknesses.length > 0 || missedConstraints.length > 0 || revisionTip) && (
+            <div style={{
+              background: 'rgba(0,212,255,0.04)',
+              border: '1px solid rgba(0,212,255,0.15)',
+              borderRadius: 14,
+              padding: '18px 22px',
+              marginBottom: 18,
+            }}>
+              <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00d4ff', marginBottom: 14 }}>Coach Analysis</div>
+
+              {strengths.length > 0 && (
+                <div style={{ marginBottom: weaknesses.length > 0 || missedConstraints.length > 0 || revisionTip ? 12 : 0 }}>
+                  {strengths.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+                      <span style={{ color: '#22c55e', fontSize: 10, marginTop: 3, flexShrink: 0 }}>●</span>
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.65 }}>{s}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(weaknesses.length > 0 || missedConstraints.length > 0) && (
+                <div style={{ marginBottom: revisionTip ? 14 : 0 }}>
+                  {[...weaknesses, ...missedConstraints].map((w, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+                      <span style={{ color: '#f59e0b', fontSize: 10, marginTop: 3, flexShrink: 0 }}>●</span>
+                      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65 }}>{w}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {revisionTip && (
+                <div style={{
+                  background: 'rgba(245,158,11,0.08)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                }}>
+                  <span style={{
+                    fontFamily: 'var(--font-code)', fontSize: 8, textTransform: 'uppercase',
+                    letterSpacing: '0.14em', color: '#f59e0b', display: 'block', marginBottom: 6,
+                  }}>To score higher next time</span>
+                  <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.65, margin: 0 }}>{revisionTip}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Improved version outline — collapsible ── */}
+          {improvedOutline && (
+            <div style={{
+              background: 'var(--bg3)',
+              border: '1px solid var(--border)',
+              borderRadius: 14,
+              padding: '16px 22px',
+              marginBottom: 18,
+            }}>
+              <button
+                onClick={() => setOutlineOpen(o => !o)}
+                style={{
+                  width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0,
+                }}
+              >
+                <span style={{
+                  fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em',
+                  textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
+                }}>
+                  See what a stronger answer looks like
+                </span>
+                <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>{outlineOpen ? '▲' : '▼'}</span>
+              </button>
+              {outlineOpen && (
+                <pre style={{
+                  fontFamily: 'var(--font-code)', fontSize: 12, color: 'rgba(255,255,255,0.45)',
+                  lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: '14px 0 0 0',
+                }}>{improvedOutline}</pre>
+              )}
             </div>
           )}
 
           {/* Your submission */}
-          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
+          <div style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px', marginBottom: 18 }}>
             <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.25)', marginBottom: 10 }}>Your Submission</div>
             <pre style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: 'rgba(255,255,255,0.45)', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{prompt}</pre>
           </div>
 
           {/* Reference prompt — the learning moment */}
           {drill.referencePrompt && (
-            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 14, padding: '18px 22px', marginBottom: 28 }}>
+            <div style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 14, padding: '18px 22px', marginBottom: 18 }}>
               <div style={{ fontFamily: 'var(--font-code)', fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#22c55e', marginBottom: 10 }}>Expert Reference Prompt</div>
               <pre style={{ fontFamily: 'var(--font-code)', fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.75, whiteSpace: 'pre-wrap', margin: 0 }}>{drill.referencePrompt}</pre>
             </div>
@@ -584,12 +727,37 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
           <div className="sniper-cta-row">
             <button
               onClick={() => {
+                const text = `I scored ${finalScore ?? 0}/100 on ${drill.title} — AI Dojo Prompt Engineering | ai-mastery-os-six.vercel.app`
+                navigator.clipboard.writeText(text).then(() => {
+                  setCopied(true)
+                  setTimeout(() => setCopied(false), 2000)
+                }).catch(() => {})
+              }}
+              style={{
+                flex: 1, padding: '14px 20px',
+                background: 'transparent',
+                border: copied ? '1px solid rgba(34,197,94,0.4)' : '1px solid var(--border)',
+                color: copied ? '#22c55e' : 'rgba(255,255,255,0.5)',
+                borderRadius: 12,
+                fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                transition: 'color 0.2s ease, border-color 0.2s ease',
+              }}
+            >{copied ? 'Copied ✓' : 'Copy Result'}</button>
+            <button
+              onClick={() => {
                 serverScoreRef.current = false
                 setPrompt('')
                 setLiveScore(0)
                 setFinalScore(null)
                 setCriteriaScores({})
-                setFeedback('')
+                setRubricData([])
+                setStrengths([])
+                setWeaknesses([])
+                setMissedConstraints([])
+                setRevisionTip('')
+                setImprovedOutline('')
+                setOutlineOpen(false)
+                setCopied(false)
                 setPhase('write')
                 setTimeLeft(drill.timeLimit ?? 480)
                 setScoreHistory([])

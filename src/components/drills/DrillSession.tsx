@@ -31,6 +31,8 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
   }, []);
 
   const handleSubmit = (drillResult: DrillResult) => {
+    console.log('DrillSession handleSubmit called');
+    console.log('DrillSession setting result - evalData:', drillResult?.evalData);
     setResult(drillResult);
     setPhase('feedback');
   };
@@ -41,6 +43,12 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
     }
   };
 
+  const handleRetry = () => {
+    setResult(null);
+    setPhase('active');
+    startTimeRef.current = Date.now();
+  };
+
   if (phase === 'feedback' && result) {
     return (
       <DrillFeedback
@@ -48,6 +56,7 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
         result={result}
         onContinue={handleContinue}
         onExit={onExit}
+        onRetry={handleRetry}
       />
     );
   }
@@ -59,8 +68,14 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
           drill={drill as PromptConstructionDrillType}
           drillIndex={drillIndex}
           totalDrills={totalDrills}
-          onSubmit={({ userInput, score = 0 }) => {
+          onSubmit={({ userInput, score = 0, evalResult }) => {
             const d = drill as PromptConstructionDrillType;
+            const rubricMap: Record<string, { score: number; justification: string }> = {};
+            if (evalResult?.rubricScores) {
+              for (const r of evalResult.rubricScores) {
+                rubricMap[r.rubricItemId] = { score: r.score, justification: r.justification ?? '' };
+              }
+            }
             handleSubmit({
               drillId: d.id,
               score,
@@ -74,9 +89,9 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
                 criteriaResults: d.successCriteria.map(c => ({
                   criterionId: c.id,
                   label: c.label,
-                  score: Math.round((score / 100) * c.maxPoints),
+                  score: rubricMap[c.id]?.score ?? Math.round((score / 100) * c.maxPoints),
                   maxPoints: c.maxPoints,
-                  feedback: '',
+                  feedback: rubricMap[c.id]?.justification ?? '',
                 })),
                 performanceLabel:
                   score >= 90 ? 'Precision Shot' :
@@ -84,6 +99,15 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
                   score >= 50 ? 'Getting Closer' : 'Keep Refining',
                 feedbackSummary: '',
               },
+              evalData: evalResult ? {
+                rubricScores: evalResult.rubricScores ?? [],
+                strengths: evalResult.strengths ?? [],
+                weaknesses: evalResult.weaknesses ?? [],
+                missedConstraints: evalResult.missedConstraints ?? [],
+                revisionInstructions: evalResult.revisionInstructions ?? [],
+                improvedVersionOutline: evalResult.improvedVersionOutline ?? '',
+                masteryDecision: evalResult.masteryDecision ?? 'not_yet',
+              } : undefined,
             });
           }}
           onExit={onExit}
