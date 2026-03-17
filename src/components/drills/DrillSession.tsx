@@ -99,15 +99,17 @@ export function DrillSession({ drill, onComplete, onExit, drillIndex, totalDrill
                   score >= 50 ? 'Getting Closer' : 'Keep Refining',
                 feedbackSummary: '',
               },
-              evalData: evalResult ? {
-                rubricScores: evalResult.rubricScores ?? [],
-                strengths: evalResult.strengths ?? [],
-                weaknesses: evalResult.weaknesses ?? [],
-                missedConstraints: evalResult.missedConstraints ?? [],
-                revisionInstructions: evalResult.revisionInstructions ?? [],
-                improvedVersionOutline: evalResult.improvedVersionOutline ?? '',
-                masteryDecision: evalResult.masteryDecision ?? 'not_yet',
-              } : undefined,
+              // Always provide evalData so DrillFeedback uses the new layout.
+              // Falls back to empty arrays when evaluateDrill threw or returned no data.
+              evalData: {
+                rubricScores: evalResult?.rubricScores ?? [],
+                strengths: evalResult?.strengths ?? [],
+                weaknesses: evalResult?.weaknesses ?? [],
+                missedConstraints: evalResult?.missedConstraints ?? [],
+                revisionInstructions: evalResult?.revisionInstructions ?? [],
+                improvedVersionOutline: evalResult?.improvedVersionOutline ?? '',
+                masteryDecision: evalResult?.masteryDecision ?? 'not_yet',
+              },
             });
           }}
           onExit={onExit}

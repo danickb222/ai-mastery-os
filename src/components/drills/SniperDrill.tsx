@@ -264,7 +264,7 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [scoreHistory, setScoreHistory] = useState<number[]>([])
-  const [timeLeft, setTimeLeft] = useState(drill.timeLimit ?? 480)
+  const [timeLeft, setTimeLeft] = useState(drill.timeLimit || 480)
   const [scanActive, setScanActive] = useState(false)
 
   // ── Visual-only state ──────────────────────────────────────────────────────
@@ -305,6 +305,11 @@ export default function SniperDrill({ drill, onSubmit, onExit, drillIndex, total
   }, [prompt])
 
   // ── Timer ──────────────────────────────────────────────────────────────────
+
+  // Reset timer if the drill changes (guards against prop-update without remount)
+  useEffect(() => {
+    setTimeLeft(drill.timeLimit || 480)
+  }, [drill.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (phase !== 'write') return
