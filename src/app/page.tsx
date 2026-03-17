@@ -864,8 +864,9 @@ export default function Dashboard() {
       const ctxRaw = canvas.getContext('2d');
       if (!ctxRaw) return () => {};
       const ctx: CanvasRenderingContext2D = ctxRaw;
-      const t0 = performance.now();
       let rafId = 0;
+      const t0 = performance.now();
+
       function resize() {
         const rect = canvas!.getBoundingClientRect();
         if (!rect.width) return;
@@ -876,11 +877,7 @@ export default function Dashboard() {
       }
       resize();
       window.addEventListener('resize', resize);
-      const agents = [
-        { label: 'CLASSIFIER', sub: 'routes input',       color: '#f59e0b' },
-        { label: 'RESPONDER',  sub: 'drafts reply',       color: '#22c55e' },
-        { label: 'ESCALATION', sub: 'handles edge cases', color: '#60a5fa' },
-      ];
+
       function rr(x: number, y: number, w: number, h: number, r: number) {
         ctx!.beginPath();
         ctx!.moveTo(x + r, y); ctx!.lineTo(x + w - r, y);
@@ -889,146 +886,175 @@ export default function Dashboard() {
         ctx!.arcTo(x, y + h, x, y + h - r, r); ctx!.lineTo(x, y + r);
         ctx!.arcTo(x, y, x + r, y, r); ctx!.closePath();
       }
-      function ghostTrail(x1: number, y1: number, x2: number, y2: number, frac: number, color: string) {
-        const ghosts = [{ off: 0.08, a: 0.25 }, { off: 0.16, a: 0.12 }, { off: 0.24, a: 0.05 }];
-        ghosts.forEach(g => {
-          const tf = Math.max(0, frac - g.off);
-          const ef = tf < 0.5 ? 2*tf*tf : -1+(4-2*tf)*tf;
+
+      function eio(t: number) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+      function drawPacket(x1: number, y1: number, x2: number, y2: number, frac: number) {
+        const ef = eio(Math.max(0, Math.min(1, frac)));
+        const px = x1 + (x2 - x1) * ef;
+        const py = y1 + (y2 - y1) * ef;
+        const len = Math.hypot(x2 - x1, y2 - y1);
+        if (len < 1) return;
+        const dx = (x2 - x1) / len;
+        const dy = (y2 - y1) / len;
+        const ghosts = [{ d: 8, a: 0.5 }, { d: 16, a: 0.3 }, { d: 24, a: 0.15 }, { d: 32, a: 0.06 }];
+        ghosts.forEach(({ d, a }) => {
+          if (ef * len < d) return;
           ctx!.beginPath();
-          ctx!.arc(x1 + (x2 - x1) * ef, y1 + (y2 - y1) * ef, 3, 0, Math.PI * 2);
-          ctx!.fillStyle = color + Math.round(g.a * 255).toString(16).padStart(2, '0');
+          ctx!.arc(px - dx * d, py - dy * d, 3, 0, Math.PI * 2);
+          ctx!.fillStyle = `rgba(34,197,94,${a})`;
           ctx!.fill();
         });
+        ctx!.beginPath();
+        ctx!.arc(px, py, 3, 0, Math.PI * 2);
+        ctx!.fillStyle = 'rgba(34,197,94,0.9)';
+        ctx!.fill();
       }
+
+      function wrapCanvas(text: string, maxChars: number): string[] {
+        const words = text.split(' ');
+        const lines: string[] = [];
+        let cur = '';
+        for (const w of words) {
+          const next = cur ? cur + ' ' + w : w;
+          if (next.length > maxChars && cur) { lines.push(cur); cur = w; }
+          else cur = next;
+        }
+        if (cur) lines.push(cur);
+        return lines;
+      }
+
+      const CARD_W = 160, CARD_H = 84;
+      const A_TEXT = 'URGENT — billing issue detected';
+      const C_TEXT = 'Escalation brief: billing team needed';
+      const P1_START = 0.5, P1_DUR = 0.7;
+      const A_ACT = P1_START + P1_DUR;
+      const A_TYP_DUR = A_TEXT.length * 0.04;
+      const A_TYP_END = A_ACT + A_TYP_DUR;
+      const ROUTE_SHOW = A_TYP_END + 0.4;
+      const P2_START = ROUTE_SHOW + 0.2;
+      const P2_DUR = 0.7;
+      const C_ACT = P2_START + P2_DUR;
+      const C_TYP_DUR = C_TEXT.length * 0.04;
+      const C_TYP_END = C_ACT + C_TYP_DUR;
+      const HOLD_END = C_TYP_END + 2.0;
+      const FADE_DUR = 0.5;
+      const CYCLE = HOLD_END + FADE_DUR + 0.5;
+
       function draw(now: number) {
         const rect = canvas!.getBoundingClientRect();
         const W = rect.width, H = rect.height;
         if (!W || !H) { rafId = requestAnimationFrame(draw); return; }
         ctx!.clearRect(0, 0, W, H);
         const t = (now - t0) / 1000;
-        const tp = t % 6.0;
+        const tp = t % CYCLE;
 
-        const cardW = Math.min(160, W * 0.27);
-        const cardH = 78;
-        const agentY = H * 0.65;
-        const cardTop = agentY - cardH / 2;
-        const xs = [W * 0.19, W * 0.5, W * 0.81];
+        const fadeAlpha = tp > HOLD_END ? Math.max(0, 1 - (tp - HOLD_END) / FADE_DUR) : 1;
+        ctx!.globalAlpha = fadeAlpha;
 
-        // Live ticket input card at top center
-        const ticketW = Math.min(200, W * 0.42);
-        const ticketH = 52;
-        const ticketX = W / 2 - ticketW / 2;
-        const ticketY = H * 0.07;
-        rr(ticketX, ticketY, ticketW, ticketH, 7);
+        // Agent positions — triangle
+        const posA = { x: W * 0.15, y: H * 0.55 };
+        const posB = { x: W * 0.50, y: H * 0.78 };
+        const posC = { x: W * 0.85, y: H * 0.55 };
+
+        // Ticket
+        const tW = Math.min(200, W * 0.42), tH = 58;
+        const tX = W / 2 - tW / 2, tY = 40;
+
+        // ── 1. Connection lines (drawn first as background) ──
+        ctx!.save();
+        ctx!.setLineDash([4, 8]);
+        ctx!.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx!.lineWidth = 1;
+        ctx!.beginPath(); ctx!.moveTo(W / 2, tY + tH); ctx!.lineTo(posA.x, posA.y - CARD_H / 2); ctx!.stroke();
+        ctx!.beginPath(); ctx!.moveTo(posA.x + CARD_W / 2, posA.y); ctx!.lineTo(posB.x - CARD_W / 2, posB.y); ctx!.stroke();
+        ctx!.beginPath(); ctx!.moveTo(posA.x + CARD_W / 2, posA.y); ctx!.lineTo(posC.x - CARD_W / 2, posC.y); ctx!.stroke();
+        ctx!.restore();
+
+        // ── 2. Ticket card ──
+        const tickFade = Math.min(tp / 0.4, 1);
+        ctx!.globalAlpha = fadeAlpha * tickFade;
+        rr(tX, tY, tW, tH, 6);
         ctx!.fillStyle = 'rgba(255,255,255,0.03)'; ctx!.fill();
         ctx!.strokeStyle = 'rgba(255,255,255,0.08)'; ctx!.lineWidth = 1; ctx!.stroke();
         ctx!.fillStyle = 'rgba(255,255,255,0.22)';
         ctx!.font = 'bold 8px system-ui,sans-serif';
         ctx!.textAlign = 'left';
-        ctx!.fillText('LIVE INPUT', ticketX + 10, ticketY + 15);
+        ctx!.fillText('LIVE INPUT', tX + 14, tY + 15);
         ctx!.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx!.font = '10px monospace';
-        ctx!.fillText('"Payment failed, charged twice."', ticketX + 10, ticketY + 34);
+        ctx!.font = '9px monospace';
+        ctx!.fillText('"Payment failed, charged twice.', tX + 14, tY + 31);
+        ctx!.fillText('Urgent."', tX + 14, tY + 44);
+        ctx!.globalAlpha = fadeAlpha;
 
-        // Arrow from ticket bottom to Agent0 top
-        const ticketBX = W / 2, ticketBY = ticketY + ticketH;
-        const agent0TX = xs[0], agent0TY = cardTop;
-        ctx!.save(); ctx!.setLineDash([2, 4]);
-        ctx!.strokeStyle = 'rgba(245,158,11,0.18)'; ctx!.lineWidth = 1;
-        ctx!.beginPath();
-        ctx!.moveTo(ticketBX, ticketBY);
-        ctx!.lineTo(ticketBX, ticketBY + 12);
-        ctx!.lineTo(agent0TX, agent0TY - 12);
-        ctx!.lineTo(agent0TX, agent0TY);
-        ctx!.stroke();
-        ctx!.restore();
+        // ── 3. Packets ──
+        if (tp >= P1_START && tp < P1_START + P1_DUR)
+          drawPacket(W / 2, tY + tH, posA.x, posA.y - CARD_H / 2, (tp - P1_START) / P1_DUR);
+        if (tp >= P2_START && tp < P2_START + P2_DUR)
+          drawPacket(posA.x + CARD_W / 2, posA.y, posC.x - CARD_W / 2, posC.y, (tp - P2_START) / P2_DUR);
 
-        // Connection lines between agents
-        ctx!.save(); ctx!.setLineDash([3, 5]);
-        ctx!.strokeStyle = 'rgba(255,255,255,0.07)'; ctx!.lineWidth = 1;
-        for (let i = 0; i < 2; i++) {
-          ctx!.beginPath();
-          ctx!.moveTo(xs[i] + cardW / 2, agentY);
-          ctx!.lineTo(xs[i + 1] - cardW / 2, agentY);
-          ctx!.stroke();
-        }
-        ctx!.restore();
+        // ── 4. Agent cards ──
+        const agentDefs = [
+          {
+            label: 'CLASSIFIER', pos: posA, idleColor: 'rgba(99,102,241,0.8)',
+            isActive: tp >= A_ACT && tp < P2_START,
+            typingText: A_TEXT, typingStart: A_ACT,
+            statusText: tp >= ROUTE_SHOW && tp < P2_START ? '→ ESCALATION' : 'READY',
+          },
+          {
+            label: 'RESPONDER', pos: posB, idleColor: 'rgba(34,197,94,0.8)',
+            isActive: false, typingText: '', typingStart: -1, statusText: 'READY',
+          },
+          {
+            label: 'ESCALATION', pos: posC, idleColor: 'rgba(239,68,68,0.8)',
+            isActive: tp >= C_ACT,
+            typingText: C_TEXT, typingStart: C_ACT, statusText: 'READY',
+          },
+        ];
 
-        // Packet 0: ticket → Agent0 (0.0..1.5s)
-        if (tp < 1.5) {
-          const p = tp / 1.5;
-          const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
-          ghostTrail(ticketBX, ticketBY + 6, xs[0], agentY, p, '#f59e0b');
-          ctx!.beginPath(); ctx!.arc(ticketBX + (xs[0] - ticketBX) * e, (ticketBY + 6) + (agentY - ticketBY - 6) * e, 3.5, 0, Math.PI * 2);
-          ctx!.fillStyle = '#f59e0b'; ctx!.fill();
-        }
+        agentDefs.forEach(({ label, pos, idleColor, isActive, typingText, typingStart, statusText }) => {
+          const cx = pos.x - CARD_W / 2, cy = pos.y - CARD_H / 2;
 
-        // Packet 1: Agent0 → Agent1 (1.5..3.0s)
-        if (tp >= 1.5 && tp < 3.0) {
-          const p = (tp - 1.5) / 1.5;
-          const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
-          const x1 = xs[0] + cardW / 2, x2 = xs[1] - cardW / 2;
-          ghostTrail(x1, agentY, x2, agentY, p, '#22c55e');
-          ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * e, agentY, 3.5, 0, Math.PI * 2);
-          ctx!.fillStyle = '#22c55e'; ctx!.fill();
-        }
-
-        // Packet 2: Agent1 → Agent2 (3.0..4.5s)
-        if (tp >= 3.0 && tp < 4.5) {
-          const p = (tp - 3.0) / 1.5;
-          const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
-          const x1 = xs[1] + cardW / 2, x2 = xs[2] - cardW / 2;
-          ghostTrail(x1, agentY, x2, agentY, p, '#60a5fa');
-          ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * e, agentY, 3.5, 0, Math.PI * 2);
-          ctx!.fillStyle = '#60a5fa'; ctx!.fill();
-        }
-
-        // Output badge (4.5..6.0)
-        if (tp >= 4.5) {
-          const alpha = Math.min((tp - 4.5) / 0.4, 1) * (tp > 5.6 ? 1 - (tp - 5.6) / 0.4 : 1);
-          ctx!.globalAlpha = Math.max(0, alpha);
-          const ox = xs[2] + cardW / 2 + 8;
-          rr(ox, agentY - 18, 64, 36, 7);
-          ctx!.fillStyle = 'rgba(96,165,250,0.08)'; ctx!.fill();
-          ctx!.strokeStyle = 'rgba(96,165,250,0.25)'; ctx!.lineWidth = 1; ctx!.stroke();
-          ctx!.fillStyle = 'rgba(255,255,255,0.65)'; ctx!.font = '10px system-ui,sans-serif';
-          ctx!.textAlign = 'center'; ctx!.fillText('resolved', ox + 32, agentY - 3);
-          ctx!.fillStyle = '#22c55e'; ctx!.font = '11px system-ui,sans-serif';
-          ctx!.fillText('✓', ox + 32, agentY + 13);
-          ctx!.globalAlpha = 1;
-        }
-
-        // Agent cards
-        const activeTimes = [{ s: 1.2, e: 1.8 }, { s: 3.0, e: 3.6 }, { s: 4.5, e: 5.1 }];
-        agents.forEach((agent, i) => {
-          const x = xs[i] - cardW / 2;
-          const at = activeTimes[i];
-          const isActive = tp >= at.s && tp < at.e;
-          const gFrac = (tp - at.s) / 0.6;
-          const glowA = isActive ? 0.18 * Math.sin(Math.PI * Math.max(0, Math.min(1, gFrac))) : 0;
-          if (glowA > 0) {
-            const grad = ctx!.createRadialGradient(xs[i], agentY, 0, xs[i], agentY, 70);
-            grad.addColorStop(0, agent.color + Math.round(glowA * 255).toString(16).padStart(2, '0'));
-            grad.addColorStop(1, 'transparent');
-            ctx!.beginPath(); ctx!.arc(xs[i], agentY, 70, 0, Math.PI * 2);
+          // Radial glow
+          if (isActive) {
+            const grad = ctx!.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 80);
+            grad.addColorStop(0, 'rgba(34,197,94,0.12)');
+            grad.addColorStop(1, 'rgba(34,197,94,0)');
+            ctx!.beginPath(); ctx!.arc(pos.x, pos.y, 80, 0, Math.PI * 2);
             ctx!.fillStyle = grad; ctx!.fill();
           }
-          rr(x, cardTop, cardW, cardH, 9);
-          ctx!.fillStyle = 'rgba(255,255,255,0.025)'; ctx!.fill();
-          ctx!.strokeStyle = agent.color + '4d'; ctx!.lineWidth = 1; ctx!.stroke();
-          ctx!.beginPath(); ctx!.arc(x + 14, cardTop + 14, 3.5, 0, Math.PI * 2);
-          ctx!.fillStyle = agent.color + 'cc'; ctx!.fill();
-          ctx!.fillStyle = 'rgba(255,255,255,0.75)';
+
+          // Card body
+          rr(cx, cy, CARD_W, CARD_H, 10);
+          ctx!.fillStyle = isActive ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.03)'; ctx!.fill();
+          ctx!.strokeStyle = isActive ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.08)';
+          ctx!.lineWidth = 1; ctx!.stroke();
+
+          // Dot
+          ctx!.beginPath(); ctx!.arc(cx + 14, cy + 16, 3.5, 0, Math.PI * 2);
+          ctx!.fillStyle = isActive ? '#22c55e' : idleColor; ctx!.fill();
+
+          // Name
+          ctx!.fillStyle = isActive ? 'rgba(34,197,94,0.85)' : 'rgba(255,255,255,0.75)';
           ctx!.font = 'bold 11px system-ui,sans-serif';
           ctx!.textAlign = 'left';
-          ctx!.fillText(agent.label, x + 26, cardTop + 18);
-          ctx!.fillStyle = 'rgba(255,255,255,0.3)';
-          ctx!.font = '11px monospace';
-          ctx!.fillText(agent.sub, x + 10, cardTop + 38);
-          ctx!.fillStyle = agent.color + '80';
+          ctx!.fillText(label, cx + 26, cy + 20);
+
+          // Typed output
+          if (typingText && typingStart >= 0 && tp >= typingStart) {
+            const chars = Math.min(typingText.length, Math.floor((tp - typingStart) / 0.04));
+            const lines = wrapCanvas(typingText.slice(0, chars), 17);
+            ctx!.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx!.font = '11px monospace';
+            lines.forEach((line, li) => ctx!.fillText(line, cx + 10, cy + 38 + li * 15));
+          }
+
+          // Status
+          ctx!.fillStyle = 'rgba(255,255,255,0.2)';
           ctx!.font = '9px system-ui,sans-serif';
-          ctx!.fillText('READY', x + 10, cardTop + 58);
+          ctx!.fillText(statusText, cx + 10, cy + CARD_H - 10);
         });
+
         rafId = requestAnimationFrame(draw);
       }
       rafId = requestAnimationFrame(draw);
@@ -2087,7 +2113,7 @@ export default function Dashboard() {
               border: '1px solid rgba(245,158,11,0.13)', borderRadius: 16,
               background: 'rgba(255,255,255,0.015)', overflow: 'hidden', marginBottom: 28,
             }}>
-              <canvas id="ma-section-canvas" style={{ width: '100%', height: 320, display: 'block' }} />
+              <canvas id="ma-section-canvas" style={{ width: '100%', height: 380, display: 'block' }} />
             </div>
 
             {/* Feature pills */}
