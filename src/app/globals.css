@@ -152,7 +152,7 @@ nav.landing-nav{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-in
 .pillar::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(0,212,255,.07) 0%,transparent 70%);opacity:0;transition:opacity .3s}
 .pillar:hover{background:var(--bg4)}
 .pillar:hover::before{opacity:1}
-.pi-n{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:rgba(255,255,255,.12);margin-bottom:14px;display:block;transition:color .22s}
+.pi-n{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.12);margin-bottom:14px;display:block;transition:color .22s}
 .pillar:hover .pi-n{color:var(--cyan)}
 .pi-t{font-family:var(--serif);font-size:21px;font-weight:400;color:rgba(255,255,255,.7);margin-bottom:10px;line-height:1.2;letter-spacing:-.01em;transition:color .22s}
 .pillar:hover .pi-t{color:var(--w100)}

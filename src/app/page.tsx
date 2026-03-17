@@ -67,6 +67,7 @@ export default function Dashboard() {
       '@keyframes ring-pulse{0%{opacity:0.6;transform:scale(1)}100%{opacity:0;transform:scale(1.08)}}',
       '@keyframes scroll-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}',
       '@keyframes amber-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.35;transform:scale(0.75)}}',
+      '@keyframes drift{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
     ].join('');
     document.head.appendChild(s);
 
@@ -365,7 +366,7 @@ export default function Dashboard() {
             typeLines(goodLines, () => {
               cur.style.display = 'none';
 
-              // Phase 2: Submit moment — 800ms pause, button brightens then kicks off scoring
+              // Phase 2: Submit moment — cursor travels to button, clicks, then scoring
               setTimeout(() => {
                 if (submitBtn) {
                   submitBtn.style.display = 'inline-flex';
@@ -374,21 +375,50 @@ export default function Dashboard() {
                   submitBtn.style.boxShadow = 'none';
                   submitBtn.style.transition = 'none';
                   requestAnimationFrame(() => {
-                    submitBtn.style.transition = 'opacity 0.3s ease, transform 0.15s ease, box-shadow 0.15s ease';
+                    submitBtn.style.transition = 'opacity 0.3s ease';
                     submitBtn.style.opacity = '1';
-                    // Brief visual activation: scale 1.02 + border glow
+                    // Animate cursor toward submit button
                     setTimeout(() => {
-                      submitBtn.style.transform = 'scale(1.02)';
-                      submitBtn.style.boxShadow = '0 0 0 2px rgba(255,255,255,0.4)';
-                      setTimeout(() => {
-                        submitBtn.style.transition = 'opacity 0.25s ease';
-                        submitBtn.style.opacity = '0';
-                        setTimeout(() => {
-                          submitBtn.style.display = 'none';
-                          runScoringSequence();
-                        }, 280);
-                      }, 400);
-                    }, 200);
+                      if (cursorDot) {
+                        const codeWindow = document.getElementById('code-window');
+                        const btnRect = submitBtn.getBoundingClientRect();
+                        const winRect = codeWindow ? codeWindow.getBoundingClientRect() : { left: 0, top: 0 };
+                        const endX = btnRect.left - winRect.left + 40;
+                        const endY = btnRect.top - winRect.top + 12;
+                        cursorDot.style.left = (endX - 80) + 'px';
+                        cursorDot.style.top = (endY + 30) + 'px';
+                        cursorDot.style.display = 'block';
+                        cursorDot.style.opacity = '0';
+                        cursorDot.style.transition = 'opacity 0.2s ease';
+                        requestAnimationFrame(() => {
+                          cursorDot.style.opacity = '1';
+                          setTimeout(() => {
+                            cursorDot.style.transition = 'left 0.4s ease-in-out, top 0.4s ease-in-out';
+                            cursorDot.style.left = endX + 'px';
+                            cursorDot.style.top = endY + 'px';
+                            setTimeout(() => {
+                              // Click: scale down button briefly
+                              submitBtn.style.transition = 'transform 0.1s ease, box-shadow 0.1s ease';
+                              submitBtn.style.transform = 'scale(0.98)';
+                              submitBtn.style.boxShadow = '0 0 0 2px rgba(255,255,255,0.3)';
+                              cursorDot.style.opacity = '0';
+                              setTimeout(() => {
+                                submitBtn.style.transform = 'scale(1)';
+                                submitBtn.style.transition = 'opacity 0.25s ease';
+                                submitBtn.style.opacity = '0';
+                                setTimeout(() => {
+                                  submitBtn.style.display = 'none';
+                                  cursorDot.style.display = 'none';
+                                  runScoringSequence();
+                                }, 280);
+                              }, 120);
+                            }, 450);
+                          }, 200);
+                        });
+                      } else {
+                        setTimeout(runScoringSequence, 700);
+                      }
+                    }, 300);
                   });
                 } else {
                   runScoringSequence();
@@ -654,62 +684,19 @@ export default function Dashboard() {
       }, 400);
     }
 
-    function initAutoScroll() {
-      const _el = document.getElementById('featscroll'); if (!_el) return;
-      const el = _el;
-      let paused = false;
-      let stepTimer: ReturnType<typeof setTimeout> | null = null;
-      let stepRaf = 0;
-
-      function getCardStep(): number {
-        const card = el.querySelector('.fcard') as HTMLElement | null;
-        if (!card) return 260;
-        const gap = parseFloat(getComputedStyle(el).gap || '16');
-        return card.getBoundingClientRect().width + gap;
-      }
-
-      function smoothScrollBy(amount: number, duration: number, onDone?: () => void) {
-        const start = el.scrollLeft;
-        const t0 = performance.now();
-        function tick(now: number) {
-          const p = Math.min((now - t0) / duration, 1);
-          const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
-          el.scrollLeft = start + amount * ease;
-          if (p < 1) {
-            stepRaf = requestAnimationFrame(tick);
-          } else {
-            el.scrollLeft = start + amount;
-            const half = el.scrollWidth / 2;
-            if (el.scrollLeft >= half) el.scrollLeft -= half;
-            onDone?.();
-          }
-        }
-        stepRaf = requestAnimationFrame(tick);
-      }
-
-      function scheduleStep() {
-        stepTimer = setTimeout(() => {
-          if (!paused) {
-            smoothScrollBy(getCardStep(), 500, scheduleStep);
-          } else {
-            scheduleStep();
-          }
-        }, 4000);
-      }
-
-      scheduleStep();
-
-      // Pause on hover, resume on leave
-      el.addEventListener('mouseenter', () => { paused = true; });
-      el.addEventListener('mouseleave', () => { paused = false; });
-      el.addEventListener('touchstart', () => { paused = true; }, { passive: true });
-      el.addEventListener('touchend', () => { setTimeout(() => { paused = false; }, 1500); });
-
-      // Store cleanup ref
-      (el as any)._autoScrollCleanup = () => {
-        if (stepTimer) clearTimeout(stepTimer);
-        if (stepRaf) cancelAnimationFrame(stepRaf);
-      };
+    function initDriftCarousel() {
+      const inner = document.getElementById('feat-drift');
+      const outer = document.getElementById('feat-wrap');
+      if (!inner || !outer) return;
+      // Count total children to determine half (duplicate set)
+      const totalCards = inner.children.length;
+      const origCards = totalCards / 2;
+      const duration = Math.max(24, origCards * 4);
+      inner.style.animation = `drift ${duration}s linear infinite`;
+      outer.addEventListener('mouseenter', () => { inner.style.animationPlayState = 'paused'; });
+      outer.addEventListener('mouseleave', () => { inner.style.animationPlayState = 'running'; });
+      outer.addEventListener('touchstart', () => { inner.style.animationPlayState = 'paused'; }, { passive: true });
+      outer.addEventListener('touchend', () => { setTimeout(() => { inner.style.animationPlayState = 'running'; }, 1500); });
     }
 
     // ── Multi-agent carousel card canvas ──
@@ -901,6 +888,17 @@ export default function Dashboard() {
         ctx!.arcTo(x, y + h, x, y + h - r, r); ctx!.lineTo(x, y + r);
         ctx!.arcTo(x, y, x + r, y, r); ctx!.closePath();
       }
+      function ghostTrail(x1: number, y1: number, x2: number, y2: number, frac: number, color: string) {
+        const ghosts = [{ off: 0.08, a: 0.25 }, { off: 0.16, a: 0.12 }, { off: 0.24, a: 0.05 }];
+        ghosts.forEach(g => {
+          const tf = Math.max(0, frac - g.off);
+          const ef = tf < 0.5 ? 2*tf*tf : -1+(4-2*tf)*tf;
+          ctx!.beginPath();
+          ctx!.arc(x1 + (x2 - x1) * ef, y1 + (y2 - y1) * ef, 3, 0, Math.PI * 2);
+          ctx!.fillStyle = color + Math.round(g.a * 255).toString(16).padStart(2, '0');
+          ctx!.fill();
+        });
+      }
       function draw(now: number) {
         const rect = canvas!.getBoundingClientRect();
         const W = rect.width, H = rect.height;
@@ -908,98 +906,127 @@ export default function Dashboard() {
         ctx!.clearRect(0, 0, W, H);
         const t = (now - t0) / 1000;
         const tp = t % 6.0;
-        const cardW = Math.min(130, W * 0.17);
-        const cardH = 68;
-        const cardY = H / 2 - cardH / 2;
-        const xs = [W * 0.22, W * 0.5, W * 0.78];
-        // Connection lines
-        ctx!.save(); ctx!.setLineDash([3, 5]); ctx!.lineWidth = 1;
-        ctx!.strokeStyle = 'rgba(255,255,255,0.07)';
+
+        const cardW = Math.min(160, W * 0.27);
+        const cardH = 78;
+        const agentY = H * 0.65;
+        const cardTop = agentY - cardH / 2;
+        const xs = [W * 0.19, W * 0.5, W * 0.81];
+
+        // Live ticket input card at top center
+        const ticketW = Math.min(200, W * 0.42);
+        const ticketH = 52;
+        const ticketX = W / 2 - ticketW / 2;
+        const ticketY = H * 0.07;
+        rr(ticketX, ticketY, ticketW, ticketH, 7);
+        ctx!.fillStyle = 'rgba(255,255,255,0.03)'; ctx!.fill();
+        ctx!.strokeStyle = 'rgba(255,255,255,0.08)'; ctx!.lineWidth = 1; ctx!.stroke();
+        ctx!.fillStyle = 'rgba(255,255,255,0.22)';
+        ctx!.font = 'bold 8px system-ui,sans-serif';
+        ctx!.textAlign = 'left';
+        ctx!.fillText('LIVE INPUT', ticketX + 10, ticketY + 15);
+        ctx!.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx!.font = '10px monospace';
+        ctx!.fillText('"Payment failed, charged twice."', ticketX + 10, ticketY + 34);
+
+        // Arrow from ticket bottom to Agent0 top
+        const ticketBX = W / 2, ticketBY = ticketY + ticketH;
+        const agent0TX = xs[0], agent0TY = cardTop;
+        ctx!.save(); ctx!.setLineDash([2, 4]);
+        ctx!.strokeStyle = 'rgba(245,158,11,0.18)'; ctx!.lineWidth = 1;
+        ctx!.beginPath();
+        ctx!.moveTo(ticketBX, ticketBY);
+        ctx!.lineTo(ticketBX, ticketBY + 12);
+        ctx!.lineTo(agent0TX, agent0TY - 12);
+        ctx!.lineTo(agent0TX, agent0TY);
+        ctx!.stroke();
+        ctx!.restore();
+
+        // Connection lines between agents
+        ctx!.save(); ctx!.setLineDash([3, 5]);
+        ctx!.strokeStyle = 'rgba(255,255,255,0.07)'; ctx!.lineWidth = 1;
         for (let i = 0; i < 2; i++) {
           ctx!.beginPath();
-          ctx!.moveTo(xs[i] + cardW / 2, H / 2);
-          ctx!.lineTo(xs[i + 1] - cardW / 2, H / 2);
+          ctx!.moveTo(xs[i] + cardW / 2, agentY);
+          ctx!.lineTo(xs[i + 1] - cardW / 2, agentY);
           ctx!.stroke();
         }
         ctx!.restore();
-        // Ticket enters from left (0..1.8s)
-        if (tp < 1.8) {
-          const prog = Math.min(tp / 1.2, 1);
-          const ease = 1 - Math.pow(1 - prog, 3);
-          const tx = W * 0.03 + (xs[0] - cardW / 2 - W * 0.03 - 44) * ease;
-          const alpha = tp < 0.15 ? tp / 0.15 : tp > 1.4 ? 1 - (tp - 1.4) / 0.4 : 1;
-          ctx!.globalAlpha = Math.max(0, alpha);
-          rr(tx, H / 2 - 14, 44, 28, 5);
-          ctx!.fillStyle = 'rgba(245,158,11,0.1)'; ctx!.fill();
-          ctx!.strokeStyle = 'rgba(245,158,11,0.35)'; ctx!.lineWidth = 1; ctx!.stroke();
-          ctx!.fillStyle = 'rgba(245,158,11,0.75)'; ctx!.font = '8px system-ui,sans-serif';
-          ctx!.textAlign = 'center'; ctx!.fillText('ticket', tx + 22, H / 2 + 3);
-          ctx!.globalAlpha = 1;
+
+        // Packet 0: ticket → Agent0 (0.0..1.5s)
+        if (tp < 1.5) {
+          const p = tp / 1.5;
+          const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
+          ghostTrail(ticketBX, ticketBY + 6, xs[0], agentY, p, '#f59e0b');
+          ctx!.beginPath(); ctx!.arc(ticketBX + (xs[0] - ticketBX) * e, (ticketBY + 6) + (agentY - ticketBY - 6) * e, 3.5, 0, Math.PI * 2);
+          ctx!.fillStyle = '#f59e0b'; ctx!.fill();
         }
-        // Packet 1: Agent0 → Agent1 (1.5..3.0)
+
+        // Packet 1: Agent0 → Agent1 (1.5..3.0s)
         if (tp >= 1.5 && tp < 3.0) {
           const p = (tp - 1.5) / 1.5;
           const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
           const x1 = xs[0] + cardW / 2, x2 = xs[1] - cardW / 2;
-          const ppx = x1 + (x2 - x1) * e;
-          for (let i = 5; i >= 0; i--) {
-            const tp2 = Math.max(0, p - (i+1)*0.06); const ep = tp2 < 0.5 ? 2*tp2*tp2 : -1+(4-2*tp2)*tp2;
-            ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * ep, H/2, Math.max(0.3, 2.5-i*0.3), 0, Math.PI*2);
-            ctx!.fillStyle = `rgba(34,197,94,${Math.max(0,0.5-i*0.08)})`; ctx!.fill();
-          }
-          ctx!.beginPath(); ctx!.arc(ppx, H/2, 3.5, 0, Math.PI*2); ctx!.fillStyle = '#22c55e'; ctx!.fill();
+          ghostTrail(x1, agentY, x2, agentY, p, '#22c55e');
+          ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * e, agentY, 3.5, 0, Math.PI * 2);
+          ctx!.fillStyle = '#22c55e'; ctx!.fill();
         }
-        // Packet 2: Agent1 → Agent2 (3.0..4.5)
+
+        // Packet 2: Agent1 → Agent2 (3.0..4.5s)
         if (tp >= 3.0 && tp < 4.5) {
           const p = (tp - 3.0) / 1.5;
           const e = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
           const x1 = xs[1] + cardW / 2, x2 = xs[2] - cardW / 2;
-          const ppx = x1 + (x2 - x1) * e;
-          for (let i = 5; i >= 0; i--) {
-            const tp2 = Math.max(0, p - (i+1)*0.06); const ep = tp2 < 0.5 ? 2*tp2*tp2 : -1+(4-2*tp2)*tp2;
-            ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * ep, H/2, Math.max(0.3, 2.5-i*0.3), 0, Math.PI*2);
-            ctx!.fillStyle = `rgba(96,165,250,${Math.max(0,0.5-i*0.08)})`; ctx!.fill();
-          }
-          ctx!.beginPath(); ctx!.arc(ppx, H/2, 3.5, 0, Math.PI*2); ctx!.fillStyle = '#60a5fa'; ctx!.fill();
+          ghostTrail(x1, agentY, x2, agentY, p, '#60a5fa');
+          ctx!.beginPath(); ctx!.arc(x1 + (x2 - x1) * e, agentY, 3.5, 0, Math.PI * 2);
+          ctx!.fillStyle = '#60a5fa'; ctx!.fill();
         }
+
         // Output badge (4.5..6.0)
         if (tp >= 4.5) {
           const alpha = Math.min((tp - 4.5) / 0.4, 1) * (tp > 5.6 ? 1 - (tp - 5.6) / 0.4 : 1);
           ctx!.globalAlpha = Math.max(0, alpha);
-          const ox = xs[2] + cardW / 2 + 10;
-          rr(ox, H/2 - 18, 62, 36, 7);
+          const ox = xs[2] + cardW / 2 + 8;
+          rr(ox, agentY - 18, 64, 36, 7);
           ctx!.fillStyle = 'rgba(96,165,250,0.08)'; ctx!.fill();
           ctx!.strokeStyle = 'rgba(96,165,250,0.25)'; ctx!.lineWidth = 1; ctx!.stroke();
-          ctx!.fillStyle = 'rgba(255,255,255,0.65)'; ctx!.font = '8px system-ui,sans-serif';
-          ctx!.textAlign = 'center'; ctx!.fillText('resolved', ox + 31, H/2 - 3);
-          ctx!.fillStyle = '#22c55e'; ctx!.font = '10px system-ui,sans-serif';
-          ctx!.fillText('✓', ox + 31, H/2 + 13);
+          ctx!.fillStyle = 'rgba(255,255,255,0.65)'; ctx!.font = '10px system-ui,sans-serif';
+          ctx!.textAlign = 'center'; ctx!.fillText('resolved', ox + 32, agentY - 3);
+          ctx!.fillStyle = '#22c55e'; ctx!.font = '11px system-ui,sans-serif';
+          ctx!.fillText('✓', ox + 32, agentY + 13);
           ctx!.globalAlpha = 1;
         }
+
         // Agent cards
+        const activeTimes = [{ s: 1.2, e: 1.8 }, { s: 3.0, e: 3.6 }, { s: 4.5, e: 5.1 }];
         agents.forEach((agent, i) => {
           const x = xs[i] - cardW / 2;
-          const isActive = (i === 0 && tp >= 1.2 && tp < 1.8) || (i === 1 && tp >= 3.0 && tp < 3.6) || (i === 2 && tp >= 4.5 && tp < 5.1);
-          const gFrac = i === 0 ? (tp - 1.2) / 0.6 : i === 1 ? (tp - 3.0) / 0.6 : (tp - 4.5) / 0.6;
+          const at = activeTimes[i];
+          const isActive = tp >= at.s && tp < at.e;
+          const gFrac = (tp - at.s) / 0.6;
           const glowA = isActive ? 0.18 * Math.sin(Math.PI * Math.max(0, Math.min(1, gFrac))) : 0;
           if (glowA > 0) {
-            const grad = ctx!.createRadialGradient(xs[i], H/2, 0, xs[i], H/2, 65);
+            const grad = ctx!.createRadialGradient(xs[i], agentY, 0, xs[i], agentY, 70);
             grad.addColorStop(0, agent.color + Math.round(glowA * 255).toString(16).padStart(2, '0'));
             grad.addColorStop(1, 'transparent');
-            ctx!.beginPath(); ctx!.arc(xs[i], H/2, 65, 0, Math.PI*2);
+            ctx!.beginPath(); ctx!.arc(xs[i], agentY, 70, 0, Math.PI * 2);
             ctx!.fillStyle = grad; ctx!.fill();
           }
-          rr(x, cardY, cardW, cardH, 9);
+          rr(x, cardTop, cardW, cardH, 9);
           ctx!.fillStyle = 'rgba(255,255,255,0.025)'; ctx!.fill();
           ctx!.strokeStyle = agent.color + '4d'; ctx!.lineWidth = 1; ctx!.stroke();
-          ctx!.beginPath(); ctx!.arc(x + 14, cardY + 14, 3.5, 0, Math.PI*2);
+          ctx!.beginPath(); ctx!.arc(x + 14, cardTop + 14, 3.5, 0, Math.PI * 2);
           ctx!.fillStyle = agent.color + 'cc'; ctx!.fill();
-          ctx!.fillStyle = 'rgba(255,255,255,0.72)'; ctx!.font = 'bold 9px system-ui,sans-serif';
-          ctx!.textAlign = 'left'; ctx!.fillText(agent.label, x + 24, cardY + 17);
-          ctx!.fillStyle = 'rgba(255,255,255,0.28)'; ctx!.font = '7.5px system-ui,sans-serif';
-          ctx!.fillText(agent.sub, x + 10, cardY + 36);
-          ctx!.fillStyle = agent.color + '80'; ctx!.font = '7px system-ui,sans-serif';
-          ctx!.fillText('READY', x + 10, cardY + 54);
+          ctx!.fillStyle = 'rgba(255,255,255,0.75)';
+          ctx!.font = 'bold 11px system-ui,sans-serif';
+          ctx!.textAlign = 'left';
+          ctx!.fillText(agent.label, x + 26, cardTop + 18);
+          ctx!.fillStyle = 'rgba(255,255,255,0.3)';
+          ctx!.font = '11px monospace';
+          ctx!.fillText(agent.sub, x + 10, cardTop + 38);
+          ctx!.fillStyle = agent.color + '80';
+          ctx!.font = '9px system-ui,sans-serif';
+          ctx!.fillText('READY', x + 10, cardTop + 58);
         });
         rafId = requestAnimationFrame(draw);
       }
@@ -1025,7 +1052,7 @@ export default function Dashboard() {
         if ((window as any).THREE) { clearInterval(tCheck); initHeroCanvas(); }
       }, 50);
     }
-    initAutoScroll();
+    initDriftCarousel();
 
     // Init multi-agent carousel card canvases
     const maCanvasCleanups: (() => void)[] = [];
@@ -1174,24 +1201,53 @@ export default function Dashboard() {
       codeObs.observe(codeWindowEl);
     }
 
-    // Why pillars: staggered merge-in (0 / 100 / 200 / 300ms)
+    // Why pillars: fade-up anim-hidden → anim-visible with stagger
     const pillarsEl = document.querySelector('.why-pillars');
     let pillarsObs: IntersectionObserver | null = null;
     if (pillarsEl) {
+      const pillars = pillarsEl.querySelectorAll('.pillar');
+      // Set initial hidden state (override CSS translate-from-corners)
+      pillars.forEach(p => {
+        const el = p as HTMLElement;
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(16px)';
+      });
       pillarsObs = new IntersectionObserver(entries => {
         entries.forEach(e => {
           if (e.isIntersecting) {
-            const pillars = pillarsEl.querySelectorAll('.pillar');
-            const stagger = [0, 100, 200, 300];
-            pillars.forEach((p, i) => {
-              (p as HTMLElement).style.transitionDelay = stagger[i] + 'ms';
-              setTimeout(() => p.classList.add('merged'), stagger[i]);
+            const ps = pillarsEl.querySelectorAll('.pillar');
+            const delays = [0, 100, 200, 300];
+            ps.forEach((p, i) => {
+              setTimeout(() => {
+                const el = p as HTMLElement;
+                el.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+              }, delays[i]);
             });
             pillarsObs!.disconnect();
           }
         });
-      }, { threshold: .2 });
+      }, { threshold: 0.2 });
       pillarsObs.observe(pillarsEl);
+
+      // Pillar hover states
+      pillars.forEach(p => {
+        const el = p as HTMLElement;
+        const isTr = el.classList.contains('tr');
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'translateY(-2px)';
+          if (isTr) {
+            el.style.borderColor = 'rgba(34,197,94,0.4)';
+          } else {
+            el.style.borderColor = 'rgba(255,255,255,0.15)';
+          }
+        });
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'translateY(0)';
+          el.style.borderColor = isTr ? 'rgba(34,197,94,0.2)' : '';
+        });
+      });
     }
 
     // Bento cards appear + score animation
@@ -1381,8 +1437,8 @@ export default function Dashboard() {
       if (whyParticlesCleanup) whyParticlesCleanup();
       if (ctaParticlesObs)   ctaParticlesObs.disconnect();
       if (ctaParticlesCleanup) ctaParticlesCleanup();
-      const scrollEl = document.getElementById('featscroll');
-      if (scrollEl && (scrollEl as any)._autoScrollCleanup) (scrollEl as any)._autoScrollCleanup();
+      const driftEl = document.getElementById('feat-drift');
+      if (driftEl) driftEl.style.animation = 'none';
     };
   }, []);
 
@@ -1507,11 +1563,11 @@ export default function Dashboard() {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 4,
-              opacity: scrollHidden ? 0 : 0.4,
+              opacity: scrollHidden ? 0 : 0.35,
               transition: 'opacity 0.3s ease',
               animation: 'scroll-bounce 1.5s ease-in-out infinite',
             }}>
-              <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.2)' }} />
+              <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.2)' }} />
               <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>∨</span>
             </div>
           </div>
@@ -1521,7 +1577,7 @@ export default function Dashboard() {
 
         {/* ── 2. Why AI Dojo ── */}
         <section id="why" style={{ position: 'relative' }}>
-          <canvas id="why-particles" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.5, zIndex: 0 }} />
+          <canvas id="why-particles" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', opacity: 0.45, zIndex: 0 }} />
           <div className="sec" style={{ position: 'relative', zIndex: 1 }}>
             <div className="why-layout">
               <div>
@@ -1537,7 +1593,7 @@ export default function Dashboard() {
                   <div className="pi-t">Construction-based drills</div>
                   <div className="pi-d">You build real outputs. Scored against a professional rubric. No partial credit for effort.</div>
                 </div>
-                <div className="pillar tr">
+                <div className="pillar tr" style={{ border: '1px solid rgba(34,197,94,0.2)', boxShadow: '0 0 20px rgba(34,197,94,0.06)' }}>
                   <span className="pi-n">02</span>
                   <div className="pi-t">A number that doesn&apos;t lie</div>
                   <div className="pi-d">Your score is earned, not given. You see exactly what you can do and where the gap is.</div>
@@ -1580,10 +1636,12 @@ export default function Dashboard() {
             <div className="bento-grid">
 
               {/* Card 1 — wide: Performance dashboard */}
-              <div className="bcard wide">
+              <div className="bcard wide" style={{ maxHeight: 420, overflow: 'hidden', position: 'relative' }}>
                 <div className="bc-icon">📊</div>
                 <div className="bc-t">Performance dashboard</div>
                 <div className="bc-d">Every drill. Every score. Every gap. Your full operator profile — updated in real time.</div>
+                {/* Fade gradient at bottom of card */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(transparent, rgba(10,10,10,0.95))', pointerEvents: 'none', zIndex: 2 }} />
                 <div className="bc-live-score">
                   <div className="bc-ls-top">
                     <div className="bc-ls-num" id="bento-score">0</div>
@@ -1632,22 +1690,22 @@ export default function Dashboard() {
               </div>
 
               {/* Card 3 — amber: AI scored */}
-              <div className="bcard amber bcard-glow">
-                <div className="bc-icon">⚡</div>
+              <div className="bcard amber bcard-glow" style={{ padding: 20 }}>
+                <div className="bc-icon" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, fontSize: 16, borderRadius: 10, marginBottom: 16 }}>⚡</div>
                 <div className="bc-t">AI-scored in seconds</div>
                 <div className="bc-d">Submit your output. Real score against a professional rubric. No waiting. No humans in the loop.</div>
               </div>
 
               {/* Card 4 — Progress tracking */}
-              <div className="bcard bcard-glow">
-                <div className="bc-icon">📈</div>
+              <div className="bcard bcard-glow" style={{ padding: 20 }}>
+                <div className="bc-icon" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, fontSize: 16, borderRadius: 10, marginBottom: 16 }}>📈</div>
                 <div className="bc-t">Track your growth</div>
                 <div className="bc-d">Every drill scored, every improvement tracked. See exactly how your skills develop over time.</div>
               </div>
 
               {/* Card 5 — amber: No shortcuts */}
-              <div className="bcard amber bcard-glow">
-                <div className="bc-icon">🔒</div>
+              <div className="bcard amber bcard-glow" style={{ padding: 20 }}>
+                <div className="bc-icon" style={{ width: 36, height: 36, minWidth: 36, minHeight: 36, fontSize: 16, borderRadius: 10, marginBottom: 16 }}>🔒</div>
                 <div className="bc-t">No shortcuts</div>
                 <div className="bc-d">No multiple choice. No partial credit. No effort scores. Only output quality moves your number.</div>
               </div>
@@ -1778,18 +1836,18 @@ export default function Dashboard() {
             <div className="tag rv">Drills</div>
             <h2 className="sh rv d1">What you actually train <em>inside.</em></h2>
           </div>
-          <div className="feat-scroll-wrap" style={{ position: 'relative' }}>
+          <div id="feat-wrap" style={{ position: 'relative', overflow: 'hidden', cursor: 'default' }}>
             {/* Left edge fade */}
             <div style={{
-              position: 'absolute', top: 0, left: 0, bottom: 0, width: 72, zIndex: 2, pointerEvents: 'none',
+              position: 'absolute', top: 0, left: 0, bottom: 0, width: 60, zIndex: 2, pointerEvents: 'none',
               background: 'linear-gradient(to right, #08090c 0%, transparent 100%)',
             }} />
             {/* Right edge fade */}
             <div style={{
-              position: 'absolute', top: 0, right: 0, bottom: 0, width: 72, zIndex: 2, pointerEvents: 'none',
+              position: 'absolute', top: 0, right: 0, bottom: 0, width: 60, zIndex: 2, pointerEvents: 'none',
               background: 'linear-gradient(to left, #08090c 0%, transparent 100%)',
             }} />
-            <div className="feat-scroll feat-autoscroll" id="featscroll">
+            <div id="feat-drift" style={{ display: 'flex', gap: 14, padding: '0 48px 48px', willChange: 'transform' }}>
               {/* Original set — Prompt Engineering first, OPEN BETA; rest COMING SOON */}
               {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].map(d => {
                 const isLive = d.num === '01';
@@ -2011,7 +2069,7 @@ export default function Dashboard() {
                 <span style={{
                   fontFamily: 'var(--font-code)', fontSize: 10, letterSpacing: '0.2em',
                   textTransform: 'uppercase' as const, color: 'rgba(245,158,11,0.7)',
-                }}>COMING NEXT</span>
+                }}>COMING SOON</span>
               </div>
               <h2 className="sh" style={{
                 fontFamily: 'Georgia, "Times New Roman", serif',
@@ -2028,7 +2086,7 @@ export default function Dashboard() {
               border: '1px solid rgba(245,158,11,0.13)', borderRadius: 16,
               background: 'rgba(255,255,255,0.015)', overflow: 'hidden', marginBottom: 28,
             }}>
-              <canvas id="ma-section-canvas" style={{ width: '100%', height: 280, display: 'block' }} />
+              <canvas id="ma-section-canvas" style={{ width: '100%', height: 320, display: 'block' }} />
             </div>
 
             {/* Feature pills */}
@@ -2049,7 +2107,7 @@ export default function Dashboard() {
                 color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.07)',
                 border: '1px solid rgba(245,158,11,0.2)', padding: '4px 12px',
                 borderRadius: 100, fontFamily: 'var(--font-code)',
-              }}>COMING Q2 2026</span>
+              }}>COMING Q3 2026</span>
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)' }}>
                 Join the waitlist for early access
               </span>
