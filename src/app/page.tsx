@@ -865,7 +865,6 @@ export default function Dashboard() {
       if (!ctxRaw) return () => {};
       const ctx: CanvasRenderingContext2D = ctxRaw;
       let rafId = 0;
-      const t0 = performance.now();
 
       function resize() {
         const rect = canvas!.getBoundingClientRect();
@@ -878,6 +877,98 @@ export default function Dashboard() {
       resize();
       window.addEventListener('resize', resize);
 
+      const agents = [
+        { id: 'classifier', name: 'CLASSIFIER', desc: 'routes input',       x: 0.18, y: 0.52, dotColor: 'rgba(99,102,241,0.8)',  activeColor: '#22c55e' },
+        { id: 'responder',  name: 'RESPONDER',  desc: 'drafts reply',        x: 0.50, y: 0.78, dotColor: 'rgba(34,197,94,0.8)',   activeColor: '#22c55e' },
+        { id: 'escalation', name: 'ESCALATION', desc: 'handles edge cases',  x: 0.82, y: 0.52, dotColor: 'rgba(239,68,68,0.8)',   activeColor: '#22c55e' },
+      ];
+
+      // State
+      let activeAgent: string | null = null;
+      let outputTexts: Record<string, string> = { classifier: '', responder: '', escalation: '' };
+      type PacketObj = { fromX: number; fromY: number; toX: number; toY: number; progress: number; speed: number; done: boolean; onComplete: () => void; update(): void; draw(c: CanvasRenderingContext2D): void; };
+      let packets: PacketObj[] = [];
+      let typingIntervalId: ReturnType<typeof setInterval> | null = null;
+      const timeoutIds: ReturnType<typeof setTimeout>[] = [];
+
+      function getW() { return canvas!.getBoundingClientRect().width || 600; }
+      function getH() { return canvas!.getBoundingClientRect().height || 340; }
+      function getTicketCenter() { return { x: getW() * 0.50, y: getH() * 0.12 }; }
+      function getAgentCenter(id: string) {
+        const a = agents.find(ag => ag.id === id)!;
+        return { x: getW() * a.x, y: getH() * a.y };
+      }
+
+      function makePacket(fromX: number, fromY: number, toX: number, toY: number, onComplete: () => void): PacketObj {
+        return {
+          fromX, fromY, toX, toY, progress: 0, speed: 0.008, done: false, onComplete,
+          update() {
+            this.progress += this.speed;
+            if (this.progress >= 1) { this.done = true; this.onComplete(); }
+          },
+          draw(c: CanvasRenderingContext2D) {
+            const x = this.fromX + (this.toX - this.fromX) * this.progress;
+            const y = this.fromY + (this.toY - this.fromY) * this.progress;
+            ([0.5, 0.3, 0.15, 0.06] as number[]).forEach((alpha, i) => {
+              const tp2 = this.progress - (i + 1) * 0.03;
+              if (tp2 < 0) return;
+              const tx = this.fromX + (this.toX - this.fromX) * tp2;
+              const ty = this.fromY + (this.toY - this.fromY) * tp2;
+              c.beginPath(); c.arc(tx, ty, 5 - i * 0.8, 0, Math.PI * 2);
+              c.fillStyle = `rgba(34,197,94,${alpha})`; c.fill();
+            });
+            c.beginPath(); c.arc(x, y, 5.5, 0, Math.PI * 2);
+            c.fillStyle = 'rgba(34,197,94,0.95)'; c.fill();
+            c.beginPath(); c.arc(x, y, 9, 0, Math.PI * 2);
+            c.fillStyle = 'rgba(34,197,94,0.15)'; c.fill();
+          },
+        };
+      }
+
+      function typeText(agentId: string, text: string, speed: number, callback: () => void) {
+        let i = 0;
+        outputTexts[agentId] = '';
+        if (typingIntervalId) clearInterval(typingIntervalId);
+        typingIntervalId = setInterval(() => {
+          if (i < text.length) { outputTexts[agentId] += text[i]; i++; }
+          if (i >= text.length) {
+            clearInterval(typingIntervalId!); typingIntervalId = null;
+            callback();
+          }
+        }, speed);
+      }
+
+      function addTimeout(fn: () => void, ms: number) {
+        const id = setTimeout(fn, ms); timeoutIds.push(id); return id;
+      }
+
+      function runSequence() {
+        activeAgent = null;
+        outputTexts = { classifier: '', responder: '', escalation: '' };
+        packets = [];
+        addTimeout(() => {
+          const ticketPos = getTicketCenter();
+          const classifierPos = getAgentCenter('classifier');
+          packets.push(makePacket(ticketPos.x, ticketPos.y, classifierPos.x, classifierPos.y, () => {
+            activeAgent = 'classifier';
+            typeText('classifier', 'URGENT — billing issue', 40, () => {
+              addTimeout(() => {
+                const escalationPos = getAgentCenter('escalation');
+                packets.push(makePacket(classifierPos.x, classifierPos.y, escalationPos.x, escalationPos.y, () => {
+                  activeAgent = 'escalation';
+                  typeText('escalation', 'Escalation brief: billing team review', 40, () => {
+                    addTimeout(() => {
+                      activeAgent = null;
+                      addTimeout(runSequence, 800);
+                    }, 2500);
+                  });
+                }));
+              }, 500);
+            });
+          }));
+        }, 600);
+      }
+
       function rr(x: number, y: number, w: number, h: number, r: number) {
         ctx!.beginPath();
         ctx!.moveTo(x + r, y); ctx!.lineTo(x + w - r, y);
@@ -887,179 +978,88 @@ export default function Dashboard() {
         ctx!.arcTo(x, y, x + r, y, r); ctx!.closePath();
       }
 
-      function eio(t: number) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
-
-      function drawPacket(x1: number, y1: number, x2: number, y2: number, frac: number) {
-        const ef = eio(Math.max(0, Math.min(1, frac)));
-        const px = x1 + (x2 - x1) * ef;
-        const py = y1 + (y2 - y1) * ef;
-        const len = Math.hypot(x2 - x1, y2 - y1);
-        if (len < 1) return;
-        const dx = (x2 - x1) / len;
-        const dy = (y2 - y1) / len;
-        const ghosts = [{ d: 8, a: 0.5 }, { d: 16, a: 0.3 }, { d: 24, a: 0.15 }, { d: 32, a: 0.06 }];
-        ghosts.forEach(({ d, a }) => {
-          if (ef * len < d) return;
-          ctx!.beginPath();
-          ctx!.arc(px - dx * d, py - dy * d, 3, 0, Math.PI * 2);
-          ctx!.fillStyle = `rgba(34,197,94,${a})`;
-          ctx!.fill();
-        });
-        ctx!.beginPath();
-        ctx!.arc(px, py, 3, 0, Math.PI * 2);
-        ctx!.fillStyle = 'rgba(34,197,94,0.9)';
-        ctx!.fill();
-      }
-
-      function wrapCanvas(text: string, maxChars: number): string[] {
-        const words = text.split(' ');
-        const lines: string[] = [];
-        let cur = '';
-        for (const w of words) {
-          const next = cur ? cur + ' ' + w : w;
-          if (next.length > maxChars && cur) { lines.push(cur); cur = w; }
-          else cur = next;
-        }
-        if (cur) lines.push(cur);
-        return lines;
-      }
-
-      const CARD_W = 160, CARD_H = 84;
-      const A_TEXT = 'URGENT — billing issue detected';
-      const C_TEXT = 'Escalation brief: billing team needed';
-      const P1_START = 0.5, P1_DUR = 0.7;
-      const A_ACT = P1_START + P1_DUR;
-      const A_TYP_DUR = A_TEXT.length * 0.04;
-      const A_TYP_END = A_ACT + A_TYP_DUR;
-      const ROUTE_SHOW = A_TYP_END + 0.4;
-      const P2_START = ROUTE_SHOW + 0.2;
-      const P2_DUR = 0.7;
-      const C_ACT = P2_START + P2_DUR;
-      const C_TYP_DUR = C_TEXT.length * 0.04;
-      const C_TYP_END = C_ACT + C_TYP_DUR;
-      const HOLD_END = C_TYP_END + 2.0;
-      const FADE_DUR = 0.5;
-      const CYCLE = HOLD_END + FADE_DUR + 0.5;
-
-      function draw(now: number) {
-        const rect = canvas!.getBoundingClientRect();
-        const W = rect.width, H = rect.height;
-        if (!W || !H) { rafId = requestAnimationFrame(draw); return; }
-        ctx!.clearRect(0, 0, W, H);
-        const t = (now - t0) / 1000;
-        const tp = t % CYCLE;
-
-        const fadeAlpha = tp > HOLD_END ? Math.max(0, 1 - (tp - HOLD_END) / FADE_DUR) : 1;
-        ctx!.globalAlpha = fadeAlpha;
-
-        // Agent positions — triangle
-        const posA = { x: W * 0.15, y: H * 0.55 };
-        const posB = { x: W * 0.50, y: H * 0.78 };
-        const posC = { x: W * 0.85, y: H * 0.55 };
-
-        // Ticket
-        const tW = Math.min(200, W * 0.42), tH = 58;
-        const tX = W / 2 - tW / 2, tY = 40;
-
-        // ── 1. Connection lines (drawn first as background) ──
+      function drawConnections(W: number, H: number) {
         ctx!.save();
         ctx!.setLineDash([4, 8]);
-        ctx!.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx!.strokeStyle = 'rgba(255,255,255,0.07)';
         ctx!.lineWidth = 1;
-        ctx!.beginPath(); ctx!.moveTo(W / 2, tY + tH); ctx!.lineTo(posA.x, posA.y - CARD_H / 2); ctx!.stroke();
-        ctx!.beginPath(); ctx!.moveTo(posA.x + CARD_W / 2, posA.y); ctx!.lineTo(posB.x - CARD_W / 2, posB.y); ctx!.stroke();
-        ctx!.beginPath(); ctx!.moveTo(posA.x + CARD_W / 2, posA.y); ctx!.lineTo(posC.x - CARD_W / 2, posC.y); ctx!.stroke();
+        const tick = { x: W * 0.50, y: H * 0.12 };
+        const a  = { x: W * 0.18, y: H * 0.52 };
+        const b  = { x: W * 0.50, y: H * 0.78 };
+        const cc = { x: W * 0.82, y: H * 0.52 };
+        ctx!.beginPath(); ctx!.moveTo(tick.x, tick.y); ctx!.lineTo(a.x, a.y); ctx!.stroke();
+        ctx!.beginPath(); ctx!.moveTo(a.x, a.y); ctx!.lineTo(b.x, b.y); ctx!.stroke();
+        ctx!.beginPath(); ctx!.moveTo(a.x, a.y); ctx!.lineTo(cc.x, cc.y); ctx!.stroke();
         ctx!.restore();
-
-        // ── 2. Ticket card ──
-        const tickFade = Math.min(tp / 0.4, 1);
-        ctx!.globalAlpha = fadeAlpha * tickFade;
-        rr(tX, tY, tW, tH, 6);
-        ctx!.fillStyle = 'rgba(255,255,255,0.03)'; ctx!.fill();
-        ctx!.strokeStyle = 'rgba(255,255,255,0.08)'; ctx!.lineWidth = 1; ctx!.stroke();
-        ctx!.fillStyle = 'rgba(255,255,255,0.22)';
-        ctx!.font = 'bold 8px system-ui,sans-serif';
-        ctx!.textAlign = 'left';
-        ctx!.fillText('LIVE INPUT', tX + 14, tY + 15);
-        ctx!.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx!.font = '9px monospace';
-        ctx!.fillText('"Payment failed, charged twice.', tX + 14, tY + 31);
-        ctx!.fillText('Urgent."', tX + 14, tY + 44);
-        ctx!.globalAlpha = fadeAlpha;
-
-        // ── 3. Packets ──
-        if (tp >= P1_START && tp < P1_START + P1_DUR)
-          drawPacket(W / 2, tY + tH, posA.x, posA.y - CARD_H / 2, (tp - P1_START) / P1_DUR);
-        if (tp >= P2_START && tp < P2_START + P2_DUR)
-          drawPacket(posA.x + CARD_W / 2, posA.y, posC.x - CARD_W / 2, posC.y, (tp - P2_START) / P2_DUR);
-
-        // ── 4. Agent cards ──
-        const agentDefs = [
-          {
-            label: 'CLASSIFIER', pos: posA, idleColor: 'rgba(99,102,241,0.8)',
-            isActive: tp >= A_ACT && tp < P2_START,
-            typingText: A_TEXT, typingStart: A_ACT,
-            statusText: tp >= ROUTE_SHOW && tp < P2_START ? '→ ESCALATION' : 'READY',
-          },
-          {
-            label: 'RESPONDER', pos: posB, idleColor: 'rgba(34,197,94,0.8)',
-            isActive: false, typingText: '', typingStart: -1, statusText: 'READY',
-          },
-          {
-            label: 'ESCALATION', pos: posC, idleColor: 'rgba(239,68,68,0.8)',
-            isActive: tp >= C_ACT,
-            typingText: C_TEXT, typingStart: C_ACT, statusText: 'READY',
-          },
-        ];
-
-        agentDefs.forEach(({ label, pos, idleColor, isActive, typingText, typingStart, statusText }) => {
-          const cx = pos.x - CARD_W / 2, cy = pos.y - CARD_H / 2;
-
-          // Radial glow
-          if (isActive) {
-            const grad = ctx!.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 80);
-            grad.addColorStop(0, 'rgba(34,197,94,0.12)');
-            grad.addColorStop(1, 'rgba(34,197,94,0)');
-            ctx!.beginPath(); ctx!.arc(pos.x, pos.y, 80, 0, Math.PI * 2);
-            ctx!.fillStyle = grad; ctx!.fill();
-          }
-
-          // Card body
-          rr(cx, cy, CARD_W, CARD_H, 10);
-          ctx!.fillStyle = isActive ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.03)'; ctx!.fill();
-          ctx!.strokeStyle = isActive ? 'rgba(34,197,94,0.5)' : 'rgba(255,255,255,0.08)';
-          ctx!.lineWidth = 1; ctx!.stroke();
-
-          // Dot
-          ctx!.beginPath(); ctx!.arc(cx + 14, cy + 16, 3.5, 0, Math.PI * 2);
-          ctx!.fillStyle = isActive ? '#22c55e' : idleColor; ctx!.fill();
-
-          // Name
-          ctx!.fillStyle = isActive ? 'rgba(34,197,94,0.85)' : 'rgba(255,255,255,0.75)';
-          ctx!.font = 'bold 11px system-ui,sans-serif';
-          ctx!.textAlign = 'left';
-          ctx!.fillText(label, cx + 26, cy + 20);
-
-          // Typed output
-          if (typingText && typingStart >= 0 && tp >= typingStart) {
-            const chars = Math.min(typingText.length, Math.floor((tp - typingStart) / 0.04));
-            const lines = wrapCanvas(typingText.slice(0, chars), 17);
-            ctx!.fillStyle = 'rgba(255,255,255,0.4)';
-            ctx!.font = '11px monospace';
-            lines.forEach((line, li) => ctx!.fillText(line, cx + 10, cy + 38 + li * 15));
-          }
-
-          // Status
-          ctx!.fillStyle = 'rgba(255,255,255,0.2)';
-          ctx!.font = '9px system-ui,sans-serif';
-          ctx!.fillText(statusText, cx + 10, cy + CARD_H - 10);
-        });
-
-        rafId = requestAnimationFrame(draw);
       }
-      rafId = requestAnimationFrame(draw);
+
+      function drawTicket(W: number, H: number) {
+        const cx = W * 0.50, cy = H * 0.12;
+        rr(cx - 100, cy - 30, 200, 60, 6);
+        ctx!.fillStyle = 'rgba(255,255,255,0.03)'; ctx!.fill();
+        ctx!.strokeStyle = 'rgba(255,255,255,0.1)'; ctx!.lineWidth = 1; ctx!.stroke();
+        ctx!.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx!.font = '9px system-ui,sans-serif';
+        ctx!.textAlign = 'center';
+        ctx!.fillText('LIVE INPUT', cx, cy - 30 + 18);
+        ctx!.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx!.font = '11px monospace';
+        ctx!.fillText('"Payment failed, charged twice."', cx, cy - 30 + 36);
+      }
+
+      function drawAgent(W: number, H: number, agent: typeof agents[0], isActive: boolean, outputText: string) {
+        const ax = W * agent.x, ay = H * agent.y;
+        const cw = 160, ch = 90;
+        const cx = ax - cw / 2, cy = ay - ch / 2;
+        if (isActive) {
+          rr(cx - 8, cy - 8, cw + 16, ch + 16, 14);
+          ctx!.fillStyle = 'rgba(34,197,94,0.06)'; ctx!.fill();
+          ctx!.strokeStyle = 'rgba(34,197,94,0.2)'; ctx!.lineWidth = 1; ctx!.stroke();
+        }
+        rr(cx, cy, cw, ch, 10);
+        ctx!.fillStyle = isActive ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.025)'; ctx!.fill();
+        ctx!.strokeStyle = isActive ? 'rgba(34,197,94,0.45)' : 'rgba(255,255,255,0.09)';
+        ctx!.lineWidth = isActive ? 1.5 : 1; ctx!.stroke();
+        const dotX = cx + 14, dotY = cy + 17;
+        ctx!.beginPath(); ctx!.arc(dotX, dotY, 3.5, 0, Math.PI * 2);
+        ctx!.fillStyle = isActive ? '#22c55e' : agent.dotColor; ctx!.fill();
+        ctx!.fillStyle = isActive ? 'rgba(34,197,94,0.9)' : 'rgba(255,255,255,0.4)';
+        ctx!.font = '600 10px system-ui,sans-serif';
+        ctx!.textAlign = 'left';
+        ctx!.fillText(agent.name, dotX + 11, dotY + 4);
+        if (outputText) {
+          const maxChars = 22;
+          ctx!.fillStyle = 'rgba(255,255,255,0.5)';
+          ctx!.font = '10px monospace';
+          ctx!.fillText(outputText.slice(0, maxChars), cx + 10, cy + 38);
+          if (outputText.length > maxChars) ctx!.fillText(outputText.slice(maxChars, maxChars * 2), cx + 10, cy + 52);
+        }
+        ctx!.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx!.font = '9px system-ui,sans-serif';
+        ctx!.fillText(isActive ? '● ACTIVE' : '○ READY', cx + 10, cy + ch - 10);
+      }
+
+      function loop() {
+        const rect = canvas!.getBoundingClientRect();
+        const W = rect.width, H = rect.height;
+        if (!W || !H) { rafId = requestAnimationFrame(loop); return; }
+        ctx!.clearRect(0, 0, W, H);
+        drawConnections(W, H);
+        drawTicket(W, H);
+        agents.forEach(a => drawAgent(W, H, a, activeAgent === a.id, outputTexts[a.id] ?? ''));
+        packets = packets.filter(p => !p.done);
+        packets.forEach(p => { p.update(); p.draw(ctx!); });
+        rafId = requestAnimationFrame(loop);
+      }
+
+      resize();
+      loop();
+      addTimeout(runSequence, 500);
+
       return () => {
         cancelAnimationFrame(rafId);
+        if (typingIntervalId) clearInterval(typingIntervalId);
+        timeoutIds.forEach(id => clearTimeout(id));
         window.removeEventListener('resize', resize);
       };
     }
@@ -2113,7 +2113,7 @@ export default function Dashboard() {
               border: '1px solid rgba(245,158,11,0.13)', borderRadius: 16,
               background: 'rgba(255,255,255,0.015)', overflow: 'hidden', marginBottom: 28,
             }}>
-              <canvas id="ma-section-canvas" style={{ width: '100%', height: 380, display: 'block' }} />
+              <canvas id="ma-section-canvas" style={{ width: '100%', height: 340, display: 'block' }} />
             </div>
 
             {/* Feature pills */}
