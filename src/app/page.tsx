@@ -268,6 +268,66 @@ export default function Dashboard() {
       setTimeout(() => revealId('hbtns', .75), 176);
     }
 
+    // ── Prompt Autopsy preview phase ──
+    function runAutopsyPhase(bodyEl: HTMLElement, onDone: () => void) {
+      // Phase A: 300ms pause then draw
+      setTimeout(() => {
+        const header = document.createElement('div');
+        header.style.cssText = 'font-family:var(--font-code);font-size:11px;color:rgba(255,255,255,0.3);line-height:2;margin-bottom:8px;';
+        header.textContent = '─── PROMPT AUTOPSY ───────────────────';
+        bodyEl.appendChild(header);
+        setTimeout(() => {
+          // Phase B: two lines with highlight
+          const line1 = document.createElement('div');
+          line1.style.cssText = 'font-family:var(--font-code);font-size:12.5px;color:rgba(255,255,255,0.6);line-height:1.8;';
+          line1.textContent = 'Write a newsletter about SaaS for';
+          bodyEl.appendChild(line1);
+          const line2 = document.createElement('div');
+          line2.style.cssText = 'font-family:var(--font-code);font-size:12.5px;color:rgba(255,255,255,0.6);line-height:1.8;';
+          const prefix = document.createTextNode('  ');
+          const hl = document.createElement('span');
+          hl.textContent = 'founders and operators';
+          hl.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:3px;padding:1px 5px;color:rgba(34,197,94,0.9);';
+          line2.appendChild(prefix);
+          line2.appendChild(hl);
+          bodyEl.appendChild(line2);
+          // Phase C: tooltip fades in after 800ms
+          setTimeout(() => {
+            const tooltip = document.createElement('div');
+            tooltip.style.cssText = [
+              'display:inline-block',
+              'margin-top:10px',
+              'padding:5px 10px',
+              'background:#0d0d0d',
+              'border:1px solid rgba(34,197,94,0.4)',
+              'border-radius:6px',
+              'font-family:var(--font-code)',
+              'font-size:11px',
+              'color:rgba(34,197,94,0.9)',
+              'opacity:0',
+              'transition:opacity 0.3s ease',
+              'white-space:nowrap',
+            ].join(';');
+            tooltip.textContent = '✓ Strong signal — audience specified';
+            bodyEl.appendChild(tooltip);
+            requestAnimationFrame(() => requestAnimationFrame(() => { tooltip.style.opacity = '1'; }));
+            // Phase D: hold 2000ms
+            setTimeout(() => {
+              // Phase E: fade and loop
+              bodyEl.style.transition = 'opacity 0.4s ease';
+              bodyEl.style.opacity = '0';
+              setTimeout(() => {
+                bodyEl.style.transition = 'none';
+                bodyEl.style.opacity = '1';
+                bodyEl.innerHTML = '';
+                onDone();
+              }, 500);
+            }, 2000);
+          }, 800);
+        }, 300);
+      }, 300);
+    }
+
     // ── Drill animation — 6 phases: broken → fade → improved → cursor → click → score → loop ──
     function runDrillAnimation() {
       const body = document.getElementById('code-body');
@@ -386,15 +446,16 @@ export default function Dashboard() {
                         const winRect = codeWindow ? codeWindow.getBoundingClientRect() : { left: 0, top: 0 };
                         const endX = btnRect.left - winRect.left + 40;
                         const endY = btnRect.top - winRect.top + 12;
-                        cursorDot.style.left = (endX - 80) + 'px';
-                        cursorDot.style.top = (endY + 30) + 'px';
+                        const termW = codeWindow ? codeWindow.offsetWidth : 400;
+                        cursorDot.style.left = (termW - 20) + 'px';
+                        cursorDot.style.top = endY + 'px';
                         cursorDot.style.display = 'block';
                         cursorDot.style.opacity = '0';
                         cursorDot.style.transition = 'opacity 0.2s ease';
                         requestAnimationFrame(() => {
                           cursorDot.style.opacity = '1';
                           setTimeout(() => {
-                            cursorDot.style.transition = 'left 0.4s ease-in-out, top 0.4s ease-in-out';
+                            cursorDot.style.transition = 'left 0.8s ease-in-out, top 0.8s ease-in-out';
                             cursorDot.style.left = endX + 'px';
                             cursorDot.style.top = endY + 'px';
                             setTimeout(() => {
@@ -662,17 +723,17 @@ export default function Dashboard() {
                           }
                           requestAnimationFrame(countUp);
 
-                          // Phase 4: hold 2500ms, then Phase 5
+                          // Phase 4: hold 2000ms, then Autopsy phase
                           setTimeout(() => {
                             body!.style.transition = 'opacity 0.4s ease';
                             body!.style.opacity = '0';
-                            // Phase 5: reset and loop
                             setTimeout(() => {
                               body!.style.transition = 'none';
                               body!.style.opacity = '1';
-                              runDrillAnimation();
-                            }, 900);
-                          }, 2500);
+                              body!.innerHTML = '';
+                              runAutopsyPhase(body!, () => runDrillAnimation());
+                            }, 400);
+                          }, 2000);
                         }, 200);
                       });
                     }, 400));
@@ -686,18 +747,42 @@ export default function Dashboard() {
     }
 
     function initDriftCarousel() {
-      const inner = document.getElementById('feat-drift');
-      const outer = document.getElementById('feat-wrap');
+      const inner = document.getElementById('feat-drift') as HTMLElement | null;
+      const outer = document.getElementById('feat-wrap') as HTMLElement | null;
       if (!inner || !outer) return;
-      // Count total children to determine half (duplicate set)
       const totalCards = inner.children.length;
       const origCards = totalCards / 2;
-      const duration = Math.max(24, origCards * 4);
+      const duration = Math.max(20, origCards * 2.5);
       inner.style.animation = `drift ${duration}s linear infinite`;
+      outer.style.cursor = 'grab';
+      outer.style.overflowX = 'auto';
+      // Pause/resume on hover
       outer.addEventListener('mouseenter', () => { inner.style.animationPlayState = 'paused'; });
-      outer.addEventListener('mouseleave', () => { inner.style.animationPlayState = 'running'; });
+      outer.addEventListener('mouseleave', () => {
+        if (!isDown) { inner.style.animationPlayState = 'running'; outer.style.cursor = 'grab'; }
+      });
       outer.addEventListener('touchstart', () => { inner.style.animationPlayState = 'paused'; }, { passive: true });
       outer.addEventListener('touchend', () => { setTimeout(() => { inner.style.animationPlayState = 'running'; }, 1500); });
+      // Mouse drag
+      let isDown = false, startX = 0, scrollLeft = 0;
+      outer.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - outer.offsetLeft;
+        scrollLeft = outer.scrollLeft;
+        outer.style.cursor = 'grabbing';
+        inner.style.animationPlayState = 'paused';
+      });
+      outer.addEventListener('mouseup', () => {
+        isDown = false;
+        outer.style.cursor = 'grab';
+        setTimeout(() => { inner.style.animationPlayState = 'running'; }, 1000);
+      });
+      outer.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - outer.offsetLeft;
+        outer.scrollLeft = scrollLeft - (x - startX) * 2;
+      });
     }
 
     // ── Multi-agent carousel card canvas ──
@@ -1655,7 +1740,7 @@ export default function Dashboard() {
 
         {/* ── 3. Bento / Platform ── */}
         <section id="bento">
-          <div className="sec">
+          <div className="sec" style={{ paddingTop: 60, paddingBottom: 60 }}>
             <div className="bento-head">
               <div className="tag">Platform</div>
               <h2 className="sh rv">Everything built around your <em>score.</em></h2>
@@ -1663,12 +1748,12 @@ export default function Dashboard() {
             <div className="bento-grid">
 
               {/* Card 1 — wide: Performance dashboard */}
-              <div className="bcard wide" style={{ maxHeight: 420, overflow: 'hidden', position: 'relative' }}>
+              <div className="bcard wide" style={{ maxHeight: 360, overflow: 'hidden', position: 'relative' }}>
                 <div className="bc-icon">📊</div>
                 <div className="bc-t">Performance dashboard</div>
                 <div className="bc-d">Every drill. Every score. Every gap. Your full operator profile — updated in real time.</div>
                 {/* Fade gradient at bottom of card */}
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(transparent, rgba(10,10,10,0.95))', pointerEvents: 'none', zIndex: 2 }} />
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(transparent, rgba(7,7,10,0.95))', pointerEvents: 'none', zIndex: 1 }} />
                 <div className="bc-live-score">
                   <div className="bc-ls-top">
                     <div className="bc-ls-num" id="bento-score">0</div>
@@ -1700,7 +1785,7 @@ export default function Dashboard() {
               </div>
 
               {/* Card 2 — 7 domains */}
-              <div className="bcard">
+              <div className="bcard" style={{ maxHeight: 360, overflow: 'hidden' }}>
                 <div className="bc-icon">🗂</div>
                 <div className="bc-t">7 domains</div>
                 <div className="bc-d">1 live now · more launching monthly</div>
@@ -1794,13 +1879,11 @@ export default function Dashboard() {
                 </div>
                 {/* Animated cursor dot */}
                 <div id="cursor-dot" style={{
-                  display: 'none', position: 'absolute', width: 18, height: 18,
+                  display: 'none', position: 'absolute', width: 8, height: 8,
+                  borderRadius: '50%', background: 'rgba(255,255,255,0.9)',
+                  boxShadow: '0 0 6px rgba(255,255,255,0.6)',
                   pointerEvents: 'none', zIndex: 10, opacity: 0,
-                }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 3l14 8-8 3-3 8z" fill="rgba(255,255,255,0.9)" stroke="rgba(0,0,0,0.3)" strokeWidth="1"/>
-                  </svg>
-                </div>
+                }} />
                 <div id="code-result" className="cr-panel">
                   {/* Score header */}
                   <div className="cr-header">
