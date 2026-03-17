@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DiagnosticTerminal } from "@/components/DiagnosticTerminal";
+import { MultiAgentCanvas } from "@/components/MultiAgentCanvas";
 
 
 const DOMAINS_DATA = [
@@ -46,184 +47,6 @@ function useIsMobile(breakpoint = 768) {
 export default function Dashboard() {
   const isMobile = useIsMobile();
   const [scrollHidden, setScrollHidden] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  // ── Multi-agent section canvas ──
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctxRaw = canvas.getContext('2d');
-    if (!ctxRaw) return;
-    const ctx: CanvasRenderingContext2D = ctxRaw;
-
-    let animFrame = 0;
-    const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-    function resize() {
-      canvas!.width = canvas!.offsetWidth;
-      canvas!.height = canvas!.offsetHeight;
-    }
-    resize();
-
-    const W = () => canvas!.width;
-    const H = () => canvas!.height;
-
-    const AGENTS = [
-      { id: 'classifier', name: 'CLASSIFIER', desc: 'routes input',      status: 'READY', xf: 0.18, yf: 0.52, dotColor: 'rgba(99,102,241,0.8)' },
-      { id: 'responder',  name: 'RESPONDER',  desc: 'drafts reply',       status: 'READY', xf: 0.50, yf: 0.78, dotColor: 'rgba(34,197,94,0.8)'  },
-      { id: 'escalation', name: 'ESCALATION', desc: 'handles edge cases', status: 'READY', xf: 0.82, yf: 0.52, dotColor: 'rgba(239,68,68,0.8)'  },
-    ];
-    const TICKET = { xf: 0.50, yf: 0.14 };
-    const CARD_W = 160, CARD_H = 90;
-
-    function agentX(a: typeof AGENTS[0]) { return W() * a.xf; }
-    function agentY(a: typeof AGENTS[0]) { return H() * a.yf; }
-    function ticketX() { return W() * TICKET.xf; }
-    function ticketY() { return H() * TICKET.yf; }
-
-    let activeAgentId: string | null = null;
-    let outputTexts: Record<string, string> = { classifier: '', responder: '', escalation: '' };
-    let packets: Array<{ x1: number; y1: number; x2: number; y2: number; progress: number; done: boolean; onComplete: () => void }> = [];
-
-    function addPacket(x1: number, y1: number, x2: number, y2: number, onComplete: () => void) {
-      packets.push({ x1, y1, x2, y2, progress: 0, done: false, onComplete });
-    }
-
-    function typeText(agentId: string, text: string, speed: number, cb: () => void) {
-      let i = 0;
-      outputTexts[agentId] = '';
-      const iv = setInterval(() => {
-        if (i < text.length) { outputTexts[agentId] += text[i]; i++; }
-        else { clearInterval(iv); cb(); }
-      }, speed);
-    }
-
-    function drawRoundedRect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-      c.beginPath();
-      c.moveTo(x + r, y); c.lineTo(x + w - r, y);
-      c.arcTo(x + w, y, x + w, y + r, r); c.lineTo(x + w, y + h - r);
-      c.arcTo(x + w, y + h, x + w - r, y + h, r); c.lineTo(x + r, y + h);
-      c.arcTo(x, y + h, x, y + h - r, r); c.lineTo(x, y + r);
-      c.arcTo(x, y, x + r, y, r); c.closePath();
-    }
-
-    function drawTicket(c: CanvasRenderingContext2D) {
-      const x = ticketX(), y = ticketY(), w = 200, h = 56;
-      drawRoundedRect(c, x - w / 2, y - h / 2, w, h, 6);
-      c.fillStyle = 'rgba(255,255,255,0.03)'; c.fill();
-      c.strokeStyle = 'rgba(255,255,255,0.1)'; c.lineWidth = 1; c.setLineDash([]); c.stroke();
-      c.fillStyle = 'rgba(255,255,255,0.3)'; c.font = '9px system-ui'; c.textAlign = 'center';
-      c.fillText('LIVE INPUT', x, y - 10);
-      c.fillStyle = 'rgba(255,255,255,0.55)'; c.font = '11px monospace';
-      c.fillText('"Payment failed, charged twice."', x, y + 8);
-    }
-
-    function drawAgent(c: CanvasRenderingContext2D, agent: typeof AGENTS[0], isActive: boolean, outputText: string) {
-      const x = agentX(agent), y = agentY(agent);
-      const cx = x - CARD_W / 2, cy = y - CARD_H / 2;
-      if (isActive) {
-        drawRoundedRect(c, cx - 8, cy - 8, CARD_W + 16, CARD_H + 16, 14);
-        c.fillStyle = 'rgba(34,197,94,0.06)'; c.fill();
-        c.strokeStyle = 'rgba(34,197,94,0.2)'; c.lineWidth = 1; c.setLineDash([]); c.stroke();
-      }
-      drawRoundedRect(c, cx, cy, CARD_W, CARD_H, 10);
-      c.fillStyle = isActive ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.025)'; c.fill();
-      c.strokeStyle = isActive ? 'rgba(34,197,94,0.45)' : 'rgba(255,255,255,0.09)';
-      c.lineWidth = isActive ? 1.5 : 1; c.setLineDash([]); c.stroke();
-      const dotX = cx + 14, dotY = cy + 16;
-      c.beginPath(); c.arc(dotX, dotY, 3.5, 0, Math.PI * 2);
-      c.fillStyle = isActive ? '#22c55e' : agent.dotColor; c.fill();
-      c.fillStyle = isActive ? 'rgba(34,197,94,0.9)' : 'rgba(255,255,255,0.4)';
-      c.font = '600 10px system-ui'; c.textAlign = 'left';
-      c.fillText(agent.name, dotX + 10, dotY + 1);
-      if (outputText) {
-        c.fillStyle = 'rgba(255,255,255,0.55)'; c.font = '10px monospace'; c.textAlign = 'left';
-        c.fillText(outputText.slice(0, 22), cx + 14, cy + 40);
-        if (outputText.length > 22) c.fillText(outputText.slice(22, 44), cx + 14, cy + 54);
-      }
-      c.fillStyle = 'rgba(255,255,255,0.2)'; c.font = '9px system-ui'; c.textAlign = 'left';
-      c.fillText(isActive ? '● ACTIVE' : '○ READY', cx + 14, cy + CARD_H - 10);
-    }
-
-    function drawConnections(c: CanvasRenderingContext2D) {
-      c.setLineDash([4, 8]); c.strokeStyle = 'rgba(255,255,255,0.07)'; c.lineWidth = 1;
-      const pairs: [number, number, number, number][] = [
-        [ticketX(), ticketY(), agentX(AGENTS[0]), agentY(AGENTS[0])],
-        [agentX(AGENTS[0]), agentY(AGENTS[0]), agentX(AGENTS[1]), agentY(AGENTS[1])],
-        [agentX(AGENTS[0]), agentY(AGENTS[0]), agentX(AGENTS[2]), agentY(AGENTS[2])],
-      ];
-      pairs.forEach(([x1, y1, x2, y2]) => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); });
-      c.setLineDash([]);
-    }
-
-    function drawPackets(c: CanvasRenderingContext2D) {
-      packets = packets.filter(p => !p.done);
-      packets.forEach(p => {
-        p.progress += 0.008;
-        if (p.progress >= 1) { p.progress = 1; p.done = true; p.onComplete(); }
-        const pcx = p.x1 + (p.x2 - p.x1) * p.progress;
-        const pcy = p.y1 + (p.y2 - p.y1) * p.progress;
-        ([0.5, 0.3, 0.15, 0.06] as number[]).forEach((alpha, i) => {
-          const tp2 = p.progress - (i + 1) * 0.03;
-          if (tp2 < 0) return;
-          const tx = p.x1 + (p.x2 - p.x1) * tp2, ty = p.y1 + (p.y2 - p.y1) * tp2;
-          c.beginPath(); c.arc(tx, ty, 5 - i * 0.8, 0, Math.PI * 2);
-          c.fillStyle = `rgba(34,197,94,${alpha})`; c.fill();
-        });
-        c.beginPath(); c.arc(pcx, pcy, 5.5, 0, Math.PI * 2); c.fillStyle = 'rgba(34,197,94,0.95)'; c.fill();
-        c.beginPath(); c.arc(pcx, pcy, 9, 0, Math.PI * 2); c.fillStyle = 'rgba(34,197,94,0.15)'; c.fill();
-      });
-    }
-
-    function loop() {
-      ctx.clearRect(0, 0, W(), H());
-      drawConnections(ctx); drawTicket(ctx);
-      AGENTS.forEach(a => drawAgent(ctx, a, activeAgentId === a.id, outputTexts[a.id]));
-      drawPackets(ctx);
-      animFrame = requestAnimationFrame(loop);
-    }
-
-    function runSequence() {
-      activeAgentId = null;
-      outputTexts = { classifier: '', responder: '', escalation: '' };
-      packets = [];
-      const t1 = setTimeout(() => {
-        addPacket(ticketX(), ticketY(), agentX(AGENTS[0]), agentY(AGENTS[0]), () => {
-          activeAgentId = 'classifier';
-          typeText('classifier', 'URGENT — billing issue', 40, () => {
-            const t2 = setTimeout(() => {
-              addPacket(agentX(AGENTS[0]), agentY(AGENTS[0]), agentX(AGENTS[2]), agentY(AGENTS[2]), () => {
-                activeAgentId = 'escalation';
-                typeText('escalation', 'Escalation brief: billing team review', 40, () => {
-                  const t3 = setTimeout(() => {
-                    activeAgentId = null;
-                    outputTexts = { classifier: '', responder: '', escalation: '' };
-                    const t4 = setTimeout(runSequence, 800);
-                    timeouts.push(t4);
-                  }, 2500);
-                  timeouts.push(t3);
-                });
-              });
-            }, 500);
-            timeouts.push(t2);
-          });
-        });
-      }, 600);
-      timeouts.push(t1);
-    }
-
-    loop();
-    runSequence();
-
-    const handleResize = () => resize();
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      cancelAnimationFrame(animFrame);
-      timeouts.forEach(clearTimeout);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
 
   // ── Scroll indicator — disappear on first scroll ──
   useEffect(() => {
@@ -1562,12 +1385,7 @@ export default function Dashboard() {
             </div>
 
             {/* Canvas */}
-            <div style={{
-              border: '1px solid rgba(245,158,11,0.13)', borderRadius: 16,
-              background: 'rgba(255,255,255,0.015)', overflow: 'hidden', marginBottom: 28,
-            }}>
-              <canvas ref={canvasRef} style={{ width: '100%', height: '340px', display: 'block' }} />
-            </div>
+            <MultiAgentCanvas />
 
             {/* Feature pills */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' as const, marginBottom: 22 }}>
