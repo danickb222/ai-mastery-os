@@ -879,7 +879,7 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
                       </div>
 
                       {/* Annotated text */}
-                      <div style={{ fontSize: 15, lineHeight: 2, whiteSpace: 'pre-wrap' }}>
+                      <div style={{ fontSize: 15, lineHeight: 2, whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word', width: '100%' }}>
                         {autopsyData.segments.map((seg, idx) => {
                           const isNeutral = seg.type === 'neutral';
                           const isHovered = hoveredSegment === idx;
@@ -910,10 +910,9 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
                                   padding: '8px 12px',
                                   fontSize: 12,
                                   color: 'rgba(255,255,255,0.7)',
-                                  whiteSpace: 'nowrap',
-                                  maxWidth: 260,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'normal',
+                                  maxWidth: 220,
+                                  wordWrap: 'break-word',
                                   zIndex: 100,
                                   pointerEvents: 'none',
                                   display: 'flex',
