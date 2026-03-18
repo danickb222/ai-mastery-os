@@ -1151,8 +1151,8 @@ export default function Dashboard() {
               background: 'linear-gradient(to left, #08090c 0%, transparent 100%)',
             }} />
             <div id="feat-drift" style={{ display: 'flex', gap: 14, padding: '0 48px 48px', willChange: 'transform' }}>
-              {/* Original set — Prompt Engineering first, OPEN BETA; rest COMING SOON */}
-              {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].map(d => {
+              {/* ── Set A: 11 regular cards + 1 Multi-Agent animated = 12 total ── */}
+              {DOMAINS_DATA.filter(d => d.num !== '11').map(d => {
                 const isLive = d.num === '01';
                 return (
                   <div key={d.num} className="fcard appeared" style={{
@@ -1164,39 +1164,24 @@ export default function Dashboard() {
                     <div className="fc-d">{d.desc}</div>
                     {isLive ? (
                       <span style={{
-                        display: 'inline-block',
-                        fontSize: 10,
-                        letterSpacing: '0.1em',
-                        color: 'rgba(34,197,94,0.85)',
-                        background: 'rgba(34,197,94,0.1)',
-                        border: '1px solid rgba(34,197,94,0.2)',
-                        padding: '2px 8px',
-                        borderRadius: 100,
+                        display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                        color: 'rgba(34,197,94,0.85)', background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.2)', padding: '2px 8px', borderRadius: 100,
                       }}>OPEN BETA</span>
                     ) : (
                       <span style={{
-                        display: 'inline-block',
-                        fontSize: 10,
-                        letterSpacing: '0.1em',
-                        color: 'rgba(255,255,255,0.3)',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        padding: '2px 8px',
-                        borderRadius: 100,
+                        display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                        color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: 100,
                       }}>COMING SOON</span>
                     )}
                   </div>
                 );
               })}
-              {/* Multi-Agent Systems — animated preview card */}
+              {/* Multi-Agent Systems — animated preview card (Set A) */}
               <div className="fcard appeared" style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(245,158,11,0.2)',
-                padding: 0,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                flexShrink: 0,
+                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)',
+                padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0,
               }}>
                 <div style={{ padding: '20px 20px 12px' }}>
                   <span className="fc-num">DOMAIN 11</span>
@@ -1210,8 +1195,8 @@ export default function Dashboard() {
                 </div>
                 <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
               </div>
-              {/* Duplicate set for seamless loop */}
-              {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].filter(d => d.num !== '11').map(d => {
+              {/* ── Set B (duplicate for seamless loop): same 12 cards ── */}
+              {DOMAINS_DATA.filter(d => d.num !== '11').map(d => {
                 const isLive = d.num === '01';
                 return (
                   <div key={d.num + '-dup'} className="fcard appeared" aria-hidden="true" style={{
@@ -1223,30 +1208,37 @@ export default function Dashboard() {
                     <div className="fc-d">{d.desc}</div>
                     {isLive ? (
                       <span style={{
-                        display: 'inline-block',
-                        fontSize: 10,
-                        letterSpacing: '0.1em',
-                        color: 'rgba(34,197,94,0.85)',
-                        background: 'rgba(34,197,94,0.1)',
-                        border: '1px solid rgba(34,197,94,0.2)',
-                        padding: '2px 8px',
-                        borderRadius: 100,
+                        display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                        color: 'rgba(34,197,94,0.85)', background: 'rgba(34,197,94,0.1)',
+                        border: '1px solid rgba(34,197,94,0.2)', padding: '2px 8px', borderRadius: 100,
                       }}>OPEN BETA</span>
                     ) : (
                       <span style={{
-                        display: 'inline-block',
-                        fontSize: 10,
-                        letterSpacing: '0.1em',
-                        color: 'rgba(255,255,255,0.3)',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        padding: '2px 8px',
-                        borderRadius: 100,
+                        display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                        color: 'rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)', padding: '2px 8px', borderRadius: 100,
                       }}>COMING SOON</span>
                     )}
                   </div>
                 );
               })}
+              {/* Multi-Agent Systems — animated preview card (Set B duplicate) */}
+              <div className="fcard appeared" aria-hidden="true" style={{
+                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)',
+                padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0,
+              }}>
+                <div style={{ padding: '20px 20px 12px' }}>
+                  <span className="fc-num">DOMAIN 11</span>
+                  <div className="fc-t">Multi-Agent Systems</div>
+                  <div className="fc-d" style={{ marginBottom: 10 }}>Orchestrate networks of agents that collaborate and produce results humans can&apos;t match alone.</div>
+                  <span style={{
+                    display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
+                    color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.2)', padding: '2px 8px', borderRadius: 100,
+                  }}>COMING SOON</span>
+                </div>
+                <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
+              </div>
             </div>
           </div>
         </section>
