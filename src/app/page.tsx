@@ -1376,7 +1376,7 @@ export default function Dashboard() {
           </div>
           <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px' }}>
             Next.js · Claude API · OpenAI · Vercel ·{' '}
-            <a href="https://www.linkedin.com/in/daniel-brocato" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.linkedin.com/in/danielbrocato/" target="_blank" rel="noopener noreferrer"
               style={{ color: '#00d4ff', textDecoration: 'none' }}>LinkedIn ↗</a>
             {' '}·{' '}
             <a href="https://github.com/danickb222" target="_blank" rel="noopener noreferrer"
