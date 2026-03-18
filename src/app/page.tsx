@@ -1211,7 +1211,7 @@ export default function Dashboard() {
                 <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
               </div>
               {/* Duplicate set for seamless loop */}
-              {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].map(d => {
+              {[DOMAINS_DATA[0], ...DOMAINS_DATA.slice(1)].filter(d => d.num !== '11').map(d => {
                 const isLive = d.num === '01';
                 return (
                   <div key={d.num + '-dup'} className="fcard appeared" aria-hidden="true" style={{
