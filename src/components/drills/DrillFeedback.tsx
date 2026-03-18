@@ -135,7 +135,6 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
   const [autopsyLoading, setAutopsyLoading] = useState(false);
   const [autopsyError, setAutopsyError] = useState<string | null>(null);
   const [hoveredSegment, setHoveredSegment] = useState<number | null>(null);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const reducedMotion = useRef(
     typeof window !== 'undefined'
@@ -172,14 +171,6 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [sc, evalData]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Mobile viewport detection
-  useEffect(() => {
-    const check = () => setIsMobileViewport(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
 
   // Autopsy fetch (lazy, cached)
   const fetchAutopsy = async () => {
@@ -847,6 +838,7 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
                         border: '1px solid rgba(255,255,255,0.07)',
                         borderRadius: 16, padding: '28px 32px',
                         marginBottom: 20, animationDelay: '100ms',
+                        position: 'relative', overflow: 'visible',
                       }}
                     >
                       <div style={{
@@ -879,11 +871,10 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
                       </div>
 
                       {/* Annotated text */}
-                      <div style={{ fontSize: 15, lineHeight: 2, whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word', width: '100%' }}>
+                      <div style={{ fontSize: 15, lineHeight: 2, whiteSpace: 'normal', overflowWrap: 'break-word', wordBreak: 'break-word', width: '100%', position: 'relative', overflow: 'visible' }}>
                         {autopsyData.segments.map((seg, idx) => {
                           const isNeutral = seg.type === 'neutral';
                           const isHovered = hoveredSegment === idx;
-                          const tooltipAbove = !isMobileViewport;
                           return (
                             <span
                               key={idx}
@@ -901,9 +892,9 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
                               {!isNeutral && isHovered && (
                                 <span style={{
                                   position: 'absolute',
-                                  [tooltipAbove ? 'bottom' : 'top']: tooltipAbove ? 'calc(100% + 8px)' : 'calc(100% + 8px)',
-                                  left: '50%',
-                                  transform: 'translateX(-50%)',
+                                  bottom: 'calc(100% + 10px)',
+                                  right: 0,
+                                  left: 'auto',
                                   background: '#0d0d0d',
                                   border: '1px solid rgba(255,255,255,0.12)',
                                   borderRadius: 8,
@@ -911,9 +902,10 @@ export function DrillFeedback({ drill, result, onContinue, onExit, onRetry }: Dr
                                   fontSize: 12,
                                   color: 'rgba(255,255,255,0.7)',
                                   whiteSpace: 'normal',
-                                  maxWidth: 220,
+                                  width: 'max-content',
+                                  maxWidth: 260,
                                   wordWrap: 'break-word',
-                                  zIndex: 100,
+                                  zIndex: 500,
                                   pointerEvents: 'none',
                                   display: 'flex',
                                   flexDirection: 'column',
