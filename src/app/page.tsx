@@ -1151,8 +1151,8 @@ export default function Dashboard() {
               background: 'linear-gradient(to left, #08090c 0%, transparent 100%)',
             }} />
             <div id="feat-drift" style={{ display: 'flex', gap: 14, padding: '0 48px 48px', willChange: 'transform' }}>
-              {/* ── Set A: 11 regular cards + 1 Multi-Agent animated = 12 total ── */}
-              {DOMAINS_DATA.filter(d => d.num !== '11').map(d => {
+              {/* ── Set A: all 12 domains, exactly once each ── */}
+              {DOMAINS_DATA.map(d => {
                 const isLive = d.num === '01';
                 return (
                   <div key={d.num} className="fcard appeared" style={{
@@ -1178,25 +1178,8 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-              {/* Multi-Agent Systems — animated preview card (Set A) */}
-              <div className="fcard appeared" style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)',
-                padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0,
-              }}>
-                <div style={{ padding: '20px 20px 12px' }}>
-                  <span className="fc-num">DOMAIN 11</span>
-                  <div className="fc-t">Multi-Agent Systems</div>
-                  <div className="fc-d" style={{ marginBottom: 10 }}>Orchestrate networks of agents that collaborate and produce results humans can&apos;t match alone.</div>
-                  <span style={{
-                    display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
-                    color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.08)',
-                    border: '1px solid rgba(245,158,11,0.2)', padding: '2px 8px', borderRadius: 100,
-                  }}>COMING SOON</span>
-                </div>
-                <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
-              </div>
-              {/* ── Set B (duplicate for seamless loop): same 12 cards ── */}
-              {DOMAINS_DATA.filter(d => d.num !== '11').map(d => {
+              {/* ── Set B: identical duplicate for seamless infinite loop ── */}
+              {DOMAINS_DATA.map(d => {
                 const isLive = d.num === '01';
                 return (
                   <div key={d.num + '-dup'} className="fcard appeared" aria-hidden="true" style={{
@@ -1222,23 +1205,6 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-              {/* Multi-Agent Systems — animated preview card (Set B duplicate) */}
-              <div className="fcard appeared" aria-hidden="true" style={{
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(245,158,11,0.2)',
-                padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flexShrink: 0,
-              }}>
-                <div style={{ padding: '20px 20px 12px' }}>
-                  <span className="fc-num">DOMAIN 11</span>
-                  <div className="fc-t">Multi-Agent Systems</div>
-                  <div className="fc-d" style={{ marginBottom: 10 }}>Orchestrate networks of agents that collaborate and produce results humans can&apos;t match alone.</div>
-                  <span style={{
-                    display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
-                    color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.08)',
-                    border: '1px solid rgba(245,158,11,0.2)', padding: '2px 8px', borderRadius: 100,
-                  }}>COMING SOON</span>
-                </div>
-                <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
-              </div>
             </div>
           </div>
         </section>
