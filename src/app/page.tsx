@@ -1247,28 +1247,6 @@ export default function Dashboard() {
                   </div>
                 );
               })}
-              {/* Duplicate — Multi-Agent card */}
-              <div className="fcard appeared" aria-hidden="true" style={{
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(245,158,11,0.2)',
-                padding: 0,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                flexShrink: 0,
-              }}>
-                <div style={{ padding: '20px 20px 12px' }}>
-                  <span className="fc-num">DOMAIN 11</span>
-                  <div className="fc-t">Multi-Agent Systems</div>
-                  <div className="fc-d" style={{ marginBottom: 10 }}>Orchestrate networks of agents that collaborate and produce results humans can&apos;t match alone.</div>
-                  <span style={{
-                    display: 'inline-block', fontSize: 10, letterSpacing: '0.1em',
-                    color: 'rgba(245,158,11,0.8)', background: 'rgba(245,158,11,0.08)',
-                    border: '1px solid rgba(245,158,11,0.2)', padding: '2px 8px', borderRadius: 100,
-                  }}>COMING SOON</span>
-                </div>
-                <canvas className="ma-canvas" style={{ width: '100%', height: 140, display: 'block', flexShrink: 0 }} />
-              </div>
             </div>
           </div>
         </section>
