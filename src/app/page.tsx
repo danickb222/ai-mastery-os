@@ -1360,7 +1360,7 @@ export default function Dashboard() {
         </section>
 
         {/* ── 7. Multi-Agent Preview ── */}
-        <section id="multiagent-preview" style={{ padding: '96px 0 80px', position: 'relative' }}>
+        <section id="multiagent-preview" style={{ padding: '40px 0 40px', position: 'relative' }}>
           <div className="sec">
             <div style={{ textAlign: 'center', marginBottom: 40 }}>
               {/* COMING NEXT eyebrow */}

@@ -21,7 +21,7 @@ export function MultiAgentCanvas() {
       const cw = container!.offsetWidth;
       if (!cw) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const ch  = Math.round(cw * 0.52);
+      const ch  = Math.min(200, Math.round(cw * 0.52));
       canvas!.width        = cw * dpr;
       canvas!.height       = ch * dpr;
       canvas!.style.width  = cw + 'px';
